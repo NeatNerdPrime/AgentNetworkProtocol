@@ -284,7 +284,7 @@ sequenceDiagram
 客户端请求示例：
 
 ```plaintext
-Authorization: DIDWba did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_service_did)"
+Authorization: DIDWba v=1.1 did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_service_did)"
 ```
 
 #### 3.1.2 签名生成流程
@@ -295,7 +295,7 @@ Authorization: DIDWba did="did:wba:example.com%3A8800:user:alice", nonce="abc123
 {
   "nonce": "abc123",
   "timestamp": "2024-12-05T12:34:56Z",
-  "service": "example.com",
+  "aud": "example.com",
   "did": "did:wba:example.com:user:alice"
 }
 ```
