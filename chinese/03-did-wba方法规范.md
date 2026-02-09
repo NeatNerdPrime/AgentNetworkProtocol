@@ -122,7 +122,14 @@ did:wba:example.com%3A3000
         "type": "AgentDescription",
         "serviceEndpoint": "https://agent-network-protocol.com/agents/example/ad.json"
       }
-    ]
+    ],
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2024-12-05T12:00:00Z",
+      "verificationMethod": "did:wba:example.com%3A8800:user:alice#WjKgJV7VRw3hmgU6--4v15c0Aewbcvat1BsRFTIqa5Q",
+      "proofPurpose": "assertionMethod",
+      "proofValue": "z58DAdFfa9SkqZMVPxAQpic7ndTn..."
+    }
 }
 ```
 
@@ -164,6 +171,13 @@ did:wba:example.com%3A3000
   - **id**: 服务的唯一标识符。
   - **type**: 服务类型。对于智能体描述服务，使用"AgentDescription"。
   - **serviceEndpoint**: 服务的端点URL。对于智能体描述服务，此URL指向遵循[ANP-智能体描述协议规范](/chinese/07-ANP-智能体描述协议规范.md)的文档。
+
+- **proof**: 可选字段，遵循[W3C Data Integrity](https://www.w3.org/TR/vc-data-integrity/)规范的自签名证明，用于保护DID文档的完整性，防止文档在传输过程中被篡改。
+  - **type**: 签名算法类型，如`EcdsaSecp256k1Signature2019`或`Ed25519Signature2020`。
+  - **created**: 签名创建时间，ISO 8601格式的UTC时间。
+  - **verificationMethod**: 用于验证签名的验证方法ID，必须是DID文档中`verificationMethod`数组中的某个方法。
+  - **proofPurpose**: 签名用途，通常为`assertionMethod`。
+  - **proofValue**: 签名值，使用base64url编码。签名输入为`hash(canonicalize(proof_options)) || hash(canonicalize(document))`，其中`document`不包含`proof`字段，`proof_options`不包含`proofValue`字段，规范化使用JCS（RFC 8785），哈希使用SHA-256。
 
 > 注意：
 > 1. 公钥信息目前支持两种格式，publicKeyJwk和publicKeyMultibase。详细见[https://www.w3.org/TR/did-extensions-properties/#verification-method-properties](https://www.w3.org/TR/did-extensions-properties/#verification-method-properties)。
@@ -279,12 +293,12 @@ sequenceDiagram
 - **signature**：对 `nonce`、`timestamp` 、服务端域名、客户端DID进行签名。对于ECDSA签名，使用R|S格式。包括以下字段：
   - `nonce`: 随机生成的字符串
   - `timestamp`: 请求发起时的时间
-  - `service`: 服务端域名(注意，域名中不包含端口，示例：example.com，如果服务端是ip，则使用ip地址)
+  - `aud`: 服务端域名(注意，域名中不包含端口，示例：example.com，如果服务端是ip，则使用ip地址)
   - `did`: 客户端的 DID
 客户端请求示例：
 
 ```plaintext
-Authorization: DIDWba v=1.1 did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_service_did)"
+Authorization: DIDWba v="1.1", did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_aud_did)"
 ```
 
 #### 3.1.2 签名生成流程
@@ -331,7 +345,7 @@ Authorization: DIDWba v=1.1 did="did:wba:example.com%3A8800:user:alice", nonce="
 
 #### 3.2.2 验证签名过程
 
-1. **提取信息**：从 `Authorization` 头部提取 `nonce`、`timestamp`、`service`、`did`、`verification_method` 和 `signature`。
+1. **提取信息**：从 `Authorization` 头部提取 `nonce`、`timestamp`、`aud`、`did`、`verification_method` 和 `signature`。
 
 2. **构建验证字符串**：使用提取的信息构建与客户端相同的JSON字符串：
 
@@ -339,7 +353,7 @@ Authorization: DIDWba v=1.1 did="did:wba:example.com%3A8800:user:alice", nonce="
 {
     "nonce": "abc123",
     "timestamp": "2024-12-05T12:34:56Z",
-    "service": "example.com",
+    "aud": "example.com",
     "did": "did:wba:example.com:user:alice"
 }
 ```
@@ -474,7 +488,7 @@ sequenceDiagram
 - **signature**：对 `nonce`、`timestamp` 、服务端域名、客户端DID进行签名。对于ECDSA签名，使用R|S格式。包括以下字段：
   - `nonce`
   - `timestamp`
-  - `service`（服务的域名）
+  - `aud`（服务的域名）
   - `did`（客户端的 DID）
 
 客户端请求示例：
@@ -485,7 +499,7 @@ sequenceDiagram
   "nonce": "abc123",
   "timestamp": "2024-12-05T12:34:56Z",
   "verification_method": "key-1",
-  "signature": "base64url(signature_of_nonce_timestamp_service_did)"
+  "signature": "base64url(signature_of_nonce_timestamp_aud_did)"
 }
 ```
 
@@ -643,6 +657,8 @@ Alice希望通过智能助理调用一个名为example的第三方服务API。�
 14. **DID Extension Resolution**. Decentralized Identifier Extension Resolution. Orie Steele; Manu Sporny. W3C. 24 June 2021. W3C Note. Retrieved from [https://www.w3.org/TR/did-extensions-resolution/](https://www.w3.org/TR/did-extensions-resolution/)
 
 15. **Controller Document**. Controller Document. Manu Sporny; Markus Sabadello. W3C. 24 June 2021. W3C Note. Retrieved from [https://www.w3.org/TR/controller-document/](https://www.w3.org/TR/controller-document/)
+
+16. **Verifiable Credential Data Integrity**. Verifiable Credential Data Integrity 1.0. Manu Sporny; Dave Longley; Greg Bernstein; Dmitri Zagidulin; Sebastian Crane. W3C. 2024. W3C Candidate Recommendation. Retrieved from [https://www.w3.org/TR/vc-data-integrity/](https://www.w3.org/TR/vc-data-integrity/)
 
 ## 版权声明
 Copyright (c) 2024 GaoWei Chang

@@ -122,7 +122,14 @@ Apart from the DID Core specification, most other specifications are still in dr
         "type": "AgentDescription",
         "serviceEndpoint": "https://agent-network-protocol.com/agents/example/ad.json"
       }
-    ]
+    ],
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2024-12-05T12:00:00Z",
+      "verificationMethod": "did:wba:example.com%3A8800:user:alice#WjKgJV7VRw3hmgU6--4v15c0Aewbcvat1BsRFTIqa5Q",
+      "proofPurpose": "assertionMethod",
+      "proofValue": "z58DAdFfa9SkqZMVPxAQpic7ndTn..."
+    }
 }
 ```
 
@@ -164,6 +171,13 @@ Apart from the DID Core specification, most other specifications are still in dr
   - **id**: Unique identifier for the service.
   - **type**: Type of service. For agent description service, use "AgentDescription".
   - **serviceEndpoint**: URL endpoint of the service. For agent description service, this URL points to a document that follows the [ANP-Agent Description Protocol Specification](/07-anp-agent-description-protocol-specification.md).
+
+- **proof**: Optional field. A self-signed proof following the [W3C Data Integrity](https://www.w3.org/TR/vc-data-integrity/) specification, used to protect the integrity of the DID document and prevent tampering during transmission.
+  - **type**: Signature algorithm type, such as `EcdsaSecp256k1Signature2019` or `Ed25519Signature2020`.
+  - **created**: Signature creation time in ISO 8601 UTC format.
+  - **verificationMethod**: The ID of the verification method used to verify the signature. Must be a method from the `verificationMethod` array in the DID document.
+  - **proofPurpose**: Purpose of the signature, typically `assertionMethod`.
+  - **proofValue**: Signature value, encoded in base64url. The signing input is `hash(canonicalize(proof_options)) || hash(canonicalize(document))`, where `document` excludes the `proof` field, `proof_options` excludes the `proofValue` field, canonicalization uses JCS (RFC 8785), and hashing uses SHA-256.
 
 > Note:
 > 1. Public key information currently supports two formats: publicKeyJwk and publicKeyMultibase. For details, see [https://www.w3.org/TR/did-extensions-properties/#verification-method-properties](https://www.w3.org/TR/did-extensions-properties/#verification-method-properties).
@@ -281,13 +295,13 @@ The client sends the following information through the `Authorization` header fi
 - **signature**: Sign the `nonce`, `timestamp`, service domain, and client DID. For ECDSA signatures, use the R|S format. It includes the following fields:
   - `nonce`
   - `timestamp`
-  - `service` (the domain name of the service)
+  - `aud` (the domain name of the service; note: the domain name does not include the port, e.g. example.com; if the server is an IP, use the IP address)
   - `did` (the DID of the client)
 
 Client request example:
 
 ```plaintext
-Authorization: DIDWba did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_service_did)"
+Authorization: DIDWba v="1.1", did="did:wba:example.com%3A8800:user:alice", nonce="abc123", timestamp="2024-12-05T12:34:56Z", verification_method="key-1", signature="base64url(signature_of_nonce_timestamp_aud_did)"
 ```
 
 #### 3.1.2 Signature Generation Process
@@ -295,11 +309,11 @@ Authorization: DIDWba did="did:wba:example.com%3A8800:user:alice", nonce="abc123
 1. The client generates a string containing the following information:
 
 ```json
-{ 
-  "nonce": "abc123", 
-  "timestamp": "2024-12-05T12:34:56Z", 
-  "service": "example.com", 
-  "did": "did:wba:example.com:user:alice" 
+{
+  "nonce": "abc123",
+  "timestamp": "2024-12-05T12:34:56Z",
+  "aud": "example.com",
+  "did": "did:wba:example.com:user:alice"
 }
 ```
 
@@ -333,16 +347,16 @@ After receiving the client's request, the service performs the following verific
 
 #### 3.2.2 Signature Verification Process
 
-1. **Extract Information**: Extract `nonce`, `timestamp`, `service`, `did`, and `verification_method` from the `Authorization` header.
+1. **Extract Information**: Extract `nonce`, `timestamp`, `aud`, `did`, `verification_method` and `signature` from the `Authorization` header.
 
 2. **Build Verification String**: Construct a JSON string identical to the one constructed by the client:
 
 ```json
-{ 
-    "nonce": "abc123", 
-    "timestamp": "2024-12-05T12:34:56Z", 
-    "service": "example.com", 
-    "did": "did:wba:example.com:user:alice" 
+{
+    "nonce": "abc123",
+    "timestamp": "2024-12-05T12:34:56Z",
+    "aud": "example.com",
+    "did": "did:wba:example.com:user:alice"
 }
 ```
 
@@ -477,7 +491,7 @@ The client needs to send the following information to the server:
 - **signature**: Signs the `nonce`, `timestamp`, server domain, and client DID. For ECDSA signatures, uses R|S format. Includes the following fields:
   - `nonce`: A randomly generated string
   - `timestamp`: The time when the request is initiated
-  - `service`: The server's domain name (note: the domain name does not include the port)
+  - `aud`: The server's domain name (note: the domain name does not include the port)
   - `did`: The client's DID
 
 Client request example:
@@ -488,7 +502,7 @@ Client request example:
   "nonce": "abc123",
   "timestamp": "2024-12-05T12:34:56Z",
   "verification_method": "key-1",
-  "signature": "base64url(signature_of_nonce_timestamp_service_did)"
+  "signature": "base64url(signature_of_nonce_timestamp_aud_did)"
 }
 ```
 
@@ -648,6 +662,8 @@ In the future, we will further improve the did:wba method by adding agent capabi
 
 
 15. **Controller Document**. Controller Document. Manu Sporny; Markus Sabadello. W3C. 24 June 2021. W3C Note. Retrieved from [https://www.w3.org/TR/controller-document/](https://www.w3.org/TR/controller-document/)
+
+16. **Verifiable Credential Data Integrity**. Verifiable Credential Data Integrity 1.0. Manu Sporny; Dave Longley; Greg Bernstein; Dmitri Zagidulin; Sebastian Crane. W3C. 2024. W3C Candidate Recommendation. Retrieved from [https://www.w3.org/TR/vc-data-integrity/](https://www.w3.org/TR/vc-data-integrity/)
 
 ## Copyright Notice
 Copyright (c) 2024 GaoWei Chang  
