@@ -1,4 +1,4 @@
-# ANP End-to-End Instant Messaging Protocol Specification (Draft)
+# ANP End-to-End Instant Messaging Protocol Specification (Draft 1.1)
 
 Note: This specification is still a draft version and will undergo further optimization and iteration.
 
@@ -416,6 +416,7 @@ Send a message (private or group chat), also serving as the unified transport me
 | `image` | Regular | Image message |
 | `file` | Regular | File message |
 | `e2ee_init` | Private E2EE | Session initialization (HPKE encapsulated session seed) |
+| `e2ee_ack` | Private E2EE | Session acknowledgement (receiver confirms session acceptance) |
 | `e2ee_msg` | Private E2EE | Encrypted message (symmetric AEAD ciphertext) |
 | `e2ee_rekey` | Private E2EE | Session reset/rekey |
 | `e2ee_error` | E2EE | E2EE error notification |
@@ -424,7 +425,7 @@ Send a message (private or group chat), also serving as the unified transport me
 | `group_epoch_advance` | Group E2EE | Group epoch change notification |
 
 **E2EE Constraints:**
-- Private chat E2EE messages (type `e2ee_init`, `e2ee_msg`, `e2ee_rekey`, `e2ee_error`) must specify `receiver_did` and cannot specify `group_did`
+- Private chat E2EE messages (type `e2ee_init`, `e2ee_ack`, `e2ee_msg`, `e2ee_rekey`, `e2ee_error`) must specify `receiver_did` and cannot specify `group_did`
 - Group chat E2EE messages (type `group_e2ee_msg`, `group_epoch_advance`) must specify `group_did` and cannot specify `receiver_did`
 - `group_e2ee_key` (Sender Key distribution) requires both `receiver_did` (the member receiving the Sender Key) and `group_did` (the associated group) — this is the only case where both are specified simultaneously
 - Violating these constraints returns `-32602` Invalid Params
@@ -513,16 +514,16 @@ See Section 8 for E2EE message request examples.
 
 **server_seq Ordering Mechanism:**
 
-- `server_seq` is assigned by the server when the message is successfully persisted, starting from 1 and monotonically increasing (independently counted per conversation).
-- Dimension definitions:
-  - **Private chat**: `server_seq` increments within the `(min(A_did, B_did), max(A_did, B_did))` dimension, meaning the same pair of private chat participants share one sequence number space.
-  - **Group chat**: `server_seq` increments within the `group_did` dimension, meaning all messages within the same group share one sequence number space.
+- `server_seq` is assigned by the **local Message Server** when the message is successfully persisted, starting from 1 and monotonically increasing.
+- Scope:
+  - **Single-server deployment**: implementations may maintain an increasing sequence within a private DID pair or a `group_did`.
+  - **Cross-platform / federated Message Server deployments**: `server_seq` only represents the ordering from the **current server's local viewpoint** and is not required to be globally comparable across servers.
 - `server_seq` guarantees monotonic increase but **allows gaps** (e.g., due to database allocation strategies), and **does not allow regression**.
 - All query interfaces **MUST** return message lists sorted by `server_seq` in ascending order.
 
 **Client Gap Detection and Backfill:**
 
-- Clients **SHOULD** track the maximum received `server_seq` for each conversation.
+- Clients **SHOULD** track the maximum received `server_seq` for each local server-side message stream.
 - When a message received via WebSocket push or query interface has a `server_seq` that is not contiguous with the local maximum (i.e., a gap exists), the client **SHOULD** call `get_history(since_seq=<local max server_seq>)` to backfill missing messages.
 - Backfilled messages are inserted into the local message list in ascending `server_seq` order.
 
@@ -531,7 +532,7 @@ See Section 8 for E2EE message request examples.
 | | server_seq | E2EE seq |
 |------|------|------|
 | **Assigned by** | Message Server | Sending client |
-| **Dimension** | Private=DID pair, Group=group_did | Private=session_id, Group=(sender_did, epoch, sender_key_id) |
+| **Dimension** | Local message stream on a single Message Server (private or group view) | Private=session_id, Group=(sender_did, epoch, sender_key_id) |
 | **Purpose** | Message ordering, gap detection, incremental fetch | Key derivation, anti-replay |
 | **Visibility** | Plaintext, visible to all participants and server | Inside E2EE content, end-to-end only |
 | **Coverage** | All message types (plaintext + E2EE) | E2EE encrypted messages only (e2ee_msg, group_e2ee_msg) |
@@ -1055,14 +1056,15 @@ This protocol's end-to-end encryption scheme is based on HPKE (Hybrid Public Key
 
 #### 8.2.1 Key Separation
 
-This protocol strictly separates signing keys and key agreement keys:
+This protocol separates identity authentication, proof signing, and key agreement by **key role**. Concrete key fragment names are not protocol constants; the DID document is authoritative, and the AD document may provide optional preference hints:
 
 | Purpose | Algorithm | DID Document Field | Description |
 |---------|-----------|-------------------|-------------|
-| Signing / Identity verification | ECDSA secp256r1 | `authentication` / `assertionMethod` | Used for proof signatures, DID WBA authentication |
-| Key agreement | X25519 | `keyAgreement` | Used for HPKE KEM encapsulation/decapsulation |
+| Identity authentication (identity auth key) | Defined by DID WBA | `authentication` | Used for DID WBA authentication |
+| E2EE proof signing (e2ee proof key) | ECDSA secp256r1 | `assertionMethod` (or equivalent declaration) | Used for E2EE proof signatures referenced by `proof.verification_method` |
+| Key agreement (e2ee agreement key) | X25519 | `keyAgreement` | Used for HPKE KEM encapsulation/decapsulation |
 
-Signing keys do not participate in key agreement, and key agreement keys do not participate in signing. This separation design ensures that the compromise of a single key does not simultaneously affect both identity authentication and communication confidentiality.
+Identity authentication keys, E2EE proof signing keys, and key agreement keys should not be reused for each other. The current reference implementation may default to `key-1`, `key-2`, and `key-3` as local conventions, but the protocol itself does not hard-code those fragment names.
 
 #### 8.2.2 HPKE Crypto Stack
 
@@ -1167,6 +1169,11 @@ Alice                           Message Server                          Bob
   |                                   |  [8. Derive send/recv             |
   |                                   |      chain keys]                  |
   |                                   |                                   |
+  |  send(type=e2ee_ack)             |                                   |
+  |<---------------------------------|  content={session_id, proof, ...} |
+  |                                   |                                   |
+  |  [Alice receives ack and knows Bob accepted the session]              |
+  |                                   |                                   |
   |  [Alice also derives send/recv chain keys, session activated]         |
   |                                   |                                   |
   |  send(type=e2ee_msg, seq=0)       |                                   |
@@ -1185,20 +1192,21 @@ Alice                           Message Server                          Bob
    - Plaintext: `root_seed` (32 bytes)
    - AAD: UTF-8 encoding of `session_id`
    - Output: `enc` (32-byte X25519 ephemeral public key, Base64 encoded) and `encrypted_seed` (AEAD ciphertext, Base64 encoded)
-4. Alice signs the entire content with a proof signature (using the signing key from her DID document's `authentication`).
-5. Alice sends the `type=e2ee_init` message via the `send` method. After sending, Alice can immediately send `e2ee_msg` encrypted messages without waiting for Bob's reply.
+4. Alice signs the entire content with a proof signature using the E2EE proof signing key declared in her DID document.
+5. Alice sends the `type=e2ee_init` message via the `send` method. After sending, Alice **may** immediately send `e2ee_msg` encrypted messages, but this only means the initiator locally has enough state to send — it **does not** imply that Bob has already accepted the session.
 6. Upon receiving the message, Bob uses his X25519 private key and `enc` to perform HPKE `Open`, recovering `root_seed`.
 7. Bob obtains Alice's signing public key from her DID document and verifies the proof signature.
 8. Both parties derive send/recv chain keys from `root_seed` (see 8.3.3), and the session is activated.
+9. Bob **SHOULD** send `e2ee_ack` to confirm that he has successfully accepted the session. After Alice receives `e2ee_ack`, she may treat the session as remotely confirmed.
 
 **Message Delivery Order Requirements:**
 
 The Message Server **SHOULD** make best efforts to guarantee that messages from the same sender to the same receiver are delivered in sending order (FIFO order), but absolute FIFO delivery is not always achievable in distributed systems. The protocol provides **detectable and recoverable** ordering guarantees through `server_seq`:
 
-- Receivers detect whether the arrival order of messages meets expectations via `server_seq`. If a `server_seq` gap appears, the receiver **SHOULD** backfill missing messages via `get_history(since_seq=...)`.
-- The `e2ee_init` message **SHOULD** be delivered to the receiver before subsequent `e2ee_msg` messages. If the receiver receives an `e2ee_msg` first and cannot find the corresponding session state for the `session_id`, it **MUST** buffer the message (limit 64 messages, timeout 30 seconds) and wait for the `e2ee_init` to arrive. After the buffer timeout, it **SHOULD** discard the message and return an `e2ee_error` (error_code: `session_not_found`).
-- The same applies to `e2ee_rekey` and subsequent `e2ee_msg` — `e2ee_rekey` **SHOULD** be delivered before any `e2ee_msg` using the new session_id.
-- For group chat, `group_e2ee_key` **SHOULD** be delivered to the corresponding receiver before the same sender's `group_e2ee_msg`. See Section 8.5.3 for the missing key buffering strategy.
+- Receivers detect gaps via the `server_seq` returned by the **local server**. If a `server_seq` gap appears, the receiver **SHOULD** backfill missing messages via `get_history(since_seq=...)`.
+- The `e2ee_init` message **SHOULD** be delivered before subsequent `e2ee_msg` messages. If the receiver sees an `e2ee_msg` first and cannot find the corresponding session state for the `session_id`, the message **MUST NOT** be treated as a permanent failure immediately; implementations **SHOULD** preserve its unprocessed state and retry after backfilling or when the inbox is processed again later.
+- The same applies to `e2ee_rekey` and subsequent `e2ee_msg` using a new `session_id`.
+- For group chat, `group_e2ee_key` **SHOULD** be delivered before the same sender's `group_e2ee_msg`. Missing-key cases should likewise preserve an unprocessed state and retry once the dependency arrives.
 
 **E2EE Message Serial Sending Constraint:**
 
@@ -1335,8 +1343,11 @@ When E2EE communication encounters anomalies, the other party is notified via `e
 |------------|-------------|-------------------|
 | `session_not_found` | Session does not exist or has been destroyed | Initiator resends `e2ee_init` |
 | `session_expired` | Session has expired | Initiator sends `e2ee_rekey` |
-| `decryption_failed` | Decryption failed (key desync, etc.) | Initiator sends `e2ee_rekey` |
-| `invalid_seq` | Sequence number mismatch | Initiator sends `e2ee_rekey` |
+| `decryption_failed` | Decryption failed (key desync, etc.) | Sender may choose to resend, or `e2ee_rekey` first and then resend |
+| `invalid_seq` | Sequence number mismatch | Sender sends `e2ee_rekey` and decides whether to resend the failed message |
+| `proof_expired` | Control-message proof has expired | Sender may resend the control message |
+| `proof_from_future` | Control-message proof timestamp is too far in the future | Sender checks local clock and decides whether to resend |
+| `unsupported_version` | Peer uses an unsupported E2EE content version or omitted the version field | Upgrade the peer to `e2ee_version = "1.1"` and retry |
 | `unsupported_suite` | Unsupported HPKE cipher suite | Check the other party's capability declaration in AD document |
 | `no_key_agreement` | Other party's DID document has no keyAgreement | Fall back to plaintext communication or abort |
 | `sender_key_not_found` | Sender Key not received for the corresponding sender in group chat, buffer timeout | Sender redistributes `group_e2ee_key` |
@@ -1345,10 +1356,13 @@ When E2EE communication encounters anomalies, the other party is notified via `e
 
 All E2EE data is transmitted via the `content` field of the `send` method (as JSON serialized strings).
 
+All E2EE content (private + group, control messages + ciphertext messages) **MUST** include an `e2ee_version` field. The current fixed version string is `"1.1"`. If the receiver gets a message that omits `e2ee_version` or uses an unsupported value, it does **not** need to remain backward compatible with the legacy shape and should return `e2ee_error` with `error_code = "unsupported_version"` instructing the sender to upgrade.
+
 #### 8.4.1 e2ee_init — Session Initialization
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | session_id | string | Yes | Session ID, 32 random hex characters |
 | hpke_suite | string | Yes | HPKE cipher suite identifier |
 | sender_did | string | Yes | Sender DID |
@@ -1356,7 +1370,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 | recipient_key_id | string | Yes | ID of the keyAgreement entry in the recipient's DID document |
 | enc | string | Yes | HPKE encapsulated ciphertext (Base64 encoded, 32-byte X25519 ephemeral public key) |
 | encrypted_seed | string | Yes | HPKE AEAD encrypted root_seed (Base64 encoded, including GCM tag) |
-| expires | integer | No | Session validity period (seconds), default 86400 |
+| expires | integer | No | Maximum lifetime in seconds during which the control message may still be accepted to establish or update state; default 86400 |
 | proof | object | Yes | Sender signature |
 
 **proof Structure (applicable to all E2EE messages requiring signatures):**
@@ -1365,13 +1379,14 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 |-------|------|-------------|
 | type | string | Signature type (`"EcdsaSecp256r1Signature2019"`) |
 | created | string | Signature creation time (ISO 8601 UTC) |
-| verification_method | string | Verification method ID used for signing (entry from DID document `authentication`) |
+| verification_method | string | Verification method ID used for signing (the E2EE proof signing method declared in the DID document) |
 | proof_value | string | Signature value (Base64URL encoded) |
 
 **Content Example (before JSON serialization):**
 
 ```json
 {
+  "e2ee_version": "1.1",
   "session_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
   "hpke_suite": "DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM",
   "sender_did": "did:wba:example.com:user:alice",
@@ -1383,7 +1398,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
   "proof": {
     "type": "EcdsaSecp256r1Signature2019",
     "created": "2026-03-01T10:30:00Z",
-    "verification_method": "did:wba:example.com:user:alice#keys-1",
+    "verification_method": "did:wba:example.com:user:alice#key-2",
     "proof_value": "MEUCIQDx..."
   }
 }
@@ -1398,7 +1413,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
   "params": {
     "sender_did": "did:wba:example.com:user:alice",
     "receiver_did": "did:wba:example.com:user:bob",
-    "content": "{\"session_id\":\"a1b2c3d4e5f60718a1b2c3d4e5f60718\",\"hpke_suite\":\"DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM\",\"sender_did\":\"did:wba:example.com:user:alice\",\"recipient_did\":\"did:wba:example.com:user:bob\",\"recipient_key_id\":\"did:wba:example.com:user:bob#key-x25519-1\",\"enc\":\"...\",\"encrypted_seed\":\"...\",\"expires\":86400,\"proof\":{\"type\":\"EcdsaSecp256r1Signature2019\",\"created\":\"2026-03-01T10:30:00Z\",\"verification_method\":\"did:wba:example.com:user:alice#keys-1\",\"proof_value\":\"...\"}}",
+    "content": "{\"e2ee_version\":\"1.1\",\"session_id\":\"a1b2c3d4e5f60718a1b2c3d4e5f60718\",\"hpke_suite\":\"DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM\",\"sender_did\":\"did:wba:example.com:user:alice\",\"recipient_did\":\"did:wba:example.com:user:bob\",\"recipient_key_id\":\"did:wba:example.com:user:bob#key-x25519-1\",\"enc\":\"...\",\"encrypted_seed\":\"...\",\"expires\":86400,\"proof\":{\"type\":\"EcdsaSecp256r1Signature2019\",\"created\":\"2026-03-01T10:30:00Z\",\"verification_method\":\"did:wba:example.com:user:alice#key-2\",\"proof_value\":\"...\"}}",
     "type": "e2ee_init",
     "client_msg_id": "01961e2c-60c2-7eac-c6a5-b2c3d4e5f607"
   },
@@ -1406,7 +1421,20 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 }
 ```
 
-#### 8.4.2 e2ee_msg — Encrypted Message
+#### 8.4.2 e2ee_ack — Session Acknowledgement
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
+| session_id | string | Yes | Session ID being acknowledged |
+| sender_did | string | Yes | DID of the party sending the acknowledgement |
+| recipient_did | string | Yes | DID of the acknowledgement recipient |
+| expires | integer | No | Maximum lifetime in seconds during which the ACK may still be accepted; default 86400 |
+| proof | object | Yes | Sender signature |
+
+`e2ee_ack` tells the session initiator that the receiver has successfully processed the corresponding `e2ee_init` or `e2ee_rekey`. It is not required for the cryptographic establishment itself, but it provides an explicit remote confirmation signal.
+
+#### 8.4.3 e2ee_msg — Encrypted Message
 
 `e2ee_msg` does not include a `proof` signature field. The reason: the authenticity of `e2ee_msg` is guaranteed by the session key itself — only the party holding the correct chain_key for the corresponding `session_id` can generate valid ciphertext (AES-128-GCM provides authenticated encryption), and the chain_key is derived from the root_seed authenticated via proof signature in `e2ee_init`. Therefore, successful decryption itself verifies the sender's identity. Additionally, omitting per-message signatures avoids the computational overhead of ECDSA signing.
 
@@ -1414,6 +1442,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | session_id | string | Yes | Session ID |
 | seq | integer | Yes | Message sequence number (starting from 0, strictly incrementing) |
 | original_type | string | Yes | Original message type (`text` / `image` / `file`) |
@@ -1423,6 +1452,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 
 ```json
 {
+  "e2ee_version": "1.1",
   "session_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
   "seq": 0,
   "original_type": "text",
@@ -1439,7 +1469,7 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
   "params": {
     "sender_did": "did:wba:example.com:user:alice",
     "receiver_did": "did:wba:example.com:user:bob",
-    "content": "{\"session_id\":\"a1b2c3d4e5f60718a1b2c3d4e5f60718\",\"seq\":0,\"original_type\":\"text\",\"ciphertext\":\"ZW5jcnlwdGVkIG1lc3NhZ2UgY29udGVudA==\"}",
+    "content": "{\"e2ee_version\":\"1.1\",\"session_id\":\"a1b2c3d4e5f60718a1b2c3d4e5f60718\",\"seq\":0,\"original_type\":\"text\",\"ciphertext\":\"ZW5jcnlwdGVkIG1lc3NhZ2UgY29udGVudA==\"}",
     "type": "e2ee_msg",
     "client_msg_id": "01961e2c-71d3-7fbd-d7b6-c3d4e5f60718"
   },
@@ -1449,28 +1479,35 @@ All E2EE data is transmitted via the `content` field of the `send` method (as JS
 
 **Note:** The nonce is deterministically derived from the chain ratchet (not randomly generated), and the GCM tag is appended to the ciphertext. Therefore, the `ciphertext` field alone can carry the complete AEAD output, without the need for separate `iv` and `tag` fields.
 
-#### 8.4.3 e2ee_rekey — Session Rebuild
+#### 8.4.4 e2ee_rekey — Session Rebuild
 
 The structure is identical to `e2ee_init`; all field definitions are in Section 8.4.1.
 
 Semantic difference: `e2ee_rekey` indicates rebuilding an existing session key. The receiver should destroy the old session state and establish a new session using the new `session_id` and `root_seed`.
 
-#### 8.4.4 e2ee_error — Error Notification
+#### 8.4.5 e2ee_error — Error Notification
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | error_code | string | Yes | Error code (see error code table in 8.3.6) |
 | session_id | string | No | Associated session ID |
-| failed_msg_id | string | No | The message ID that failed to decrypt |
+| failed_msg_id | string | No | If the error targets a specific encrypted message, return that message ID |
+| failed_server_seq | integer | No | If known, return the local server-side ordering number of the failed message |
+| retry_hint | string | No | Suggested receiver action: `resend` / `rekey_then_resend` / `drop` |
+| required_e2ee_version | string | No | When the error is a version mismatch, return the required `e2ee_version` |
 | message | string | No | Human-readable error description |
 
 **Content Example:**
 
 ```json
 {
+  "e2ee_version": "1.1",
   "error_code": "session_not_found",
   "session_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
-  "failed_msg_id": "msg_20260305_abc123",
+  "failed_msg_id": "msg-uuid-001",
+  "failed_server_seq": 42,
+  "retry_hint": "rekey_then_resend",
   "message": "E2EE session not found, please re-initialize"
 }
 ```
@@ -1636,6 +1673,7 @@ The sender of `group_epoch_advance` messages **MUST** have group admin privilege
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | group_did | string | Yes | Group DID |
 | epoch | integer | Yes | Group epoch |
 | sender_did | string | Yes | DID of the Sender Key owner |
@@ -1653,6 +1691,7 @@ AAD for HPKE encryption of `sender_chain_key` = UTF-8 encoding of `group_did + "
 
 ```json
 {
+  "e2ee_version": "1.1",
   "group_did": "did:wba:example.com:group:group_dev",
   "epoch": 3,
   "sender_did": "did:wba:example.com:user:alice",
@@ -1681,7 +1720,7 @@ AAD for HPKE encryption of `sender_chain_key` = UTF-8 encoding of `group_did + "
     "sender_did": "did:wba:example.com:user:alice",
     "receiver_did": "did:wba:example.com:user:bob",
     "group_did": "did:wba:example.com:group:group_dev",
-    "content": "{\"group_did\":\"did:wba:example.com:group:group_dev\",\"epoch\":3,\"sender_did\":\"did:wba:example.com:user:alice\",\"sender_key_id\":\"a1b2c3:3\",\"recipient_key_id\":\"did:wba:example.com:user:bob#key-x25519-1\",\"hpke_suite\":\"DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM\",\"enc\":\"...\",\"encrypted_sender_key\":\"...\",\"expires\":86400,\"proof\":{...}}",
+    "content": "{\"e2ee_version\":\"1.1\",\"group_did\":\"did:wba:example.com:group:group_dev\",\"epoch\":3,\"sender_did\":\"did:wba:example.com:user:alice\",\"sender_key_id\":\"a1b2c3:3\",\"recipient_key_id\":\"did:wba:example.com:user:bob#key-x25519-1\",\"hpke_suite\":\"DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM\",\"enc\":\"...\",\"encrypted_sender_key\":\"...\",\"expires\":86400,\"proof\":{...}}",
     "type": "group_e2ee_key",
     "client_msg_id": "01961e2c-82e4-70ce-e8c7-d4e5f6071829"
   },
@@ -1695,6 +1734,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | group_did | string | Yes | Group DID |
 | epoch | integer | Yes | Group epoch |
 | sender_did | string | Yes | Sender DID |
@@ -1707,6 +1747,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
 
 ```json
 {
+  "e2ee_version": "1.1",
   "group_did": "did:wba:example.com:group:group_dev",
   "epoch": 3,
   "sender_did": "did:wba:example.com:user:alice",
@@ -1726,7 +1767,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
   "params": {
     "sender_did": "did:wba:example.com:user:alice",
     "group_did": "did:wba:example.com:group:group_dev",
-    "content": "{\"group_did\":\"did:wba:example.com:group:group_dev\",\"epoch\":3,\"sender_did\":\"did:wba:example.com:user:alice\",\"sender_key_id\":\"a1b2c3:3\",\"seq\":0,\"original_type\":\"text\",\"ciphertext\":\"ZW5jcnlwdGVkIGdyb3VwIG1lc3NhZ2U=\"}",
+    "content": "{\"e2ee_version\":\"1.1\",\"group_did\":\"did:wba:example.com:group:group_dev\",\"epoch\":3,\"sender_did\":\"did:wba:example.com:user:alice\",\"sender_key_id\":\"a1b2c3:3\",\"seq\":0,\"original_type\":\"text\",\"ciphertext\":\"ZW5jcnlwdGVkIGdyb3VwIG1lc3NhZ2U=\"}",
     "type": "group_e2ee_msg",
     "client_msg_id": "01961e2c-93f5-71df-f9d8-e5f607182930"
   },
@@ -1738,6 +1779,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| e2ee_version | string | Yes | E2EE content version, fixed to `"1.1"` |
 | group_did | string | Yes | Group DID |
 | new_epoch | integer | Yes | New epoch value |
 | reason | string | Yes | Change reason: `member_added` / `member_removed` / `key_rotation` |
@@ -1749,6 +1791,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
 
 ```json
 {
+  "e2ee_version": "1.1",
   "group_did": "did:wba:example.com:group:group_dev",
   "new_epoch": 4,
   "reason": "member_removed",
@@ -1767,7 +1810,7 @@ Similar to `e2ee_msg`, `group_e2ee_msg` does not include a `proof` signature fie
 
 #### 8.7.1 proof_value Generation Process
 
-E2EE messages requiring signatures include: `e2ee_init`, `e2ee_rekey`, `group_e2ee_key`, `group_epoch_advance`.
+E2EE messages requiring signatures include: `e2ee_init`, `e2ee_ack`, `e2ee_rekey`, `group_e2ee_key`, and `group_epoch_advance`.
 
 **Generation Steps:**
 
@@ -1817,7 +1860,7 @@ msg["proof"]["proof_value"] = base64.urlsafe_b64encode(signature).decode('utf-8'
 2. **Reconstruct data to verify**: Remove the `proof.proof_value` field from the message, canonicalize the remaining JSON using JCS
 3. **Obtain public key**: Based on the ID referenced by `proof.verification_method`, obtain the corresponding signing public key from the sender's DID document
 4. **Verify signature**: Use the public key and ECDSA + SHA-256 to verify the signature
-5. **Verify timestamp**: Check whether the `proof.created` time is within a reasonable range (recommended ±300-second window, allowing up to 5 minutes of clock skew). Messages outside the window **SHOULD** be rejected.
+5. **Verify timestamp**: Freshness checks for control messages must distinguish between future skew and past age. Implementations **SHOULD** limit how far `proof.created` may be ahead of local time (recommended upper bound: 300 seconds) and must verify that the message age `now - created` does not exceed `min(expires, local policy limit)`. For offline messages, implementations **SHOULD NOT** rely on a symmetric ±300-second window as the only expiration rule.
 
 ## 9. Security Considerations
 
@@ -1865,7 +1908,7 @@ Identity authentication follows the ANP DID WBA authentication mechanism. For de
 - **Sequence number anti-replay**: The `seq` field in `e2ee_msg` and `group_e2ee_msg` is strictly incrementing; receivers reject any message with a previously used seq value (regardless of strict or window mode).
 - **session_id uniqueness**: Each `e2ee_init` / `e2ee_rekey` generates a new random session_id.
 - **epoch + sender_key_id uniqueness**: In group chat, the epoch + sender_key_id combination uniquely identifies a Sender Key lifecycle.
-- **proof timestamp**: The `created` timestamp in signatures is used to detect expired messages.
+- **proof timestamp**: The signed `created` timestamp is used for control-message freshness checks; implementations should validate both future skew and past age instead of relying only on a symmetric clock-drift window.
 - **Complementary relationship between client_msg_id idempotency and E2EE seq anti-replay**: `client_msg_id` prevents duplicate message delivery caused by HTTP retries at the transport layer (deduplication performed by the Message Server), while E2EE `seq` prevents attackers from replaying captured ciphertext messages at the end-to-end layer (verified by the receiving client). The two mechanisms operate independently at different layers, collectively ensuring message uniqueness. Even if the Message Server is compromised or the `client_msg_id` idempotency check is bypassed, the E2EE `seq` anti-replay protection remains effective.
 
 ## 10. Limitations
