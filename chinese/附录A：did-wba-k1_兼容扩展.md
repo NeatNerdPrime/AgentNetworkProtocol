@@ -104,9 +104,8 @@ did:wba:example.com%3A3000:user:alice:k1_<fingerprint>
 
 额外约束：
 
-1. `proof.verificationMethod` 指向的验证方法必须（MUST）出现在 DID Document 的 `assertionMethod` 中；
-2. 推荐（SHOULD）直接使用 `k1_` 绑定密钥作为 `proof.verificationMethod`，使 DID 绑定与文档完整性证明统一；
-3. `proof.verificationMethod` 指向的验证方法，必须（MUST）与实际用于生成 `proofValue` 的私钥一一对应。
+1. 推荐（SHOULD）直接使用 `k1_` 绑定密钥作为 `proof.verificationMethod`，使 DID 绑定与文档完整性证明统一；
+2. `proof.verificationMethod` 指向的验证方法，必须（MUST）与实际用于生成 `proofValue` 的私钥一一对应。
 
 #### A.5.2 proof 生成流程
 
@@ -158,12 +157,18 @@ did:wba:example.com%3A3000:user:alice:k1_<fingerprint>
 
 #### A.5.4 解析策略
 
-对于 `k1_` DID，proof 校验默认是可选的增强完整性检查。
+对于 `k1_` DID，proof 校验默认是可选的增强完整性检查；但一旦本地策略启用 proof 校验，则必须（MUST）以 `proof.verificationMethod` 对应的 secp256k1 公钥同时完成 proof 校验与 DID 绑定校验。
 
 实现可以（MAY）在以下两种模式中选择其一：
 
 1. 宽松模式：若 DID Document 不含 `proof`，仍可继续解析；
 2. 严格模式：若本地策略要求 `k1_` 文档必须携带 proof，则 DID Document 缺少 `proof` 时必须（MUST）视为验证失败。
+
+如果实现启用了严格 proof 校验，则必须（MUST）额外检查：
+
+1. `proof.verificationMethod` 指向的验证方法类型为 `EcdsaSecp256k1VerificationKey2019`；
+2. 使用该验证方法对应的 secp256k1 公钥重新计算 RFC 7638 thumbprint，结果必须（MUST）与 DID 路径最后的 `k1_` 指纹段完全一致；
+3. 不得以 DID Document 中其他未参与 proof 的 secp256k1 key 代替 `proof.verificationMethod` 完成绑定校验。
 
 如果实现未声明支持 `didwba-jcs-ecdsa-secp256k1-2025`，则可以（MAY）忽略 `k1_` DID Document 中的该 proof。
 
@@ -184,19 +189,16 @@ did:wba:example.com%3A3000:user:alice:k1_<fingerprint>
    - 该验证方法位于 `authentication`；
    - 该验证方法的 thumbprint 与 `k1_` 指纹段一致。
 
-### A.7 `k1_` DID Document proof
+### A.7 `k1_` DID Document proof 互操作性说明
 
-本附录**不定义** `k1_` DID 的互操作 W3C 标准 DID Document proof profile。
-
-原因是：主规范采用的 W3C Data Integrity 标准 proof 为 `eddsa-jcs-2022`，而 `k1_` 绑定的是 secp256k1 公钥。本附录的目标是提供 secp256k1 路径绑定与身份认证兼容能力，而不是定义新的 W3C 标准 proof。
+本附录定义的是 did:wba 自身的 **`k1_` 兼容 proof profile**（见 A.5），用于在 secp256k1 绑定场景下提供可选的 DID Document 完整性证明能力。它不是 W3C 标准 `eddsa-jcs-2022` 主线 proof，而是 did:wba 的兼容扩展。
 
 因此：
 
 1. `k1_` DID Document 可以（MAY）不包含顶层 `proof`；
-2. 如果实现方为 `k1_` DID Document 添加了非标准 proof，则该 proof 不属于主规范和本附录定义的互操作范围；
-3. 其他实现可以（MAY）忽略 `k1_` 文档中的非标准 proof，除非本地策略明确要求支持。
-
-如果实现既想保留 `k1_` 路径绑定，又想为 DID Document 使用 W3C 标准 proof，则可以额外加入一个独立的 Ed25519 `assertionMethod` key 来生成 `DataIntegrityProof`；但该设计不改变 `k1_` 的绑定语义，也不属于本附录的最小互操作要求。
+2. 如果实现启用了 proof 校验，则应按 A.5 的 `didwba-jcs-ecdsa-secp256k1-2025` 规则执行；
+3. 如果实现未启用 proof 校验，则可以（MAY）忽略 `k1_` 文档中的该 proof；
+4. 一旦启用 proof 校验，不得使用 DID Document 中其他未参与 proof 的 secp256k1 key 代替 `proof.verificationMethod` 完成绑定验证。
 
 ### A.8 `k1_` 创建、解析与更新
 
@@ -204,5 +206,3 @@ did:wba:example.com%3A3000:user:alice:k1_<fingerprint>
 - 解析：除主规范通用解析流程外，额外按 A.3 和 A.4 验证 `k1_` 绑定关系；
 - 更新：只要 `k1_` 绑定密钥不变，DID 本身保持不变；如果绑定密钥发生变化，则 DID 必须（MUST）变更；
 - 停用：可通过停用旧 DID 并创建新 DID 的方式完成轮换；稳定引用关系由上层名称服务负责维护。
-
-
