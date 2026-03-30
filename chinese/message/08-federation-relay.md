@@ -1,32 +1,36 @@
-# ANP Profile 8：Federation and Relay Profile（草案）
+# ANP Profile 8：Federation and Relay Profile（修订草案）
 
 - 文档编号：ANP-P8
 - 标题：Federation and Relay Profile
 - 状态：Draft
-- 版本：0.1.0
+- 版本：0.3.0
 - 语言：中文
-- 适用范围：本 Profile 适用于域与域之间的服务到服务转发、路由、接收确认和群 Host 排序语义，不定义 Agent 内部队列、设备同步或历史消息复制。
+- 适用范围：本 Profile 适用于 ANP 的跨域服务发现、服务间转发、群 Host 排序与跨域事件分发。
 
 ---
 
 ## 1. 目的
 
-本 Profile 定义 ANP 的联邦与中继层，规定：
+本 Profile 定义 ANP 的跨域联邦与中继语义，规定：
 
-1. Agent 所在域如何把私聊消息转交给目标 Agent 的入口服务；
-2. 群成员所在域如何把群控制操作或群消息转交给 Group Host Service；
-3. 联邦场景下的服务发现、路由选择、幂等、重试和跳数控制；
-4. 服务到服务的成功语义：何时视为“已通知到目标 Agent”或“已被 Group Host 接受并排序”；
-5. 服务如何在不破坏 E2EE 负载的前提下转发业务请求。
+1. 一个域如何把面向远端 Agent 的请求转发到对方域；
+2. 一个域如何把面向远端 Group Host 的群操作转发到群 Host 域；
+3. Group Host 如何把已排序的群事件分发到成员所在域；
+4. 对象控制面（而非对象字节流）如何跨域调用；
+5. `attachment.get_download_ticket` 的跨域调用如何落地；
+6. Relay 如何进行幂等、去重、重试和错误传递；
+7. 何时可以把一次操作视为跨域成功。
 
 本 Profile **不**定义：
 
+- 域内路由实现；
 - 历史同步；
-- 已读、presence、设备在线态；
-- Agent 内部副本 fanout；
-- 服务端内部队列实现；
+- 已读回执；
+- Presence；
+- Agent 内部副本同步；
 - 设备级投递语义；
-- 服务商之间的结算、计费或合规流程。
+- 对象字节流中继；
+- CDN 或对象存储的内部实现。
 
 ---
 
@@ -38,53 +42,66 @@
 
 ### 2.2 术语
 
-- **Home Service**：某 Agent DID 对外暴露的主入口服务，通常来自 `ANPHomeService`。
-- **Target Ingress Service**：目标 Agent 所在域用于接受转发消息的入口服务；通常是目标 Agent 的 Home Service 或其等价服务。
-- **Group Host Service**：某 Group DID 的主入口与排序权威服务，通常来自 `ANPGroupService`。
-- **Relay Service**：专用于跨域转发的服务，通常来自 `ANPRelayService`。
-- **Federation Hop**：联邦转发中的一次服务到服务跳转。
-- **Relay Envelope**：由本 Profile 定义的中继元数据对象，用于包装一次转发行为的幂等、路由和超时信息。
-- **Forwarded Operation**：被中继的原始业务操作对象，包含原始 `method`、`meta` 和 `body`。
-- **Ordering Acceptance**：Group Host Service 已接受并排序某个会改变群状态的操作。
+- **Originating Home Service**：发起 Agent 所属域中接受本地请求并负责对外转发的入口服务。
+- **Receiving Home Service**：目标 Agent 所属域中负责接收跨域直接消息的入口服务。
+- **Group Host Service**：对某个 `group_did` 拥有排序权和群状态推进职责的服务。
+- **Relay Service**：负责服务到服务转发的端点；可以独立部署，也可以与 Home Service 或 Group Host Service 合并部署。
+- **Object Service**：负责附件对象上传、下载、票据签发和访问控制的服务。
+- **Federation Hop**：一次服务到服务的转发跳数。
+- **Relay Context**：服务间转发所需的最小上下文对象。
+- **Ordered Group Event**：已经由 Group Host 接受并分配了 `group_event_seq` 的群事件。
+- **Final Acceptance**：一次跨域操作到达其最终协议责任端点并被接受。
+- **Attachment Control Call**：围绕对象生命周期与访问控制的请求，例如 `attachment.create_slot`、`attachment.commit_object`、`attachment.abort_object`、`attachment.get_download_ticket`。
 
 ---
 
 ## 3. 设计原则
 
-### 3.1 协议终点是 Agent 或 Group Host
+### 3.1 Agent 与 Group 是协议主体
 
-本 Profile 的成功语义只到达两种边界：
+在联邦层，ANP 只识别：
 
-- 私聊：目标 Agent 的入口服务已接受消息；
-- 群聊：目标群的 Group Host Service 已接受并完成排序（如适用）。
+- `agent_did`
+- `group_did`
+- 负责为这些 DID 提供服务的服务端点
 
-此后目标 Agent 内部如何路由到多少执行单元、多少副本或多少设备，不属于本 Profile。
+协议不识别设备、终端、副本或内部工作节点。
 
-### 3.2 联邦层不解释业务明文
+### 3.2 Relay 只转发业务对象与控制对象
 
-联邦中继 **MUST NOT** 改写原始业务 Profile 的语义。中继层只增加：
+Relay 层 **MUST NOT** 发明新的应用业务语义来替代 `direct.send`、`group.send`、`group.add`、`group.remove` 等方法；它只负责把这些操作跨域送达适当的服务端点。
 
-- 源服务与目标服务信息；
-- 跳数与过期控制；
-- 服务级幂等与结果映射；
-- 必要的故障报告。
+对附件场景，Relay 层 **只允许** 转发：
 
-### 3.3 幂等优先于严格一次
+- Attachment Manifest 所在的业务消息；
+- Attachment 控制面请求；
+- 附件相关回执、错误与票据响应。
 
-联邦实现很可能采用至少一次重试策略。接收方 **MUST** 优先提供幂等与去重语义，而不是假定网络层天然保证严格一次交付。
+### 3.3 对象字节流不走 Relay
 
-### 3.4 群排序权威唯一
+对象内容本身 **MUST NOT** 通过 ANP Relay 作为常规转发通道。也就是说：
 
-对于同一 `group_did`，会影响群状态版本与群事件顺序的接受结果 **MUST** 来自唯一的 Group Host Service 或其等价排序权威。
+- Relay **不得** 转发文件字节、图片字节、音视频字节；
+- 对象本体 **MUST** 通过独立 HTTP(S) 通道直接从 Object Service 下载；
+- Relay 层最多参与“如何拿到对象”的控制面，而不参与“把对象本身搬运过去”的数据面。
 
-### 3.5 非目标
+### 3.4 E2EE 负载对 Relay 透明
 
-本 Profile 不保证：
+当被转发的业务消息使用 `direct-e2ee` 或 `group-e2ee` 时，Relay **MUST** 将其有效载荷视为不透明字节或不透明对象；除本 Profile 明确要求用于路由、幂等或目标校验的外层元数据外，Relay **MUST NOT** 修改它。
 
-- 全网严格 FIFO；
-- 任意服务之间的全互联；
-- 消息一定被目标 Agent 内部某个执行单元成功消费；
-- 任何设备或内部副本的一致视图。
+### 3.5 直接消息与群消息的成功语义不同
+
+- 对 `direct.send`：当最终 Receiving Home Service 接受消息后，可视为跨域成功；
+- 对群控制与群消息：当最终 Group Host Service 接受并排序该操作后，可视为跨域成功；后续向成员域的分发是异步阶段；
+- 对 `attachment.get_download_ticket`：当最终 Object Service 接受请求并返回票据（或明确拒绝）后，可视为跨域成功。
+
+### 3.6 Host 排序优先
+
+同一 `group_did` 上会改变群状态或群消息事件序的操作，**MUST** 由对应的 Group Host Service 做最终线性排序。
+
+### 3.7 附件下载直连优先
+
+当 `attachment_manifest.access_info.object_uri` 可直接定位到 Object Service 时，请求方 **SHOULD** 直接向该 Object Service 发起对象控制调用和对象下载，而不是先绕回发送方域或 Group Host 域。
 
 ---
 
@@ -102,165 +119,259 @@
 
 - `anp.core.binding.v1`
 - `anp.identity.discovery.v1`
-
-被转发的业务操作还 **MUST** 依赖其对应的业务或安全 Profile，例如：
-
 - `anp.direct.base.v1`
 - `anp.group.base.v1`
+
+本 Profile **MAY** 与以下 Overlay / 扩展一起使用：
+
 - `anp.direct.e2ee.v1`
 - `anp.group.e2ee.v1`
 - `anp.attachment.v1`
 
 ### 4.3 安全模式
 
-本 Profile 作为服务到服务控制层运行时：
+本 Profile 的服务到服务调用 **MUST** 运行在 `transport-protected` 模式上。
 
-- `meta.profile` **MUST** 等于 `anp.federation.relay.v1`
-- `meta.security_profile` **MUST** 等于 `transport-protected`
+被转发业务请求的 `meta.security_profile` **MAY** 为：
 
-服务到服务链路 **MUST** 运行在经过认证的安全传输层之上。
+- `transport-protected`
+- `direct-e2ee`
+- `group-e2ee`
+
+Relay 层 **MUST NOT** 擅自改变被转发业务请求的 `meta.security_profile`。
 
 ---
 
-## 5. 联邦角色模型
+## 5. 服务角色与职责
 
-### 5.1 Agent Home Service
+### 5.1 Originating Home Service
 
-Agent Home Service 负责：
+Originating Home Service **MUST** 负责：
 
-- 接受本域 Agent 发起的业务请求；
-- 解析目标 Agent DID 或 Group DID；
-- 必要时向其它域发起中继；
-- 把目标域返回的结果映射给本域调用方。
+1. 接受本地 Agent 发起的业务请求；
+2. 解析目标 DID，确定远端服务入口；
+3. 构造 `relay_context`；
+4. 发起服务到服务转发；
+5. 在收到 Final Acceptance 或 Final Rejection 后，向本地调用方返回结果。
 
-### 5.2 Target Ingress Service
+### 5.2 Receiving Home Service
 
-Target Ingress Service 负责：
+Receiving Home Service **MUST** 负责：
 
-- 代表目标 Agent 接受跨域转发的私聊请求；
-- 验证目标 Agent 是否由本域负责；
-- 执行或排队进入目标 Agent 边界；
-- 返回“已接受”或明确拒绝结果。
+1. 验证转发来源是否被本地策略接受；
+2. 验证目标 Agent 是否属于本域或本服务责任范围；
+3. 接受、拒绝或进一步中继直接消息；
+4. 把被接受的直接消息交给目标 Agent 的域内处理边界。
 
 ### 5.3 Group Host Service
 
-Group Host Service 负责：
+Group Host Service **MUST** 负责：
 
-- 代表某 Group DID 接受群控制操作与群消息；
-- 对会改变群状态的操作进行排序；
-- 维护 `group_state_version`、`group_event_seq` 及相关权威返回值；
-- 向调用方返回“已排序接受”或明确冲突/拒绝结果。
+1. 验证某 `group_did` 是否由本服务负责；
+2. 对群状态改变类操作做线性排序；
+3. 分配 `group_event_seq`；
+4. 推进 `group_state_version`；
+5. 在需要时向成员域分发 `Ordered Group Event`。
 
 ### 5.4 Relay Service
 
-Relay Service 是可选角色，用于：
+Relay Service **MAY** 与 Home Service / Group Host Service 合并部署，也 **MAY** 单独部署。若单独部署，其职责仅限于：
 
-- 承担专门的服务到服务转发；
-- 隔离 Home Service 与外域的直接耦合；
-- 实现专门的路由、审计或节流策略。
+- 路由转发；
+- 跳数控制；
+- 幂等去重；
+- 保持透明传递。
 
-若某部署不区分 Home Service 与 Relay Service，则 Home Service **MAY** 直接承担 Relay 职责。
+Relay Service **MUST NOT** 假装自己是目标 Agent、Group Host 或 Object Service。
+
+### 5.5 Object Service
+
+Object Service **MUST** 负责：
+
+1. 根据 `attachment.create_slot`、`attachment.commit_object`、`attachment.abort_object` 管理对象生命周期；
+2. 根据 `attachment.get_download_ticket` 签发或拒绝下载票据；
+3. 根据对象访问策略验证下载请求；
+4. 通过独立 HTTPS 通道提供对象下载；
+5. 不参与对象字节的 Relay 中继。
 
 ---
 
-## 6. 发现与路由选择
+## 6. 发现、路由与目标确定
 
-### 6.1 私聊路由
+### 6.1 直接消息目标发现
 
-对于私聊请求，发起方所在域 **MUST**：
+当 `meta.target.kind = "agent"` 时，Originating Home Service **MUST**：
 
 1. 解析目标 `agent_did`；
-2. 读取目标 DID 文档中的 `ANPHomeService`；
-3. 若存在 `ANPRelayService` 且本地策略要求经其转发，则 **MAY** 选择该服务；
-4. 选定一个 Target Ingress Service 作为联邦目标。
+2. 根据 DID 文档或能力协商选择 `ANPHomeService` 或 `ANPRelayService`；
+3. 构造到目标域的服务到服务调用。
 
-### 6.2 群路由
+### 6.2 群目标发现
 
-对于群控制操作和群消息，发起方所在域 **MUST**：
+当 `meta.target.kind = "group"` 时，Originating Home Service **MUST**：
 
 1. 解析目标 `group_did`；
-2. 读取 Group DID 文档中的 `ANPGroupService`；
-3. 若需要加入、审批或邀请扩展，**MAY** 读取 `ANPJoinService`；
-4. 把相关操作转发给 Group Host Service。
+2. 根据 Group DID 文档或缓存的群状态引用确定 Group Host Service；
+3. 将会改变群状态或群事件序的操作转发给 Group Host Service。
 
-### 6.3 缓存与刷新
+### 6.3 附件对象服务发现
 
-服务发现结果 **MAY** 被缓存；但在以下情况下，调用方 **SHOULD** 刷新发现结果：
+当业务消息包含 `attachment_manifest` 时，请求方或接收方 **MUST** 根据以下优先顺序确定 Object Service：
 
-- 路由失败；
-- 认证失败；
-- 目标服务返回“已迁移”或等价错误；
-- 本地缓存过期；
-- 群 DID 或 Agent DID 文档版本发生变化。
+1. `attachment_manifest.access_info.object_service_did`（若存在）；
+2. `object_uri` 的 HTTPS authority 与部署映射；
+3. 由承载该消息的业务上下文显式声明的 Object Service；
+4. 其它经过能力协商允许的服务发现方式。
+
+### 6.4 `attachment.get_download_ticket` 的跨域落点
+
+`attachment.get_download_ticket` 的**最终处理端点** **MUST** 是对该对象拥有控制权的 Object Service，而不是：
+
+- 发送方 Agent 本身；
+- Group Host Service；
+- 任意中间 Relay 节点。
+
+也就是说，跨域票据调用的标准落点是：
+
+**Requester Home Service →（可经 Relay）→ Target Object Service**
+
+### 6.5 能力预检
+
+在首次与某远端服务互通前，调用方 **SHOULD** 通过 `anp.get_capabilities` 或等价能力缓存确认：
+
+- 支持的业务 Profile；
+- 支持的安全模式；
+- 最大负载、附件限制、错误模型；
+- 是否支持服务间 Relay 方法；
+- 是否支持 `attachment.get_download_ticket` 的跨域调用。
+
+### 6.6 路由缓存
+
+实现 **MAY** 缓存由 DID 解析和能力协商获得的路由信息；但当：
+
+- DID 文档更新；
+- 群 Host 变更；
+- 能力集变化；
+- 连续转发失败达到策略阈值；
+- Object Service 签发票据失败达到策略阈值；
+
+调用方 **SHOULD** 重新解析或刷新缓存。
 
 ---
 
-## 7. 中继对象模型
+## 7. 服务到服务安全要求
 
-### 7.1 `relay_envelope`
+### 7.1 安全信道
 
-`relay_envelope` 表示一次联邦转发的控制信息。
+所有服务到服务调用 **MUST** 运行在经过双向认证或等价对端认证的安全信道之上。
 
-推荐字段：
+### 7.2 来源可识别
 
-- `relay_id`：字符串，**MUST**
-- `source_service_did`：字符串，**MUST**
-- `target_service_did`：字符串，**MUST**
-- `relay_mode`：字符串，**MUST**，推荐值：`direct`、`group`
-- `original_sender_did`：字符串，**MUST**
-- `original_target_kind`：字符串，**MUST**，推荐值：`agent`、`group`
-- `original_target_did`：字符串，**MUST**
-- `forwarded_profile`：字符串，**MUST**
-- `forwarded_security_profile`：字符串，**MUST**
-- `upstream_operation_id`：字符串，**MUST**
-- `upstream_message_id`：字符串，**MAY**
-- `created_at`：RFC 3339 时间字符串，**SHOULD**
-- `expires_at`：RFC 3339 时间字符串，**MAY**
-- `hop_count`：十进制字符串，**MUST**
-- `max_hops`：十进制字符串，**MAY**
-- `trace_id`：字符串，**MAY**
-- `routing_trace`：对象数组，**MAY**
+每次服务到服务调用 **MUST** 可被接收方识别其来源服务身份。该身份 **SHOULD** 可映射为某个已知服务 DID、域身份或部署策略允许的等价标识。
 
-规则：
+### 7.3 外层最小可见性
 
-- `relay_id` 在 `source_service_did + relay_mode` 维度上 **MUST** 唯一；
-- `hop_count` 每经过一个联邦 hop **MUST** 增加；
-- 若存在 `max_hops`，且 `hop_count > max_hops`，接收方 **MUST** 拒绝请求；
-- `forwarded_profile` 和 `forwarded_security_profile` **MUST** 与被转发业务操作一致。
+对被转发的业务请求，Relay 层可见且允许用于路由/幂等的字段，仅限：
 
-### 7.2 `forwarded_operation`
+- `meta.profile`
+- `meta.security_profile`
+- `meta.sender_did`
+- `meta.target`
+- `meta.operation_id`
+- `meta.message_id`（若存在）
+- `meta.content_type`
 
-`forwarded_operation` 表示被中继的原始业务操作对象。
+任何其它字段，尤其是 E2EE 保护的业务内容，Relay **MUST NOT** 擅自依赖、修改或重写。
 
-推荐结构：
+### 7.4 保持原始业务对象
+
+服务到服务转发时，`forwarded_request.params.meta` 和 `forwarded_request.params.body` **SHOULD** 保持与原始业务请求等价。若实现为了序列化或网关转换必须重编码 JSON，对象语义 **MUST** 保持不变。
+
+### 7.5 对象字节流零可见
+
+除 Object Service 本身之外，ANP Federation / Relay 层 **MUST NOT**：
+
+- 读取对象内容；
+- 缓存对象字节；
+- 对对象字节进行重新封装后继续转发；
+- 把对象字节嵌入 `relay.forward_*` 请求体。
+
+---
+
+## 8. `relay_context` 对象
+
+### 8.1 顶层结构
+
+服务到服务的转发方法 **MUST** 在 `body` 中包含 `relay_context`。
+
+推荐结构如下：
 
 ```json
 {
-  "method": "direct.send | group.add | group.send | ...",
-  "meta": { },
-  "body": { }
+  "relay_id": "relay-001",
+  "trace_id": "trace-xyz",
+  "origin_service_did": "did:example:svc-a-home",
+  "sender_agent_did": "did:example:agent-a",
+  "final_target": {
+    "kind": "agent",
+    "did": "did:example:agent-b"
+  },
+  "original_method": "direct.send",
+  "original_operation_id": "op-123",
+  "original_message_id": "msg-123",
+  "first_forwarded_at": "2026-03-29T15:00:00Z",
+  "attempt_no": "1",
+  "hop_count": "1",
+  "max_hops": "8"
 }
 ```
 
-规则：
+### 8.2 必需字段
 
-- `method` **MUST** 是一个已注册的 ANP 业务方法；
-- `meta` **MUST** 是原始业务操作的 `meta` 对象；
-- `body` **MUST** 是原始业务操作的 `body` 对象；
-- 中继服务 **MUST NOT** 改写 `forwarded_operation.meta.sender_did`、`target`、`profile`、`security_profile`、`message_id`、`content_type` 或业务语义字段；
-- 中继服务 **MAY** 在外层 `relay_envelope` 中补充路由元数据。
+`relay_context` **MUST** 至少包含：
+
+- `relay_id`
+- `origin_service_did`
+- `sender_agent_did`
+- `final_target`
+- `original_method`
+- `original_operation_id`
+- `first_forwarded_at`
+- `attempt_no`
+- `hop_count`
+
+### 8.3 可选字段
+
+`relay_context` **MAY** 包含：
+
+- `trace_id`
+- `original_message_id`
+- `max_hops`
+- `previous_hop_service_did`
+- `route_hint`
+- `group_host_did`
+- `object_service_did`
+- `attachment_id`
+
+### 8.4 `relay_id` 规则
+
+`relay_id` 在同一条跨域业务转发链上 **MUST** 稳定。若调用方因网络异常、超时或中间失败而重试同一业务请求，**MUST** 重用相同的 `relay_id`，同时递增 `attempt_no`。
+
+### 8.5 跳数控制
+
+每经过一次服务间转发，`hop_count` **MUST** 递增。若存在 `max_hops` 且 `hop_count > max_hops`，接收方 **MUST** 以 `anp.relay.loop_detected` 或等价错误拒绝。
 
 ---
 
-## 8. 标准方法
+## 9. 服务间转发方法
 
-### 8.1 `relay.forward_direct`
+### 9.1 `relay.forward_direct`
 
-#### 8.1.1 语义
+#### 9.1.1 语义
 
-把一个面向目标 Agent 的业务操作转发到目标 Agent 的入口服务。
+把一个原始 `direct.send` 请求从源域转发到目标 Agent 所在域或下一跳 Relay。
 
-#### 8.1.2 请求要求
+#### 9.1.2 请求要求
 
 - `method = "relay.forward_direct"`
 - `meta.profile = "anp.federation.relay.v1"`
@@ -268,255 +379,352 @@ Relay Service 是可选角色，用于：
 
 `body` **MUST** 包含：
 
-- `relay_envelope`
-- `forwarded_operation`
+- `relay_context`
+- `forwarded_request`
 
-额外要求：
+其中：
 
-- `relay_envelope.relay_mode` **MUST** 为 `direct`；
-- `relay_envelope.original_target_kind` **MUST** 为 `agent`；
-- `forwarded_operation.method` **MUST** 是 Direct Base 或 Direct E2EE 相关方法；
-- `forwarded_operation.meta.target.kind` **MUST** 为 `agent`。
+- `forwarded_request.method` **MUST** 等于 `direct.send`
+- `forwarded_request.params` **MUST** 为原始业务请求的 `params`
 
-#### 8.1.3 成功响应
+#### 9.1.3 成功响应
 
 成功响应 **MUST** 至少包含：
 
-- `accepted`：布尔值，且为 `true`
+- `accepted`：布尔值
 - `relay_id`
-- `target_service_did`
+- `final_target`
 - `accepted_at`
-- `upstream_operation_id`
+- `final_acceptance`：布尔值
 
-成功响应 **MAY** 包含：
+若接收方并非最终 Receiving Home Service，而是中间 Relay，则 **MAY** 返回 `final_acceptance = false`，并继续转发。
 
-- `upstream_message_id`
-- `delivery_state`，推荐值：`accepted`
-- `routing_trace`
+### 9.2 `relay.forward_group_operation`
 
-### 8.2 `relay.forward_group`
+#### 9.2.1 语义
 
-#### 8.2.1 语义
+把一个原始群操作请求转发到 Group Host Service 或下一跳 Relay。
 
-把一个面向 `group_did` 的群控制操作或群消息转发到 Group Host Service。
+#### 9.2.2 请求要求
 
-#### 8.2.2 请求要求
+`forwarded_request.method` **MUST** 为以下之一：
+
+- `group.create`
+- `group.invite`
+- `group.accept_invite`
+- `group.join`
+- `group.add`
+- `group.remove`
+- `group.leave`
+- `group.update_profile`
+- `group.update_policy`
+- `group.send`
+
+#### 9.2.3 成功响应
+
+若接收方是最终 Group Host Service，成功响应 **MUST** 至少包含：
+
+- `accepted`：布尔值
+- `relay_id`
+- `group_did`
+- `final_acceptance`：布尔值，且为 `true`
+- `accepted_at`
+
+若该操作会改变群事件序，响应还 **MUST** 包含：
+
+- `group_event_seq`
+- `group_state_version`
+
+### 9.3 `relay.forward_attachment_control`
+
+#### 9.3.1 语义
+
+把一个附件控制面请求转发到最终的 Object Service 或下一跳 Relay。
+
+#### 9.3.2 适用方法
+
+`forwarded_request.method` **MUST** 为以下之一：
+
+- `attachment.create_slot`
+- `attachment.commit_object`
+- `attachment.abort_object`
+- `attachment.get_download_ticket`
+
+#### 9.3.3 请求要求
 
 `body` **MUST** 包含：
 
-- `relay_envelope`
-- `forwarded_operation`
+- `relay_context`
+- `forwarded_request`
 
-额外要求：
+并且：
 
-- `relay_envelope.relay_mode` **MUST** 为 `group`；
-- `relay_envelope.original_target_kind` **MUST** 为 `group`；
-- `forwarded_operation.meta.target.kind` **MUST** 为 `group`；
-- `forwarded_operation.method` **MUST** 是 Group Base 或 Group E2EE 相关方法。
+- `relay_context.final_target.kind` **MUST** 等于 `service`
+- `relay_context.original_method` **MUST** 等于 `forwarded_request.method`
+- `relay_context.object_service_did` **SHOULD** 存在
+- `relay_context.attachment_id` **SHOULD** 在可用时存在
 
-#### 8.2.3 成功响应
+#### 9.3.4 成功响应
 
 成功响应 **MUST** 至少包含：
 
-- `accepted`：布尔值，且为 `true`
+- `accepted`
+- `relay_id`
+- `final_acceptance`
+- `accepted_at`
+
+若最终处理端点是 Object Service 且方法为 `attachment.get_download_ticket`，成功响应 **SHOULD** 原样回传对象服务返回的票据对象。
+
+### 9.4 `relay.push_group_event`
+
+#### 9.4.1 语义
+
+由 Group Host Service 把已经排序完成的群事件推送到某成员域的服务。
+
+#### 9.4.2 请求要求
+
+`body` **MUST** 包含：
+
+- `relay_context`
+- `ordered_group_event`
+
+`ordered_group_event` **MUST** 至少包含：
+
+- `group_did`
+- `group_event_seq`
+- `group_state_version`
+- `event_kind`
+- `event_payload`
+
+`event_kind` 推荐值：
+
+- `group-control`
+- `group-message`
+- `group-handshake`
+
+#### 9.4.3 成功响应
+
+成功响应 **MUST** 至少包含：
+
+- `accepted`
 - `relay_id`
 - `group_did`
-- `target_service_did`
-- `accepted_at`
-- `upstream_operation_id`
-
-对于会改变群状态的操作，成功响应 **SHOULD** 进一步包含：
-
-- `group_state_version`
 - `group_event_seq`
+- `accepted_at`
 
-对于群 E2EE 场景，成功响应 **MAY** 包含：
+---
 
-- `epoch`
-- `epoch_authenticator`
+## 10. `attachment.get_download_ticket` 的跨域落地
 
-### 8.3 `relay.outcome`（可选 Notification）
+### 10.1 总则
 
-#### 8.3.1 语义
+当 `attachment_manifest.access_info.requires_ticket = true` 且 `ticket_delivery = fetch` 时，下载方 **MUST** 先获取下载票据，再去下载对象。
 
-在某些异步联邦部署中，服务 **MAY** 使用 `relay.outcome` 作为单向通知，把较晚得出的结果回传给上游服务。
+该票据调用的标准路径是：
 
-#### 8.3.2 使用范围
+**请求方 Agent / 请求方 Home Service →（可经 Relay）→ 最终 Object Service**
 
-- `relay.outcome` 是可选方法；
-- 它 **MUST** 作为 Notification 使用；
-- 即使实现不支持 `relay.outcome`，仍可作为本 Profile 的合规实现。
+### 10.2 谁来发起票据请求
 
-#### 8.3.3 推荐字段
+以下两种模式都允许，但部署 **SHOULD** 明确其一：
 
-`body` **SHOULD** 包含：
+#### 模式 A：Agent 直达模式
+
+请求方 Agent 直接调用 Object Service 的 `attachment.get_download_ticket`。
+
+适用于：
+
+- Agent 能直接访问对象服务；
+- 部署不要求域网关统一出站；
+- 客户端可以直接处理服务认证。
+
+#### 模式 B：Home Service 代理模式（推荐）
+
+请求方 Agent 把 `attachment.get_download_ticket` 提交给本地 Home Service，由 Home Service 作为出站代理发起跨域请求。
+
+适用于：
+
+- 需要统一域级审计；
+- 需要统一服务对服务身份认证；
+- Agent 自身不直接处理所有跨域服务调用细节。
+
+在跨域企业/平台部署中，**推荐模式 B**。
+
+### 10.3 请求内容
+
+一个跨域 `attachment.get_download_ticket` 请求 **SHOULD** 至少绑定以下字段：
+
+- `attachment_id`
+- `object_uri` 或 `object_id`
+- `requester_did`
+- `message_id`（若来自某条消息）
+- `target_did` 或 `group_did`
+- `security_profile`
+
+### 10.4 票据返回
+
+Object Service 返回的票据对象 **SHOULD** 至少包含：
+
+- `download_ticket_b64u`
+- `expires_at`
+- `ticket_transport`
+
+并 **MAY** 包含：
+
+- `headers_template`
+- `download_uri_override`
+- `ticket_scope`
+
+### 10.5 票据绑定要求
+
+Object Service 签发票据时，**SHOULD** 把票据绑定到：
+
+- `requester_did`
+- `attachment_id`
+- `object_uri` / `object_id`
+- `target_did` 或 `group_did`
+- `message_id`（若可得）
+- `expires_at`
+
+### 10.6 下载动作
+
+拿到票据后，请求方 **MUST** 使用独立 HTTPS 通道向 Object Service 发起下载：
+
+- 票据 **SHOULD** 放在 `Authorization` 头或指定自定义头中；
+- 票据 **SHOULD NOT** 放在 URL 查询参数中；
+- 下载成功后，请求方 **MUST** 按 P7 校验对象摘要；
+- 若对象采用 `object-e2ee`，还 **MUST** 执行对象级解密与解密后校验。
+
+### 10.7 群聊场景
+
+在群聊附件场景中，`attachment.get_download_ticket` 的调用落点仍然是 Object Service，而不是 Group Host Service。
+
+Group Host 只负责：
+
+- 排序群消息；
+- 转发 Attachment Manifest；
+- 返回 `group_receipt`。
+
+Group Host **MUST NOT** 代替对象服务签发下载票据，除非它本身同时就是该对象的 Object Service。
+
+---
+
+## 11. 幂等、去重与重试
+
+### 11.1 去重键
+
+接收方对服务间转发 **MUST** 至少基于以下字段建立去重键：
+
+- `origin_service_did`
+- `relay_id`
+- `original_operation_id`
+
+若为消息承载操作，**SHOULD** 额外纳入 `original_message_id`。若为附件控制调用，**SHOULD** 额外纳入 `attachment_id`。
+
+### 11.2 重试策略
+
+当出现网络故障、超时或不确定结果时，发送方 **MAY** 重试；但重试时：
+
+- **MUST** 重用 `relay_id`
+- **MUST** 重用 `original_operation_id`
+- **MUST** 递增 `attempt_no`
+
+### 11.3 幂等响应
+
+若接收方识别到一个已经被成功处理过的去重键，**SHOULD** 返回与首次成功处理等价的响应，而不是重复执行该业务请求。
+
+### 11.4 与业务 Profile 的关系
+
+Relay 层的幂等去重 **不**替代业务层的幂等要求。Direct Base、Group Base、Attachment、Direct E2EE、Group E2EE 对 `operation_id`、`message_id`、`attachment_id`、`group_event_seq` 的业务约束依然有效。
+
+---
+
+## 12. 跨域成功语义
+
+### 12.1 `direct.send`
+
+对于跨域 `direct.send`：
+
+- 当最终 Receiving Home Service 接受该消息后，Originating Home Service **MAY** 向本地调用方返回成功；
+- 后续目标 Agent 域内如何处理、排队、路由，不属于联邦层成功语义的一部分。
+
+### 12.2 群控制操作
+
+对于 `group.add`、`group.remove`、`group.update_profile`、`group.update_policy` 等操作：
+
+- 当最终 Group Host Service 接受并排序后，Originating Home Service **MAY** 向本地调用方返回成功；
+- 向成员域的同步分发是后续异步阶段。
+
+### 12.3 `group.send`
+
+对于跨域 `group.send`：
+
+- 当 Group Host Service 接受并为其分配 `group_event_seq` 后，可视为跨域成功；
+- 成员域何时收到该事件由 `relay.push_group_event` 的后续分发决定。
+
+### 12.4 `attachment.get_download_ticket`
+
+对于跨域 `attachment.get_download_ticket`：
+
+- 当最终 Object Service 返回成功票据或明确拒绝后，可视为跨域成功；
+- 返回票据 **不等于** 下载成功；
+- 对象下载与摘要校验仍是后续独立 HTTPS 数据面步骤。
+
+---
+
+## 13. 错误条件与建议错误码
+
+本 Profile 推荐以下业务错误码：
+
+- `anp.route_not_found`
+- `anp.forward_target_mismatch`
+- `anp.relay_auth_failed`
+- `anp.relay_loop_detected`
+- `anp.relay_target_unreachable`
+- `anp.group_host_mismatch`
+- `anp.group_host_not_authoritative`
+- `anp.group_state_conflict`
+- `anp.relay_duplicate_suppressed`
+- `anp.relay_rejected`
+- `anp.object_service_not_found`
+- `anp.object_service_not_authoritative`
+- `anp.attachment_control_rejected`
+- `anp.download_ticket_denied`
+
+错误响应 **SHOULD** 在 `error.data` 中提供：
 
 - `relay_id`
-- `final_state`，推荐值：`accepted`、`rejected`、`expired`、`conflict`
-- `reported_at`
-- `error`（若失败）
+- `origin_service_did`
+- `target_did` 或 `group_did`
+- `object_service_did`（若适用）
+- `attachment_id`（若适用）
+- `original_method`
+- `original_operation_id`
+- `attempt_no`
 
 ---
 
-## 9. 成功语义与状态映射
+## 14. 最小互通要求
 
-### 9.1 私聊成功语义
+一个符合本 Profile 的实现至少 **MUST** 支持：
 
-一次 `relay.forward_direct` 成功，仅表示：
-
-- 目标 Agent 的入口服务已接受该业务操作；
-- 协议层“已通知到目标 Agent”的目标已经达成。
-
-这 **MUST NOT** 被解释为：
-
-- 目标 Agent 内部已完成业务处理；
-- 目标 Agent 内部所有副本已收到；
-- 目标 Agent 已执行应用动作。
-
-### 9.2 群操作成功语义
-
-一次 `relay.forward_group` 对状态变更类操作成功，表示：
-
-- Group Host Service 已接受并排序该操作；
-- 对应的 `group_state_version` 和 `group_event_seq` 已确定。
-
-对于 `group.send`，成功表示：
-
-- Group Host Service 已接受并为该群消息赋予其应有的事件位置或等价成功状态。
-
-### 9.3 目标拒绝的映射
-
-若目标服务基于业务 Profile 拒绝请求，中继层 **MUST** 把目标服务的拒绝映射回上游，而不是把它伪装成中继成功。
+1. 对 `agent_did` 和 `group_did` 进行服务发现；
+2. `relay.forward_direct`；
+3. `relay.forward_group_operation`；
+4. `relay.forward_attachment_control`；
+5. `relay_context` 的幂等与去重；
+6. 跳数控制；
+7. 对 `direct.send` 的 Final Acceptance 返回；
+8. 对会改变群状态的群操作返回 `group_event_seq` 与 `group_state_version`；
+9. 至少一种把有序群事件分发到成员域的机制（推荐 `relay.push_group_event`）；
+10. 明确禁止对象字节通过 Relay 常规转发；
+11. 支持 `attachment.get_download_ticket` 的跨域调用到最终 Object Service。
 
 ---
 
-## 10. 幂等、重试与跳数控制
+## 15. 示例
 
-### 10.1 联邦幂等
-
-接收中继请求的一侧 **MUST** 基于以下最小集合做幂等识别：
-
-- `source_service_did`
-- `relay_mode`
-- `relay_id`
-
-对于映射到同一业务操作的重复转发，接收方 **SHOULD** 进一步使用：
-
-- `forwarded_operation.method`
-- `relay_envelope.upstream_operation_id`
-
-做重复识别。
-
-### 10.2 重试规则
-
-若上游服务因超时或暂时性故障重试：
-
-- `relay_id` **MUST** 保持不变；
-- `upstream_operation_id` **MUST** 保持不变；
-- `forwarded_operation` 的业务语义 **MUST** 保持等价。
-
-### 10.3 跳数控制
-
-- `hop_count` **MUST** 从字符串 `"0"` 或 `"1"` 起始，并在每次联邦 hop 后递增；
-- 若存在 `max_hops` 且上限被超过，接收方 **MUST** 拒绝并返回 `anp.relay.hop_limit_exceeded`；
-- 服务 **SHOULD** 设置本地最大可接受 hop 上限，以防中继环路。
-
-### 10.4 过期控制
-
-若存在 `relay_envelope.expires_at` 且请求已过期，接收方 **MUST** 拒绝，并返回 `anp.relay.expired`。
-
----
-
-## 11. 安全与信任要求
-
-### 11.1 服务到服务认证
-
-服务到服务链路 **MUST** 提供：
-
-- 机密性；
-- 完整性；
-- 对端服务认证。
-
-### 11.2 源服务信任
-
-接收方 **MUST** 验证 `source_service_did` 是否为受信任或按本地联邦策略允许的对端服务。若不受信任，**MUST** 返回 `anp.relay.untrusted_source`。
-
-### 11.3 发送方身份与源服务关系
-
-接收方 **MAY** 依据本地策略验证：
-
-- `source_service_did` 是否有资格代表 `original_sender_did` 所在域发起中继；
-- `forwarded_operation.meta.sender_did` 是否与联邦路由语义一致。
-
-若此类校验失败，接收方 **MUST** 拒绝请求。
-
-### 11.4 不得静默降级安全模式
-
-中继服务 **MUST NOT**：
-
-- 把 `direct-e2ee` 降级为 `transport-protected`；
-- 把 `group-e2ee` 降级为 `transport-protected`；
-- 修改 `forwarded_security_profile` 而不被调用方显式授权。
-
-### 11.5 E2EE 负载不透明性
-
-当 `forwarded_security_profile` 为 `direct-e2ee` 或 `group-e2ee` 时：
-
-- 中继服务 **SHOULD** 仅检查最小必要的路由字段；
-- 中继服务 **MUST NOT** 依赖解密应用负载来完成正常路由；
-- 中继服务 **MAY** 对负载大小、格式或基本结构做健全性检查，但 **MUST NOT** 擅自改写。
-
----
-
-## 12. 标准错误
-
-本 Profile 推荐至少定义以下错误代码：
-
-- `anp.relay.untrusted_source`
-- `anp.relay.route_not_found`
-- `anp.relay.target_service_mismatch`
-- `anp.relay.hop_limit_exceeded`
-- `anp.relay.expired`
-- `anp.relay.target_rejected`
-- `anp.relay.idempotency_conflict`
-- `anp.relay.group_host_conflict`
-
-错误对象 **SHOULD** 至少包含：
-
-- `code`
-- `message`
-- `relay_id`
-- `source_service_did`
-- `target_service_did`
-- `details`（可选）
-
----
-
-## 13. 最小互通要求
-
-一个符合本 Profile 的实现至少 **MUST**：
-
-1. 能根据 Agent DID 解析目标 `ANPHomeService`；
-2. 能根据 Group DID 解析目标 `ANPGroupService`；
-3. 支持 `relay.forward_direct`；
-4. 支持 `relay.forward_group`；
-5. 支持基于 `relay_id` 的幂等；
-6. 支持 `hop_count` / `max_hops` 处理；
-7. 不静默降级 `forwarded_security_profile`；
-8. 正确返回“目标已接受”或“Group Host 已排序接受”的结果。
-
-实现方 **SHOULD**：
-
-- 支持 `relay.outcome`；
-- 支持显式路由追踪；
-- 支持更细粒度的联邦策略与错误映射；
-- 支持对 Group Host 结果中的 `group_state_version`、`group_event_seq` 和 `epoch_authenticator` 做透传。
-
----
-
-## 14. 示例
-
-### 14.1 `relay.forward_direct` 示例
+### 15.1 `relay.forward_direct` 示例
 
 ```json
 {
@@ -528,50 +736,52 @@ Relay Service 是可选角色，用于：
       "anp_version": "1.0",
       "profile": "anp.federation.relay.v1",
       "security_profile": "transport-protected",
-      "sender_did": "did:example:home-a",
+      "sender_did": "did:example:svc-a-home",
       "target": {
         "kind": "service",
-        "did": "did:example:home-b"
+        "did": "did:example:svc-b-home"
       },
       "operation_id": "op-80001",
       "created_at": "2026-03-29T15:00:00Z",
-      "content_type": "application/anp-federation-direct+json"
+      "content_type": "application/anp-relay-forward+json"
     },
     "body": {
-      "relay_envelope": {
-        "relay_id": "relay-001",
-        "source_service_did": "did:example:home-a",
-        "target_service_did": "did:example:home-b",
-        "relay_mode": "direct",
-        "original_sender_did": "did:example:agent-a",
-        "original_target_kind": "agent",
-        "original_target_did": "did:example:agent-b",
-        "forwarded_profile": "anp.direct.e2ee.v1",
-        "forwarded_security_profile": "direct-e2ee",
-        "upstream_operation_id": "op-50003",
-        "upstream_message_id": "msg-50003",
-        "created_at": "2026-03-29T15:00:00Z",
-        "hop_count": "1"
-      },
-      "forwarded_operation": {
-        "method": "direct.send",
-        "meta": {
-          "anp_version": "1.0",
-          "profile": "anp.direct.e2ee.v1",
-          "security_profile": "direct-e2ee",
-          "sender_did": "did:example:agent-a",
-          "target": {
-            "kind": "agent",
-            "did": "did:example:agent-b"
-          },
-          "operation_id": "op-50003",
-          "message_id": "msg-50003",
-          "created_at": "2026-03-29T12:02:00Z",
-          "content_type": "application/anp-direct-cipher+json"
+      "relay_context": {
+        "relay_id": "relay-80001",
+        "origin_service_did": "did:example:svc-a-home",
+        "sender_agent_did": "did:example:agent-a",
+        "final_target": {
+          "kind": "agent",
+          "did": "did:example:agent-b"
         },
-        "body": {
-          "session_id": "sess-abc-001",
-          "ciphertext_b64u": "BASE64URL_CIPHERTEXT"
+        "original_method": "direct.send",
+        "original_operation_id": "op-30001",
+        "original_message_id": "msg-30001",
+        "first_forwarded_at": "2026-03-29T15:00:00Z",
+        "attempt_no": "1",
+        "hop_count": "1",
+        "max_hops": "8"
+      },
+      "forwarded_request": {
+        "method": "direct.send",
+        "params": {
+          "meta": {
+            "anp_version": "1.0",
+            "profile": "anp.direct.base.v1",
+            "security_profile": "transport-protected",
+            "sender_did": "did:example:agent-a",
+            "target": {
+              "kind": "agent",
+              "did": "did:example:agent-b"
+            },
+            "operation_id": "op-30001",
+            "message_id": "msg-30001",
+            "created_at": "2026-03-29T14:59:59Z",
+            "content_type": "text/plain"
+          },
+          "body": {
+            "text": "hello from domain A"
+          }
         }
       }
     }
@@ -579,64 +789,64 @@ Relay Service 是可选角色，用于：
 }
 ```
 
-### 14.2 `relay.forward_group` 示例
+### 15.2 `relay.forward_attachment_control` + `attachment.get_download_ticket` 示例
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": "req-80002",
-  "method": "relay.forward_group",
+  "method": "relay.forward_attachment_control",
   "params": {
     "meta": {
       "anp_version": "1.0",
       "profile": "anp.federation.relay.v1",
       "security_profile": "transport-protected",
-      "sender_did": "did:example:home-a",
+      "sender_did": "did:example:svc-b-home",
       "target": {
         "kind": "service",
-        "did": "did:example:group-host-1"
+        "did": "did:example:obj-svc-a"
       },
       "operation_id": "op-80002",
-      "created_at": "2026-03-29T15:05:00Z",
-      "content_type": "application/anp-federation-group+json"
+      "created_at": "2026-03-29T15:20:00Z",
+      "content_type": "application/anp-relay-forward+json"
     },
     "body": {
-      "relay_envelope": {
-        "relay_id": "relay-002",
-        "source_service_did": "did:example:home-a",
-        "target_service_did": "did:example:group-host-1",
-        "relay_mode": "group",
-        "original_sender_did": "did:example:agent-a",
-        "original_target_kind": "group",
-        "original_target_did": "did:example:group-123",
-        "forwarded_profile": "anp.group.e2ee.v1",
-        "forwarded_security_profile": "group-e2ee",
-        "upstream_operation_id": "op-60003",
-        "upstream_message_id": "msg-60003",
-        "created_at": "2026-03-29T15:05:00Z",
+      "relay_context": {
+        "relay_id": "relay-80002",
+        "origin_service_did": "did:example:svc-b-home",
+        "sender_agent_did": "did:example:agent-b",
+        "final_target": {
+          "kind": "service",
+          "did": "did:example:obj-svc-a"
+        },
+        "object_service_did": "did:example:obj-svc-a",
+        "attachment_id": "att-001",
+        "original_method": "attachment.get_download_ticket",
+        "original_operation_id": "op-att-001",
+        "first_forwarded_at": "2026-03-29T15:20:00Z",
+        "attempt_no": "1",
         "hop_count": "1"
       },
-      "forwarded_operation": {
-        "method": "group.send",
-        "meta": {
-          "anp_version": "1.0",
-          "profile": "anp.group.e2ee.v1",
-          "security_profile": "group-e2ee",
-          "sender_did": "did:example:agent-a",
-          "target": {
-            "kind": "group",
-            "did": "did:example:group-123"
+      "forwarded_request": {
+        "method": "attachment.get_download_ticket",
+        "params": {
+          "meta": {
+            "anp_version": "1.0",
+            "profile": "anp.attachment.v1",
+            "security_profile": "transport-protected",
+            "sender_did": "did:example:agent-b",
+            "operation_id": "op-att-001",
+            "created_at": "2026-03-29T15:20:00Z",
+            "content_type": "application/anp-attachment-ticket+json"
           },
-          "operation_id": "op-60003",
-          "message_id": "msg-60003",
-          "created_at": "2026-03-29T12:45:00Z",
-          "content_type": "application/anp-group-cipher+json"
-        },
-        "body": {
-          "group_did": "did:example:group-123",
-          "crypto_group_id": "cg-001",
-          "epoch": "6",
-          "ciphertext_b64u": "BASE64URL_GROUP_CIPHERTEXT"
+          "body": {
+            "attachment_id": "att-001",
+            "object_uri": "https://objects.a.example/o/abc",
+            "requester_did": "did:example:agent-b",
+            "message_id": "msg-70002",
+            "target_did": "did:example:agent-b",
+            "security_profile": "direct-e2ee"
+          }
         }
       }
     }
@@ -644,27 +854,87 @@ Relay Service 是可选角色，用于：
 }
 ```
 
----
+票据成功响应示例：
 
-## 15. 注册表占位
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-80002",
+  "result": {
+    "accepted": true,
+    "relay_id": "relay-80002",
+    "final_acceptance": true,
+    "accepted_at": "2026-03-29T15:20:01Z",
+    "download_ticket": {
+      "download_ticket_b64u": "BASE64URL_TICKET",
+      "expires_at": "2026-03-29T15:25:01Z",
+      "ticket_transport": "authorization-header"
+    }
+  }
+}
+```
 
-本标准后续版本 **SHOULD** 建立以下注册表：
+### 15.3 `relay.push_group_event` 示例
 
-1. Federation 错误码注册表；
-2. Relay envelope 字段注册表；
-3. Service-to-service 内容类型注册表；
-4. 联邦能力字段注册表；
-5. 联邦结果状态值注册表。
-
----
-
-## 16. 参考实现说明（非规范性）
-
-实现方在落地本 Profile 时，宜把它视为：
-
-- 所有跨域私聊和群操作的服务间通道层；
-- 一个只负责“通知到目标 Agent / Group Host 即完成协议使命”的联邦层；
-- 一个与 E2EE Overlay 共存、但不破坏其不透明性的最小转发层。
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-80003",
+  "method": "relay.push_group_event",
+  "params": {
+    "meta": {
+      "anp_version": "1.0",
+      "profile": "anp.federation.relay.v1",
+      "security_profile": "transport-protected",
+      "sender_did": "did:example:svc-group-host",
+      "target": {
+        "kind": "service",
+        "did": "did:example:svc-b-home"
+      },
+      "operation_id": "op-80003",
+      "created_at": "2026-03-29T15:10:02Z",
+      "content_type": "application/anp-group-event+json"
+    },
+    "body": {
+      "relay_context": {
+        "relay_id": "relay-80003",
+        "origin_service_did": "did:example:svc-group-host",
+        "sender_agent_did": "did:example:agent-a",
+        "final_target": {
+          "kind": "group",
+          "did": "did:example:group-001"
+        },
+        "original_method": "group.send",
+        "original_operation_id": "op-40099",
+        "original_message_id": "msg-40099",
+        "first_forwarded_at": "2026-03-29T15:10:02Z",
+        "attempt_no": "1",
+        "hop_count": "1"
+      },
+      "ordered_group_event": {
+        "group_did": "did:example:group-001",
+        "group_event_seq": "57",
+        "group_state_version": "43",
+        "event_kind": "group-message",
+        "event_payload": {
+          "original_method": "group.send",
+          "original_params": {
+            "meta": {
+              "profile": "anp.group.e2ee.v1",
+              "security_profile": "group-e2ee",
+              "content_type": "application/anp-group-cipher+mls"
+            },
+            "body": {
+              "epoch": "7",
+              "private_message_b64u": "BASE64URL_PRIVATE_MESSAGE"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ---
 
@@ -676,3 +946,4 @@ Relay Service 是可选角色，用于：
 - ANP Profile 4：Group Base Profile（草案）
 - ANP Profile 5：Direct E2EE Profile（草案）
 - ANP Profile 6：Group E2EE Profile（草案）
+- ANP Profile 7：Attachment Profile（修订草案）
