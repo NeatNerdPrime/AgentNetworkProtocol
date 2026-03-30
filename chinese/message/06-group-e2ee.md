@@ -3,7 +3,7 @@
 - 文档编号：ANP-P6
 - 标题：Group E2EE Profile
 - 状态：Draft
-- 版本：0.2.0
+- 版本：0.1.0
 - 语言：中文
 - 适用范围：本 Profile 适用于基于 Group DID 的群组端到端加密 Overlay，叠加在 `anp.group.base.v1` 之上。
 
@@ -13,12 +13,11 @@
 
 本 Profile 定义 ANP 的群组端到端加密 Overlay，规定：
 
-1. 如何在 `anp.group.base.v1` 的群应用语义之上叠加 MLS 型群端到端加密；
-2. 如何把 `group_did`、`group_state_version`、`group_event_seq` 与 `crypto_group_id`、`epoch`、`epoch_authenticator` 建立可验证绑定；
-3. 如何把 did:wba 身份与 MLS 成员凭证、KeyPackage、叶子签名键进行绑定；
-4. 如何将 `group.create`、`group.invite`、`group.accept_invite`、`group.join`、`group.add`、`group.remove`、`group.leave`、`group.update_profile`、`group.update_policy`、`group.send` 等基础动作映射到群密码学状态机；
-5. 如何处理 `Welcome`、`External Commit`、`PrivateMessage`、`PublicMessage`、分叉检测与恢复；
-6. 如何与 P4 中的 `auth.actor_proof`、Signed Group Payload、`group_receipt`、`Logical Group Target URI` 完整对齐。
+1. 如何把 `group_did`、`group_state_version`、`group_event_seq` 与群密码学状态机绑定；
+2. 如何使用 MLS 作为群密钥建立、成员变更和应用消息保护的基础协议；
+3. 如何将 `did:wba` 身份与 MLS 成员凭证、KeyPackage、叶子签名键进行绑定；
+4. 如何把 `group.create`、`group.invite`、`group.accept_invite`、`group.join`、`group.add`、`group.remove`、`group.leave`、`group.update_profile`、`group.update_policy`、`group.send` 等基础动作映射到群密码学状态机；
+5. 如何处理 `epoch`、`Welcome`、`External Commit`、`PrivateMessage`、`PublicMessage`、`epoch_authenticator`、分叉检测与恢复。
 
 本 Profile **不**定义：
 
@@ -39,19 +38,9 @@
 
 ### 2.2 术语
 
-除非另有说明，本 Profile 继承 P4 中下列术语的定义：
-
-- Group
-- Group Host Service
-- Group State Version
-- Group Event Sequence
-- Actor Proof
-- Group Receipt
-- Logical Group Target URI
-
-本 Profile 额外引入如下术语：
-
+- **Group DID**：群的应用层全球标识，即 `group_did`。
 - **Crypto Group ID**：群密码学内部标识，对应 MLS `group_id`，可与 `group_did` 不同。
+- **Group Host Service**：负责群基础状态排序、策略应用与群消息入口的服务；默认不是 MLS 群成员。
 - **MLS Group State**：基于 MLS 维护的群密码学状态。
 - **Epoch**：MLS 群状态的一次代际推进。
 - **KeyPackage**：MLS 加入材料对象，用于把一个新成员加入群。
@@ -59,7 +48,7 @@
 - **External Commit**：MLS 中由新成员主动生成的特殊 Commit，用于外部加入场景。
 - **PrivateMessage**：加密且带成员认证的 MLS 消息。
 - **PublicMessage**：仅签名而不加密的 MLS 消息。
-- **did_wba_binding**：把某个 MLS 叶子签名键、成员凭证或 KeyPackage 绑定到某个 `agent_did` 的可验证证明对象。
+- **did:wba Binding**：把某个 MLS 叶子签名键、成员凭证或 KeyPackage 绑定到某个 `agent_did` 的可验证证明对象。
 - **Group Join Info**：为外部加入提供的群公开加入材料，至少包括 `GroupInfo` 和外部加入所需上下文。
 - **Fork**：对同一 `group_did`，不同成员观察到无法调和的 `epoch` / `epoch_authenticator` / 状态推进序列。
 
@@ -67,36 +56,24 @@
 
 ## 3. 设计原则
 
-### 3.1 继续复用 P4 作为控制面
-
-本 Profile **不**替代 P4，而是在其之上叠加密码学语义。
-
-因此：
-
-- `auth.actor_proof` 仍然表示“是谁发起了请求”；
-- Signed Group Payload 的定义、`@target-uri` 到 `Logical Group Target URI` 的映射、以及跨域转发时不得重写 `auth.actor_proof` 的规则，继续由 P4 约束；
-- `group_receipt` 仍然表示“Group Host 已接受并排序了该结果”；
-- MLS 负责“密码学上哪个成员提交了什么握手或消息”以及“哪些成员有权解密后续消息”。
-
-### 3.2 群身份与密码学状态分层
+### 3.1 群身份与密码学状态分层
 
 本 Profile 明确区分：
 
 - `group_did`：应用层群全球标识；
 - `crypto_group_id`：密码学群内部标识；
 - `group_state_version`：由 Group Host 分配的应用层群状态版本；
-- `group_event_seq`：由 Group Host 分配的群事件序号；
 - `epoch`：由 MLS 状态机分配的密码学群代际。
 
-这些标识 **MUST NOT** 被机械等同；但它们之间 **MUST** 有可验证的绑定关系。
+这四者 **MUST NOT** 被机械等同；但它们之间 **MUST** 有可验证的绑定关系。
 
-### 3.3 一个 Agent = 一个外部群成员
+### 3.2 一个 Agent = 一个外部群成员
 
 本 Profile 的外部互通边界中，一个群成员始终由一个 `agent_did` 表示。协议层 **不**引入设备、终端或内部副本成员概念。
 
 某 Agent 内部若有多个执行副本，它们如何共享或同步 MLS 群状态，属于该 Agent 内部实现，不属于本 Profile 的互通语义。
 
-### 3.4 Group Host 负责排序，不负责持有群明文
+### 3.3 Group Host 负责排序，不负责持有群明文
 
 Group Host Service 的职责是：
 
@@ -108,9 +85,17 @@ Group Host Service 的职责是：
 
 默认情况下，Group Host Service **不应** 作为 MLS 群成员，也 **不应** 持有群应用明文的解密能力。
 
+### 3.4 应用层控制面与密码学控制面分离
+
+本 Profile 复用 `anp.group.base.v1` 作为应用层控制面：
+
+- `auth.actor_proof` 证明是谁发起了动作；
+- `group_receipt` 证明群已经接受并排序了结果；
+- MLS 则负责证明“密码学上哪个群成员提交了什么握手或消息”，以及“谁可以解密后续消息”。
+
 ### 3.5 默认主线使用 did:wba `e1_`
 
-本 Profile 的主线身份绑定 **SHOULD** 优先适配 did:wba 的默认 `e1_` 路径型 profile。为兼容 secp256k1 生态，支持 `k1_` 的 DID **MAY** 进入群，但其 MLS 叶子签名键与 KeyPackage 绑定证明仍 **SHOULD** 转化为本 Profile 可验证的 `did_wba_binding` 结构。
+本 Profile 的主线身份绑定 **SHOULD** 优先适配 did:wba 的默认 `e1_` 路径型 profile。为兼容 secp256k1 生态，支持 `k1_` 的 DID **MAY** 进入群，但其 MLS 叶子签名键与 KeyPackage 绑定证明仍 **SHOULD** 转化为本 Profile 可验证的 did:wba Binding 结构。
 
 ### 3.6 非目标
 
@@ -119,8 +104,7 @@ Group Host Service 的职责是：
 - 标准化的群成员变更；
 - 标准化的群应用消息加密；
 - 标准化的 did:wba 绑定；
-- 标准化的 Host 排序与回执语义；
-- 与 P4 字段、方法和签名模型保持一致。
+- 标准化的 Host 排序与回执语义。
 
 ---
 
@@ -147,7 +131,7 @@ Group Host Service 的职责是：
 - `meta.profile` **MUST** 等于 `anp.group.e2ee.v1`；
 - `meta.security_profile` **MUST** 等于 `group-e2ee`。
 
-若某群的 `group_policy.required_security_profile = "group-e2ee"` 或 `group_policy.required_security_profile = "group-e2ee-required"`，则：
+若某群的 `group_policy.required_security_profile = "group-e2ee"`，则：
 
 - `transport-protected` 的 `group.send` **MUST** 被拒绝；
 - 会改变成员加密状态的群控制操作 **MUST** 满足本 Profile 的密码学要求；
@@ -191,7 +175,7 @@ Group Host Service 的职责是：
 - DID 文档中的 `authentication` / `assertionMethod` 用于身份绑定证明；
 - DID 文档中的 `keyAgreement` **SHOULD** 至少包含一个 X25519 条目，表示该 Agent 具备 E2EE 能力；
 - MLS 群成员的叶子签名键 **不应** 直接等同于 DID 长期身份签名键；
-- 叶子签名键 **SHOULD** 单独生成，并通过 `did_wba_binding` 绑定到 `agent_did`。
+- 叶子签名键 **SHOULD** 单独生成，并通过 `did:wba Binding` 绑定到 `agent_did`。
 
 ---
 
@@ -321,55 +305,30 @@ Group Host Service 的职责是：
 
 `group_join_info` **MUST** 提供足以让新成员生成 External Commit 的信息。
 
-### 7.5 `body.e2ee`
+### 7.5 `group_handshake_submission`
 
-当方法运行在 `group-e2ee` 模式下时，`body` **MAY** 含有常规的 P4 应用层字段，但其密码学承载 **MUST** 放入 `body.e2ee` 对象中。
-
-推荐结构：
-
-```json
-{
-  "...": "P4 业务字段",
-  "e2ee": {
-    "suite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
-    "handshake": { ... },
-    "cipher": { ... }
-  }
-}
-```
-
-规则：
-
-- 状态改变型方法在需要密码学状态推进时，**MUST** 使用 `body.e2ee.handshake`；
-- `group.send` **MUST** 使用 `body.e2ee.cipher`；
-- 除 `group.send` 外，`body.e2ee.cipher` **MUST NOT** 出现；
-- 对同一请求，`body.e2ee.handshake` 与 `body.e2ee.cipher` **MUST NOT** 同时出现。
-
-### 7.6 `group_handshake_submission`
-
-对于所有会改变群加密状态的操作，请求 `body.e2ee.handshake` **MUST** 使用 `group_handshake_submission`。
+对于所有会改变群加密状态的操作，请求 `body` **MUST** 包含 `e2ee` 子对象，其中的 `handshake` **MUST** 使用 `group_handshake_submission`。
 
 推荐结构如下：
 
 ```json
 {
-  "wire_format": "mls-private-message | mls-public-message",
+  "wire_format": "mls-public-message",
   "crypto_group_id_b64u": "BASE64URL_GROUPID",
   "epoch": "7",
-  "handshake_kind": "commit | proposal | welcome | external-commit",
-  "mls_message_b64u": "BASE64URL_PUBLICMESSAGE_OR_PRIVATEMESSAGE",
+  "handshake_kind": "commit",
+  "mls_message_b64u": "BASE64URL_PUBLICMESSAGE_OR_AUTHENTICATEDCONTENT",
   "welcome_b64u": "BASE64URL_WELCOME",
   "group_info_b64u": "BASE64URL_GROUPINFO",
   "group_state_ref": {
     "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
     "group_state_version": "42",
     "policy_hash": "sha-256:..."
-  },
-  "epoch_authenticator": "BASE64URL_AUTH"
+  }
 }
 ```
 
-规则如下：
+规则：
 
 - `wire_format` **MUST** 存在；
 - `handshake_kind` **MUST** 存在；
@@ -378,7 +337,7 @@ Group Host Service 的职责是：
 - 若操作会添加成员，`welcome_b64u` **SHOULD** 存在；
 - 若操作为外部加入，`group_info_b64u` **SHOULD** 存在。
 
-### 7.7 `group_cipher_object`
+### 7.6 `group_cipher_object`
 
 当 `group.send` 在 `group-e2ee` 模式下发送应用消息时，`body.e2ee.cipher` **MUST** 为 `group_cipher_object`。
 
@@ -397,64 +356,6 @@ Group Host Service 的职责是：
   "epoch_authenticator": "BASE64URL_AUTH"
 }
 ```
-
-### 7.8 外层 `meta.content_type` 与内层明文内容类型
-
-为与 P4 对齐，当 `group.send` 运行在 `group-e2ee` 模式下时：
-
-- 外层 `meta.content_type` **MUST** 继续表示原始应用内容类型；
-- 允许值至少包括 P4 要求的：
-  - `text/plain`
-  - `application/json`
-  - `application/anp-attachment-manifest+json`
-- `body` 外层 **MUST NOT** 直接出现 P4 的 `text` / `payload` / `payload_b64u` 明文字段；
-- 这些字段的语义 **MUST** 转移到加密后的内层应用明文对象中；
-- `meta.content_type` 与内层应用明文的内容类型 **MUST** 一致。
-
-### 7.9 `group_application_plaintext`
-
-发送方在加密群应用消息前，**MUST** 先构造 `group_application_plaintext` 对象。
-
-推荐结构如下：
-
-```json
-{
-  "application_content_type": "text/plain | application/json | application/anp-attachment-manifest+json",
-  "thread_id": "thread-001",
-  "reply_to_message_id": "msg-previous",
-  "annotations": {},
-  "group_state_ref": {
-    "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
-    "group_state_version": "42",
-    "policy_hash": "sha-256:..."
-  },
-  "text": "...",
-  "payload": {},
-  "payload_b64u": "..."
-}
-```
-
-规则如下：
-
-- `application_content_type` **MUST** 存在；
-- `text`、`payload`、`payload_b64u` 三者中 **MUST** 恰好出现一个；
-- `application_content_type` **MUST** 等于外层 `meta.content_type`；
-- `group_state_ref.group_did` **MUST** 等于外层目标 `group_did`。
-
-### 7.10 `group_receipt.e2ee`
-
-为与 P4 的 `group_receipt` 对齐，本 Profile 定义可选的 `group_receipt.e2ee` 扩展对象。
-
-推荐字段：
-
-- `crypto_group_id_b64u`：字符串，**MAY**
-- `epoch`：字符串，**MAY**
-- `epoch_authenticator`：字符串，**MAY**
-- `handshake_kind`：字符串，**MAY**
-- `wire_format`：字符串，**MAY**
-- `mls_message_digest`：字符串，**MAY**
-
-该扩展对象的语义是：证明“Group Host 接受并排序了与某个 MLS 状态推进或群密文事件相绑定的结果”。
 
 ---
 
@@ -520,330 +421,392 @@ Group Host Service 的职责是：
 
 - `group_did`
 
+`body` **MAY** 包含：
+
+- `invitation_id`
+- `expected_group_state_version`
+
 #### 8.3.3 成功响应
 
 成功响应 **MUST** 至少包含：
 
-- `group_did`
 - `group_join_info`
+
+若群策略或当前状态不允许外部加入，服务端 **MUST** 返回明确错误。
 
 ---
 
-## 9. 方法映射与操作规则
+## 9. Group Base 方法与 MLS 的映射
 
 ### 9.1 总则
 
-本 Profile 不新增新的群业务动作；它规定 P4 方法在 `group-e2ee` 模式下的密码学承载与绑定。
-
-所有会改变群加密状态的请求，以及 `group.send`，除满足本 Profile 的要求外，**MUST** 继续满足 P4 对以下内容的要求：
-
-- `auth.actor_proof`
-- Signed Group Payload
-- `group_receipt`
-- `expected_group_state_version`
-- `group_state_version`
-- `group_event_seq`
+当 `meta.security_profile = "group-e2ee"` 时，P4 中的群控制方法 **MUST** 遵守本节映射规则。
 
 ### 9.2 `group.create`
 
-在 `group-e2ee` 模式下，`group.create` 除了创建 `group_did` 和基础 `group_profile` / `group_policy` 外，还 **MUST**：
+在 `group-e2ee` 模式下，`group.create` **MUST**：
 
-1. 初始化新的 `crypto_group_id`；
-2. 建立初始 MLS 群状态；
-3. 为创建者建立初始成员资格；
-4. 形成初始 `group_state_ref` 与 `epoch` 绑定。
+1. 创建新的 `group_did`；
+2. 初始化 MLS 群状态；
+3. 生成新的 `crypto_group_id`；
+4. 把创建者加入群；
+5. 产生初始 `epoch`。
 
-`body` **MUST** 额外包含 `e2ee.init` 对象，推荐字段：
+请求 `body` **MUST** 包含：
 
-- `suite`
-- `crypto_group_id_b64u`
-- `creator_key_package_id` 或 `creator_key_package_b64u`
-- `epoch`
-- `group_info_b64u`（若生成）
-- `epoch_authenticator`（若可导出）
+- `group_profile`
+- `group_policy`
+- `e2ee.creator_key_package_ref` 或 `e2ee.creator_key_package`
 
 成功响应 **MUST** 至少包含：
 
 - `group_did`
 - `group_state_version`
+- `group_event_seq`
+- `crypto_group_id_b64u`
+- `epoch`
 - `group_receipt`
-- `result.e2ee.crypto_group_id_b64u`
-- `result.e2ee.epoch`
 
 ### 9.3 `group.invite`
 
-`group.invite` 在 `group-e2ee` 模式下默认表示**应用层邀请**，不要求立即改变密码学成员集。
+在 `group-e2ee` 模式下，`group.invite` **仅表示应用层邀请**。
 
-因此：
+除非群策略另有规定，`group.invite` **不要求** 立即改变 MLS 成员集。它的作用是：
 
-- `group.invite` **MUST** 继续满足 P4 的邀请语义；
-- `body.e2ee.handshake` **MAY** 省略；
-- 若群策略要求“邀请即保留某种密码学上下文”，实现 **MAY** 附加 `body.e2ee.handshake`，但这不是最小互通要求。
+- 建立邀请记录；
+- 指定预期角色；
+- 为后续 `group.accept_invite` / `group.join` 提供依据。
 
 ### 9.4 `group.accept_invite`
 
-当被邀请方接受邀请并真正进入加密群时，`group.accept_invite` **MUST** 导致以下之一：
+在 `group-e2ee` 模式下，`group.accept_invite` 的首选路径 **SHOULD** 是 External Commit。
 
-- 由当前成员生成 Add/Commit/Welcome；或
-- 由新成员生成 External Commit。
+请求 `body` **MUST** 包含：
 
-为支持跨域异步场景，符合本 Profile 的实现 **MUST** 支持 External Commit 路径。
-
-因此 `body.e2ee.handshake`：
-
-- **MUST** 存在；
-- `handshake_kind` **SHOULD** 为 `external-commit` 或 `commit`；
-- 若需要把新成员引导到群，`welcome_b64u` **MAY** 存在；
-- `group_info_b64u` 在 `external-commit` 路径中 **SHOULD** 存在。
+- `invitation_id`
+- `e2ee.handshake`（External Commit 提交对象）
 
 成功响应 **MUST** 至少包含：
 
 - `group_did`
-- `membership_status`
 - `group_state_version`
+- `group_event_seq`
+- `epoch`
 - `group_receipt`
-
-若密码学加入已完成，还 **MUST** 包含：
-
-- `result.e2ee.epoch`
-- `result.e2ee.crypto_group_id_b64u`
 
 ### 9.5 `group.join`
 
-当群策略允许 `open-join` 或 `request-approval` 时，`group.join` 在 `group-e2ee` 模式下的规则如下：
+在 `group-e2ee` 模式下，若群策略允许开放加入或审批后加入，则 `group.join` **SHOULD** 使用 External Commit 或群策略允许的等价握手路径。
 
-- 若加入请求已获准并立即执行，则 `body.e2ee.handshake` **MUST** 存在；
-- 若只是应用层进入审批阶段，则 `body.e2ee.handshake` **MAY** 省略，此时 `membership_status` **SHOULD** 返回 `pending`；
-- 一旦真正完成密码学加入，服务端 **MUST** 返回新的 `group_state_version` 和 `group_receipt`，并 **SHOULD** 返回 `result.e2ee.epoch`。
+请求 `body` **MUST** 包含：
+
+- `e2ee.handshake`
+
+成功响应 **MUST** 至少包含：
+
+- `group_did`
+- `group_state_version`
+- `group_event_seq`
+- `epoch`
+- `group_receipt`
 
 ### 9.6 `group.add`
 
-在 `group-e2ee` 模式下，`group.add` **MUST** 导致一次密码学成员加入。
+在 `group-e2ee` 模式下，`group.add` **MUST** 由当前群内有权限的成员提供可验证的握手提交对象。
 
-由于 Group Host 默认不是 MLS 成员，v1 基线要求如下：
+请求 `body` **MUST** 包含：
 
-- 请求 **MUST** 由有权限的现有成员发起；
-- `body.e2ee.handshake` **MUST** 存在；
-- 该握手 **MUST** 由当前加密群成员生成，而不是由 Host 代生成；
-- 若需要，`welcome_b64u` **SHOULD** 存在。
+- `member_did`
+- `e2ee.handshake`
 
-部署 **MAY** 提供“群内 facilitator agent”来生成 Commit，但这不属于最小互通要求。
-
-### 9.7 `group.remove`
-
-在 `group-e2ee` 模式下，`group.remove` **MUST** 导致一次密码学成员移除。
-
-请求 **MUST** 满足：
-
-- `body.e2ee.handshake` **MUST** 存在；
-- `handshake_kind` **SHOULD** 为 `commit`；
-- 一旦新 `epoch` 生效，被移除成员 **MUST NOT** 解密后续群消息。
+若请求中不直接内联 KeyPackage，则服务端 **MUST** 能通过 `member_did` 发现其有效 KeyPackage。
 
 成功响应 **MUST** 至少包含：
 
 - `group_did`
 - `member_did`
 - `group_state_version`
+- `group_event_seq`
+- `epoch`
 - `group_receipt`
-- `result.e2ee.epoch`
+
+### 9.7 `group.remove`
+
+在 `group-e2ee` 模式下，`group.remove` **MUST** 对应一个有效的 Remove + Commit 路径。
+
+请求 `body` **MUST** 包含：
+
+- `member_did`
+- `e2ee.handshake`
+
+成功响应 **MUST** 至少包含：
+
+- `group_did`
+- `member_did`
+- `group_state_version`
+- `group_event_seq`
+- `epoch`
+- `group_receipt`
 
 ### 9.8 `group.leave`
 
-在 `group-e2ee` 模式下，`group.leave` v1 **SHOULD** 采用两阶段语义：
+在 MLS 1.0 的主线约束下，`group.leave` 的 v1 语义采用 **两阶段离群**：
 
-#### 阶段 A：应用层离群意图
+#### 阶段一：应用层离群意图
 
-- 发送方提交 `group.leave`；
-- `auth.actor_proof` 证明离群请求由该成员发起；
-- Group Host **MAY** 立即把其成员状态标记为 `pending` 或策略等价状态；
-- 此阶段 **MAY** 不推进 `epoch`。
+离群成员发送 `group.leave`，Group Host 在验证通过后 **MUST**：
 
-#### 阶段 B：密码学层正式移除
+- 记录该成员的离群意图；
+- 把成员状态标记为 `pending-leave` 或等价状态；
+- 可立即停止向其继续推送新的应用层群事件。
 
-- 由在线且有权限的现有成员发起 Remove/Commit；
-- 一旦 Commit 被 Host 接受，成员状态可转为 `left`；
-- 服务端 **MUST** 返回新 `group_state_version`、`group_receipt` 和 `result.e2ee.epoch`。
+#### 阶段二：密码学层真正移除
 
-若某部署可以在同一请求内附带有效的自离群或协调移除握手，则 `body.e2ee.handshake` **MAY** 出现，并在一次调用内完成两个阶段。
+当后续有在线授权成员发起 Remove + Commit 时，该成员才在密码学层被正式移除。
 
-### 9.9 `group.update_profile` 与 `group.update_policy`
-
-这两类操作首先是应用层状态变化，继续遵循 P4 语义。
-
-但在 `group-e2ee` 模式下：
-
-- 若变更会影响加入、移除、安全模式或消息授权规则，则其结果 **SHOULD** 被反映到 `group_state_ref.policy_hash`；
-- 后续群握手或群消息 **MUST** 绑定最新的 `group_state_ref`；
-- 这些操作本身 **MAY** 不推进 MLS `epoch`，除非具体部署策略要求在策略变化时做一次密码学重配置。
-
-### 9.10 `group.send`
-
-在 `group-e2ee` 模式下，`group.send` **MUST**：
-
-1. 继续满足 P4 对 `auth.actor_proof`、Signed Group Payload 和 `expected_group_state_version` 的要求；
-2. 外层 `meta.content_type` **MUST** 仍表示原始应用内容类型；
-3. `body` **MUST** 包含 `e2ee.cipher`；
-4. 外层 `body` **MUST NOT** 直接出现明文 `text` / `payload` / `payload_b64u`；
-5. 内层加密消息 **MUST** 使用 MLS `PrivateMessage`；
-6. `body.e2ee.cipher.group_state_ref.group_state_version` **SHOULD** 与 `body.expected_group_state_version` 一致；
-7. Host 接受后 **MUST** 返回 `group_receipt`，并 **SHOULD** 在 `group_receipt.e2ee` 中返回：
-   - `crypto_group_id_b64u`
-   - `epoch`
-   - `epoch_authenticator`
-
----
-
-## 10. 受认证绑定与回执扩展
-
-### 10.1 沿用 P4 的 Signed Group Payload
-
-本 Profile 明确要求：
-
-- P4 中的 Signed Group Payload 定义继续生效；
-- 当请求包含 `body.e2ee` 时，`body.e2ee` **MUST** 被纳入 Signed Group Payload 的摘要计算；
-- `auth` 本身仍 **MUST NOT** 纳入摘要。
-
-### 10.2 群 E2EE 的最小绑定集合
-
-对于运行在 `group-e2ee` 模式下的请求或消息，密码学层 **SHOULD** 至少绑定以下字段：
+因此，`group.leave` 成功响应 **MUST** 至少包含：
 
 - `group_did`
-- `sender_did`
+- `leaver_did`
 - `group_state_version`
-- `group_event_seq`（若已知）
-- `message_id`
-- `content_type`
-- `security_profile`
-- `auth.actor_proof.contentDigest`
-
-### 10.3 `group_receipt` 扩展规则
-
-若某操作推进了群密码学状态或携带了群密文，返回的 `group_receipt` **SHOULD** 含有 `e2ee` 扩展对象。
-
-`group_receipt.e2ee` 的推荐字段见第 7.10 节。
-
----
-
-## 11. 排序、Epoch、分叉与恢复
-
-### 11.1 会改变密码学状态的操作
-
-以下操作一旦在 `group-e2ee` 模式下真正改变密码学成员集或群密钥状态，Group Host Service **MUST** 将其线性化：
-
-- `group.create`
-- `group.accept_invite`
-- `group.join`（真正加入时）
-- `group.add`
-- `group.remove`
-- `group.leave`（真正完成密码学移除时）
-
-### 11.2 `expected_group_state_version`
-
-对于会改变群状态的操作，发送方 **SHOULD** 提供 `expected_group_state_version`。服务端：
-
-- **MUST** 检查该值；
-- 若冲突，**MUST** 返回明确冲突语义；
-- **MUST NOT** 在调用方要求版本匹配时静默改用最新状态继续执行。
-
-### 11.3 `epoch` 与 `group_state_version`
-
-`epoch` 与 `group_state_version` 是不同维度：
-
-- `group_state_version` 是应用层群状态版本；
-- `epoch` 是密码学状态代际。
-
-同一 `group_state_version` **MAY** 不推进 `epoch`；但一旦成员集或群密钥状态改变，新的 `group_state_version` **SHOULD** 与新的 `epoch` 共同出现。
-
-### 11.4 分叉检测
-
-实现 **SHOULD** 使用以下至少一种信号做分叉检测：
-
-- `epoch_authenticator`
-- `crypto_group_id_b64u`
-- `group_receipt.e2ee.mls_message_digest`
-- 对同一 `group_did` 的不一致 `epoch` 推进序列
-
-若检测到不可调和的不一致，成员 **SHOULD**：
-
-- 标记该群为 `fork-suspected`；
-- 暂停发送新的加密应用消息；
-- 请求新的群状态同步或人工恢复。
-
----
-
-## 12. 与 P4 的方法和对象对齐说明
-
-### 12.1 保持不变的 P4 要素
-
-以下 P4 要素在本 Profile 中继续保持不变：
-
-- `group_did`
-- `group_state_version`
-- `group_event_seq`
-- `auth.actor_proof`
-- Signed Group Payload
 - `group_receipt`
-- `group_profile`
-- `group_policy`
-- `group_state_ref`
+- `leave_effective = false | true`
 
-### 12.2 被本 Profile 覆盖或细化的点
+在 v1 中，除非该请求已经伴随有效的 Remove 提交对象，否则 `leave_effective` **SHOULD** 为 `false`。
 
-以下规则在 `meta.profile = anp.group.e2ee.v1` 时由本 Profile 覆盖或细化：
+### 9.9 `group.update_profile`
 
-1. `group.send` 外层 `body` 不再直接承载 P4 的明文字段；
-2. `group.send` 的真实业务明文进入 `group_application_plaintext` 后再加密；
-3. 会改变密码学状态的操作 **MUST** 通过 `body.e2ee.handshake` 承载 MLS 对象；
-4. `group_receipt` **SHOULD** 增加 `e2ee` 扩展字段。
+这类操作属于应用层状态变化，不一定直接改变 MLS 成员集。
+
+在 `group-e2ee` 模式下：
+
+- 若该更新不影响安全语义，**MAY** 只在 Group Host 的应用层状态机中生效；
+- 若该更新会影响安全相关上下文，**SHOULD** 通过 `policy_hash` 进入后续握手或消息绑定。
+
+### 9.10 `group.update_policy`
+
+若策略更新涉及以下字段：
+
+- `required_security_profile`
+- 成员加入方式
+- 套件白名单
+- 可发送者集合
+- 可发起成员变更者集合
+
+则该更新 **SHOULD** 被纳入 `policy_hash` 并在后续握手或消息的绑定上下文中反映。
+
+### 9.11 `group.send`
+
+在 `group-e2ee` 模式下，`group.send` **MUST** 使用加密应用消息对象。
+
+请求 `body` **MUST** 包含：
+
+- `e2ee.cipher`
+
+且：
+
+- `body.text` / `body.payload` / `body.payload_b64u` **MUST NOT** 直接出现于外层；
+- 内层应用内容 **MUST** 封装进 MLS `PrivateMessage`；
+- 外层 `meta.content_type` **MUST** 继续表示原始应用内容类型；
+- 允许值至少包括 P4 要求的 `text/plain`、`application/json`、`application/anp-attachment-manifest+json`；
+- 真实的 MLS 密文对象 **MUST** 放入 `body.e2ee.cipher`；
+- `group_state_ref` **MUST** 与当前群状态绑定。
+
+成功响应 **MUST** 至少包含：
+
+- `accepted = true`
+- `group_did`
+- `message_id`
+- `group_event_seq`
+- `group_state_version`
+- `epoch`
+- `group_receipt`
 
 ---
 
-## 13. Profile 特定错误（推荐）
+## 10. 消息可见性与承载规则
 
-在沿用 ANP Core 和 P4 公共错误模型的前提下，本 Profile 推荐以下 `anp_code`：
+### 10.1 应用消息
+
+所有群应用消息 **MUST** 使用 MLS `PrivateMessage`。
+
+### 10.2 握手消息
+
+握手消息 **SHOULD** 优先使用 `PrivateMessage`；但若 Group Host 为了执行方法级语义验证、排序或分发，必须查看握手类型和目标成员，则提交对象 **MAY** 使用 Relay-可见的 MLS 握手承载格式。
+
+### 10.3 外层可见字段
+
+无论握手还是应用消息，外层 ANP 请求 **MUST** 保留足够的最小元数据，以便 Group Host 完成：
+
+- 目标群校验；
+- `auth.actor_proof` 验证；
+- 策略授权判断；
+- 去重与排序；
+- `group_receipt` 生成。
+
+---
+
+## 11. 绑定、AAD 与验证要求
+
+### 11.1 最小绑定集合
+
+以下字段 **MUST** 通过 MLS 群上下文扩展、`authenticated_data`、加密明文或等价机制进入受认证绑定范围：
+
+- `group_did`
+- `crypto_group_id`
+- `group_state_version`（或 `group_state_ref`）
+- `policy_hash`（若存在）
+- `meta.sender_did`
+- `meta.message_id` / `meta.operation_id`
+- `meta.security_profile = group-e2ee`
+
+### 11.2 KeyPackage 验证
+
+接收方在接受某 KeyPackage 用于入群前，**MUST**：
+
+1. 解码 MLS KeyPackage；
+2. 校验其 suite；
+3. 校验其未过期、未撤销；
+4. 校验 `credential.identity == owner_did`；
+5. 校验 `did_wba_binding`；
+6. 校验叶子签名公钥与 `did_wba_binding` 一致。
+
+### 11.3 提交对象验证
+
+Group Host 在接受一个 `group_handshake_submission` 前，**MUST** 至少验证：
+
+1. 外层 `auth.actor_proof` 合法；
+2. `group_did` 与 `group_state_ref.group_did` 一致；
+3. `crypto_group_id` 与该 `group_did` 当前绑定一致；
+4. `epoch` 不冲突；
+5. `handshake_kind` 与业务方法语义一致；
+6. 若涉及成员变更，所引用的 `member_did`、`key_package_id` 与握手对象一致。
+
+---
+
+## 12. 排序、Epoch 与分叉
+
+### 12.1 排序权威
+
+对于同一 `group_did` 上的所有状态改变型加密操作，Group Host Service **MUST** 是最终排序权威。
+
+### 12.2 `epoch` 处理
+
+- `epoch` **MUST** 作为十进制字符串在外层对象中表达；
+- 接收方 **MUST** 拒绝明显过旧且超出容忍窗口的应用消息；
+- 实现 **MAY** 为延迟消息保留有限旧 epoch 解密窗口，但 **MUST** 设定上限。
+
+### 12.3 `epoch_authenticator`
+
+若套件可导出 `epoch_authenticator` 或等价一致性令牌，实现 **SHOULD** 在：
+
+- `group_join_info`
+- `group_cipher_object`
+- `group_receipt`（如适用）
+
+中暴露该值，以便成员做一致性抽检。
+
+### 12.4 分叉检测
+
+若成员观察到：
+
+- 同一 `group_did` 对应多个不可调和的 `crypto_group_id`；
+- 相同或相邻状态下出现不一致的 `epoch_authenticator`；
+- 相同 `group_event_seq` 下存在不同有效 Commit；
+
+则实现 **SHOULD** 将该群标记为 `fork-suspected`，并暂停新的 E2EE 群消息发送，直到状态被重新确认。
+
+---
+
+## 13. 安全与策略要求
+
+### 13.1 Host 不替代成员加密权限
+
+Group Host **MUST NOT** 因为它负责排序，就被视为当然拥有群明文解密能力。
+
+### 13.2 `actor_proof` 与成员签名的关系
+
+- `auth.actor_proof` 证明“谁在应用层请求了这次动作”；
+- MLS 成员签名/提交对象证明“哪个密码学群成员产生了这份握手或消息”。
+
+两者 **MUST NOT** 互相替代。
+
+### 13.3 群回执
+
+`group_receipt` 继续由 Group Host 生成。对于 `group-e2ee` 群，`group_receipt` **SHOULD** 额外包含：
+
+- `crypto_group_id_b64u`
+- `epoch`
+- `epoch_authenticator`（若可得）
+
+但 `group_receipt` **不**表示 Host 能解密消息内容。
+
+### 13.4 群策略优先于纯密码学能力
+
+即便某成员从纯 MLS 角度“能发 Proposal/Commit”，应用层是否允许其执行，仍 **MUST** 由 `group_policy` 判断。
+
+---
+
+## 14. Profile 特定错误（推荐）
+
+在沿用 ANP Core 公共错误模型的前提下，本 Profile 推荐以下 `anp_code`：
 
 | `code` | `anp_code` | 含义 |
 |---|---|---|
-| 3100 | `group.e2ee.key_package_not_found` | 未找到可用的 KeyPackage |
-| 3101 | `group.e2ee.invalid_key_package` | KeyPackage 验证失败 |
-| 3102 | `group.e2ee.join_info_unavailable` | 无法提供外部加入材料 |
-| 3103 | `group.e2ee.handshake_required` | 当前操作缺少必需的握手对象 |
-| 3104 | `group.e2ee.epoch_conflict` | `epoch` 与当前密码学状态冲突 |
-| 3105 | `group.e2ee.commit_conflict` | 并发 Commit 或排序冲突 |
-| 3106 | `group.e2ee.stale_epoch` | 消息或握手来自过旧的 `epoch` |
-| 3107 | `group.e2ee.invalid_group_binding` | `group_did` 与 `crypto_group_id` 绑定非法 |
-| 3108 | `group.e2ee.decrypt_failed` | 群消息解密失败 |
-| 3109 | `group.e2ee.fork_suspected` | 检测到潜在分叉 |
-| 3110 | `group.e2ee.policy_binding_missing` | 缺少必要的 `group_state_ref` / `policy_hash` 绑定 |
+| 6000 | `group.e2ee.key_package_not_found` | 未找到可用的 KeyPackage |
+| 6001 | `group.e2ee.invalid_key_package` | KeyPackage 无效 |
+| 6002 | `group.e2ee.did_binding_invalid` | did:wba 绑定验证失败 |
+| 6003 | `group.e2ee.group_info_required` | 外部加入缺少 GroupInfo / join info |
+| 6004 | `group.e2ee.external_commit_invalid` | External Commit 非法 |
+| 6005 | `group.e2ee.epoch_conflict` | epoch 冲突 |
+| 6006 | `group.e2ee.crypto_group_mismatch` | `group_did` 与 `crypto_group_id` 绑定不一致 |
+| 6007 | `group.e2ee.private_message_required` | 应用消息必须使用 PrivateMessage |
+| 6008 | `group.e2ee.leave_pending` | 离群请求已接受，但密码学移除尚未完成 |
+| 6009 | `group.e2ee.fork_suspected` | 检测到潜在分叉 |
 
 ---
 
-## 14. 最小互通要求
+## 15. 隐私注意事项
+
+### 15.1 不暴露内部副本
+
+本 Profile 的外部群成员始终是 Agent，不是内部副本或设备。
+
+### 15.2 DID 文档与动态状态分离
+
+KeyPackage、当前 epoch、当前群成员树等动态状态 **SHOULD NOT** 直接写入 DID 文档，而 **SHOULD** 通过 `ANPKeyService`、`Group Host Service` 或等价服务提供。
+
+### 15.3 群 Host 的可见性
+
+当使用 Relay-可见握手承载时，Group Host 会看到握手类型和某些成员变更元数据；实现方 **SHOULD** 在应用层文档中明确这一点。
+
+---
+
+## 16. 最小互通要求
 
 一个符合本 Profile 的实现至少 **MUST** 支持：
 
-1. `group.e2ee.publish_key_package`
-2. `group.e2ee.get_key_package`
-3. `group.e2ee.get_join_info`
-4. `group.create` 在 `group-e2ee` 模式下创建群
-5. `group.accept_invite` 的 External Commit 路径
-6. `group.add` / `group.remove` 的密码学状态推进
-7. `group.send` 通过 MLS `PrivateMessage` 承载应用消息
-8. `group_did` 与 `crypto_group_id` 的绑定验证
-9. `did_wba_binding` 验证
-10. 状态型 anti-replay 与基本分叉检测能力
-11. `group_receipt.e2ee` 扩展对象的生成或验证能力
+1. `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`
+2. `group.e2ee.publish_key_package`
+3. `group.e2ee.get_key_package`
+4. `group.e2ee.get_join_info`
+5. did:wba 绑定验证
+6. `group.create` 在 `group-e2ee` 模式下创建群
+7. `group.add`、`group.remove`、`group.send`
+8. `group.accept_invite` 或 `group.join` 至少一种加密加入路径
+9. `group_receipt` 与 `group_state_version` / `group_event_seq` 绑定
+10. `group.send` 使用 `PrivateMessage`
 
 ---
 
-## 15. 示例
+## 17. 示例
 
-### 15.1 `group.e2ee.publish_key_package` 示例
+### 17.1 `group.e2ee.publish_key_package` 示例
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req-61001",
+  "id": "req-gk-001",
   "method": "group.e2ee.publish_key_package",
   "params": {
     "meta": {
@@ -851,8 +814,8 @@ Group Host Service 的职责是：
       "profile": "anp.group.e2ee.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
-      "operation_id": "op-61001",
-      "created_at": "2026-03-29T15:00:00Z"
+      "operation_id": "op-gk-001",
+      "created_at": "2026-03-29T16:00:00Z"
     },
     "body": {
       "group_key_package": {
@@ -863,9 +826,9 @@ Group Host Service 的职责是：
         "did_wba_binding": {
           "agent_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
           "verification_method": "did:wba:a.example:agents:alice:e1_<fingerprint>#key-1",
-          "leaf_signature_key_b64u": "BASE64URL_LEAF_PK",
-          "issued_at": "2026-03-29T15:00:00Z",
-          "expires_at": "2026-04-29T15:00:00Z",
+          "leaf_signature_key_b64u": "BASE64URL_ED25519_LEAF_PK",
+          "issued_at": "2026-03-29T16:00:00Z",
+          "expires_at": "2026-04-29T16:00:00Z",
           "proof": {
             "type": "DataIntegrityProof",
             "proofPurpose": "assertionMethod",
@@ -880,12 +843,60 @@ Group Host Service 的职责是：
 }
 ```
 
-### 15.2 `group.send`（E2EE）示例
+### 17.2 `group.join`（External Commit）示例
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "req-group-e2ee-send-001",
+  "id": "req-join-001",
+  "method": "group.join",
+  "params": {
+    "meta": {
+      "anp_version": "1.0",
+      "profile": "anp.group.e2ee.v1",
+      "security_profile": "group-e2ee",
+      "sender_did": "did:wba:b.example:agents:bob:e1_<fingerprint>",
+      "target": {
+        "kind": "group",
+        "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
+      },
+      "operation_id": "op-join-001",
+      "created_at": "2026-03-29T16:10:00Z"
+    },
+    "auth": {
+      "scheme": "did:wba-json-v1",
+      "actor_proof": {
+        "contentDigest": "sha-256=:BASE64_DIGEST:",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797000;expires=1774797060;nonce=\"n-join\";keyid=\"did:wba:b.example:agents:bob:e1_<fingerprint>#key-1\"",
+        "signature": "sig1=:BASE64_SIGNATURE:"
+      }
+    },
+    "body": {
+      "e2ee": {
+        "handshake": {
+          "wire_format": "mls-public-message",
+          "crypto_group_id_b64u": "BASE64URL_GROUPID",
+          "epoch": "7",
+          "handshake_kind": "external-commit",
+          "mls_message_b64u": "BASE64URL_EXTERNAL_COMMIT",
+          "group_state_ref": {
+            "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+            "group_state_version": "42",
+            "policy_hash": "sha-256:abcd"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### 17.3 `group.send`（PrivateMessage）示例
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-gsend-001",
   "method": "group.send",
   "params": {
     "meta": {
@@ -897,30 +908,30 @@ Group Host Service 的职责是：
         "kind": "group",
         "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
       },
-      "operation_id": "op-group-e2ee-send-001",
-      "message_id": "msg-group-e2ee-send-001",
+      "operation_id": "op-gsend-001",
+      "message_id": "msg-gsend-001",
       "content_type": "text/plain",
-      "created_at": "2026-03-29T15:10:00Z"
+      "created_at": "2026-03-29T16:20:00Z"
     },
     "auth": {
       "scheme": "did:wba-json-v1",
       "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
-        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797000;expires=1774797060;nonce=\"n-301\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
+        "contentDigest": "sha-256=:BASE64_DIGEST:",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797600;expires=1774797660;nonce=\"n-gsend\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
     },
     "body": {
-      "expected_group_state_version": "42",
+      "expected_group_state_version": "43",
       "e2ee": {
         "cipher": {
           "crypto_group_id_b64u": "BASE64URL_GROUPID",
-          "epoch": "7",
+          "epoch": "8",
           "private_message_b64u": "BASE64URL_PRIVATEMESSAGE",
           "group_state_ref": {
             "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
-            "group_state_version": "42",
-            "policy_hash": "sha-256:..."
+            "group_state_version": "43",
+            "policy_hash": "sha-256:efgh"
           },
           "epoch_authenticator": "BASE64URL_AUTH"
         }
@@ -930,118 +941,32 @@ Group Host Service 的职责是：
 }
 ```
 
-成功响应可返回：
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req-group-e2ee-send-001",
-  "result": {
-    "accepted": true,
-    "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
-    "message_id": "msg-group-e2ee-send-001",
-    "operation_id": "op-group-e2ee-send-001",
-    "group_event_seq": "128",
-    "group_state_version": "42",
-    "accepted_at": "2026-03-29T15:10:01Z",
-    "group_receipt": {
-      "receipt_type": "group-message-accepted",
-      "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
-      "group_state_version": "42",
-      "group_event_seq": "128",
-      "subject_method": "group.send",
-      "operation_id": "op-group-e2ee-send-001",
-      "message_id": "msg-group-e2ee-send-001",
-      "actor_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
-      "accepted_at": "2026-03-29T15:10:01Z",
-      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
-      "e2ee": {
-        "crypto_group_id_b64u": "BASE64URL_GROUPID",
-        "epoch": "7",
-        "epoch_authenticator": "BASE64URL_AUTH",
-        "wire_format": "mls-private-message"
-      },
-      "proof": {
-        "type": "DataIntegrityProof",
-        "proofPurpose": "assertionMethod",
-        "verificationMethod": "did:wba:groups.example:team:dev:e1_<fingerprint>#key-1",
-        "proofValue": "z..."
-      }
-    }
-  }
-}
-```
-
-### 15.3 `group.accept_invite`（External Commit）示例
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "req-group-e2ee-join-001",
-  "method": "group.accept_invite",
-  "params": {
-    "meta": {
-      "anp_version": "1.0",
-      "profile": "anp.group.e2ee.v1",
-      "security_profile": "group-e2ee",
-      "sender_did": "did:wba:b.example:agents:bob:e1_<fingerprint>",
-      "target": {
-        "kind": "group",
-        "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
-      },
-      "operation_id": "op-group-e2ee-join-001",
-      "created_at": "2026-03-29T15:20:00Z"
-    },
-    "auth": {
-      "scheme": "did:wba-json-v1",
-      "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
-        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797600;expires=1774797660;nonce=\"n-302\";keyid=\"did:wba:b.example:agents:bob:e1_<fingerprint>#key-1\"",
-        "signature": "sig1=:BASE64_SIGNATURE:"
-      }
-    },
-    "body": {
-      "invitation_id": "inv-001",
-      "e2ee": {
-        "handshake": {
-          "wire_format": "mls-public-message",
-          "crypto_group_id_b64u": "BASE64URL_GROUPID",
-          "epoch": "7",
-          "handshake_kind": "external-commit",
-          "mls_message_b64u": "BASE64URL_EXTERNAL_COMMIT",
-          "group_info_b64u": "BASE64URL_GROUPINFO",
-          "group_state_ref": {
-            "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
-            "group_state_version": "42",
-            "policy_hash": "sha-256:..."
-          }
-        }
-      }
-    }
-  }
-}
-```
-
 ---
 
-## 16. 注册表占位
+## 18. 注册表占位
 
 本标准后续版本 **SHOULD** 建立以下注册表：
 
-1. Group E2EE 业务错误码注册表；
-2. Group E2EE Suite 注册表；
-3. `did_wba_binding` 扩展字段注册表；
-4. `group_receipt.e2ee` 字段注册表；
-5. 群握手类型注册表。
+1. Group E2EE 套件注册表；
+2. did:wba Binding 证明类型注册表；
+3. 群握手承载类型注册表；
+4. Group E2EE 错误码注册表；
+5. `group_join_info` 扩展字段注册表。
 
 ---
 
-## 17. 参考实现说明（非规范性）
+## 19. 参考实现说明（非规范性）
 
 实现方在落地本 Profile 时，宜把它视为：
 
-- `group_did` 对应的应用层群语义之上的密码学 Overlay；
-- `auth.actor_proof` 与 `group_receipt` 之间的密码学补强层；
-- 跨域群管理与加密群消息的最小互通层。
+- `anp.group.base.v1` 的密码学 Overlay；
+- Group Host 排序 + `group_receipt` 的结果见证层；
+- did:wba 身份与 MLS 成员凭证的绑定层；
+- 群应用消息与成员变更的最小互通层。
 
-真正的 Agent 内部副本同步、历史回放、设备级状态传播，不应进入本 Profile。
+对未来版本，可进一步考虑：
+
+- 更强的透明日志；
+- 更细的 fork 恢复机制；
+- 新的 MLS 扩展类型；
+- 后量子群套件。

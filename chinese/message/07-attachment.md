@@ -181,11 +181,12 @@ ANP 中的大对象字节流 **MUST NOT** 直接嵌入 `direct.send` 或 `group.
 
 当附件清单通过 `anp.group.e2ee.v1` 发送时：
 
-- 外层 `meta.content_type` **MUST** 为 Group E2EE Profile 明确声明的加密群消息类型；
+- 外层 `meta.content_type` **MUST** 继续表示原始应用内容类型；对于附件清单，该值 **MUST** 为 `application/anp-attachment-manifest+json`；
+- 外层 `body` **MUST NOT** 直接出现明文附件清单；
 - 附件清单 **MUST** 作为加密前的群应用明文出现；
 - 其内层 `application_content_type` **MUST** 等于 `application/anp-attachment-manifest+json`。
 
-也就是说，**Group E2EE 下，Attachment Manifest 同样是内层内容类型。**
+也就是说，**Group E2EE 下，Attachment Manifest 仍对应附件清单这一原始应用内容类型，但它只出现在内层明文中，外层通过 `body.e2ee.cipher` 承载 MLS 密文对象。**
 
 ### 5.5 对象级加密的使用约束
 

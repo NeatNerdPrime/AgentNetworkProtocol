@@ -922,11 +922,16 @@ Relay 层的幂等去重 **不**替代业务层的幂等要求。Direct Base、G
             "meta": {
               "profile": "anp.group.e2ee.v1",
               "security_profile": "group-e2ee",
-              "content_type": "application/anp-group-cipher+mls"
+              "content_type": "text/plain"
             },
             "body": {
-              "epoch": "7",
-              "private_message_b64u": "BASE64URL_PRIVATE_MESSAGE"
+              "expected_group_state_version": "43",
+              "e2ee": {
+                "cipher": {
+                  "epoch": "7",
+                  "private_message_b64u": "BASE64URL_PRIVATE_MESSAGE"
+                }
+              }
             }
           }
         }

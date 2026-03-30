@@ -181,6 +181,7 @@ Response 的 `id` **MUST** 与对应 Request 的 `id` 完全一致。
 ```json
 {
   "meta": { ... },
+  "auth": { ... },
   "body": { ... }
 }
 ```
@@ -188,7 +189,10 @@ Response 的 `id` **MUST** 与对应 Request 的 `id` 完全一致。
 其中：
 
 - `meta`：通用元数据，承载版本、目标、幂等、安全模式等；
+- `auth`：可选的认证与证明对象；只有当具体 Profile 明确要求时才出现；
 - `body`：方法特定参数。
+
+若某具体 Profile 未定义 `auth`，则调用方 **MAY** 省略它。若某具体 Profile 明确要求 `auth`，则调用方 **MUST** 提供且接收方 **MUST** 验证。除 `meta`、`auth`、`body` 之外的顶层 `params` 成员，只有在对应 Profile 明确定义时才允许出现。
 
 ### 6.2 `meta` 对象
 
@@ -237,7 +241,7 @@ Response 的 `id` **MUST** 与对应 Request 的 `id` 完全一致。
 
 ```json
 {
-  "kind": "agent | group",
+  "kind": "agent | group | service",
   "did": "did:example:..."
 }
 ```
@@ -245,6 +249,7 @@ Response 的 `id` **MUST** 与对应 Request 的 `id` 完全一致。
 - 说明：
   - `kind = "agent"` 表示目标为单个 Agent；
   - `kind = "group"` 表示目标为群组；
+  - `kind = "service"` 表示目标为某个服务端点或服务 DID，常见于联邦 / Relay / 对象服务控制面；
   - 建群前的 `group.create` 等操作可省略 `target`，由 `body` 返回新群 DID。
 
 #### 6.2.6 `operation_id`
