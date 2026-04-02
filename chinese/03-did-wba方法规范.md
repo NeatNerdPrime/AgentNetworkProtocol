@@ -207,6 +207,11 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
       "id": "did:wba:example.com%3A8800:user:alice:e1_<fingerprint>#handle",
       "type": "HandleService",
       "serviceEndpoint": "https://example.com/.well-known/handle/alice"
+    },
+    {
+      "id": "did:wba:example.com%3A8800:user:alice:e1_<fingerprint>#anp",
+      "type": "ANPMessageService",
+      "serviceEndpoint": "https://example.com/anp"
     }
   ],
   "proof": {
@@ -254,6 +259,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
   - **type**：服务类型。目前支持以下类型：
     - `AgentDescription`：智能体描述服务，`serviceEndpoint` 指向遵循[ANP-智能体描述协议规范](/chinese/07-ANP-智能体描述协议规范.md)的文档。
     - `HandleService`：Handle 绑定服务，用于 WNS（WBA Name Space）双向绑定验证。`serviceEndpoint` 指向 Handle Resolution Endpoint，是该 DID 主体声明接受的、用于解析和验证其 Handle 绑定关系的权威 Handle Resolution Endpoint，（如 `https://example.com/.well-known/handle/alice`）。通过在 DID Document 中声明 HandleService，DID 持有者确认其与指定 Handle 的绑定关系，验证者可据此完成双向验证，防止 Handle Provider 单方面篡改映射。详见 [04-ANP-基于DID-WBA的命名空间规范](04-ANP-基于DID-WBA的命名空间规范.md)。
+    - `ANPMessageService`：ANP 即时消息统一服务入口。若 DID 主体参与 ANP 即时消息协议，`serviceEndpoint` **MAY** 指向其统一的 ANP 消息端点；私聊、群聊、密钥材料访问、附件控制等能力由该单一服务入口承载，具体方法与能力声明遵循 ANP Profile 2 及相关 Profile。
   - **serviceEndpoint**：服务的端点URL。 
 
 - **proof**：对于默认 `e1_` profile，`proof` 是必须字段；对于其他 profile，该字段是否出现由对应 profile 规则决定。`proof` 用于表达 DID Document 的完整性证明，证明 DID Document 在生成 proof 之后未被篡改，并表明 proof 创建时签名者控制了对应私钥。proof 本身不单独替代 DID method 解析过程，也不单独替代 `id` 一致性检查。
@@ -265,12 +271,13 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 > 2. 验证方法类型定义见 [https://www.w3.org/TR/did-extensions-properties/#verification-method-types](https://www.w3.org/TR/did-extensions-properties/#verification-method-types)。对于 e1 绑定密钥，推荐使用 `Multikey`。
 > 3. `AgentDescription` 是一个新增的服务类型，用于支持智能体描述文档的发现。
 > 4. `HandleService` 是一个新增的服务类型，用于支持 WNS（WBA Name Space）Handle 与 DID 的双向绑定验证。DID 持有者通过在 DID Document 的 service 中添加 `HandleService` 条目，声明其关联的 Handle，使验证者可以同时检查 Handle → DID（通过 Handle Provider）和 DID → Handle（通过 DID Document）两个方向的映射一致性。详见 [04-ANP-基于DID-WBA的命名空间规范](04-ANP-基于DID-WBA的命名空间规范.md)。
-> 5. 对于需要支持端到端加密通信的场景，建议采用密钥分离设计：签名/断言密钥与密钥协商密钥分开管理。签名/断言密钥不参与密钥协商，密钥协商密钥不参与签名。详细的 E2EE 协议设计参见 [09-ANP-端到端即时消息协议规范](09-ANP-端到端即时消息协议规范.md)。
-> 6. 对于采用默认路径方案的新创建路径型 DID，绑定密钥必须（MUST）满足：
+> 5. `ANPMessageService` 用于承载 ANP 即时消息协议对外公开的统一服务入口。若部署方在内部拆分私聊、群聊、密钥材料或对象控制组件，这种拆分属于实现细节，不要求在 DID Document 中暴露多个独立的 ANP 服务类型。
+> 6. 对于需要支持端到端加密通信的场景，建议采用密钥分离设计：签名/断言密钥与密钥协商密钥分开管理。签名/断言密钥不参与密钥协商，密钥协商密钥不参与签名。详细的 E2EE 协议设计参见 [09-ANP-端到端即时消息协议规范](09-ANP-端到端即时消息协议规范.md)。
+> 7. 对于采用默认路径方案的新创建路径型 DID，绑定密钥必须（MUST）满足：
 >    - 使用 `Multikey` / `publicKeyMultibase` 表示；
 >    - 被 `authentication` 关系授权；
 >    - 其等价公钥 JWK 的 RFC 7638 thumbprint 与 DID 路径最后一个 `e1_` 指纹段完全一致。
-> 7. 如果实现需要支持 secp256k1 路径绑定，请参见附录 A 的 `k1_` 兼容扩展。
+> 8. 如果实现需要支持 secp256k1 路径绑定，请参见附录 A 的 `k1_` 兼容扩展。
 
 ### 2.5 DID方法操作
 
