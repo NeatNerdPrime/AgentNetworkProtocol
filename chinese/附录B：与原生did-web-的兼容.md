@@ -107,13 +107,20 @@
 - `ANPHandleService` 用于表达 DID 持有者接受某个 Handle Provider domain 的名称绑定关系；
 - `ANPMessageService` 用于表达 ANP 在 DID 文档中公开发现的统一消息与交互入口。
 
+若 `ANPMessageService` 条目声明了 `serviceDid`，则该字段用于表达“该服务在跨域服务到服务 HTTP 身份认证中使用哪个 DID 进行签名”。对于原生 `did:web` 部署：
+
+- `serviceDid` **SHOULD** 优先使用裸域名 DID，例如 `did:web:example.com`；
+- 外层 HTTP `Signature-Input` 中的 `keyid` 所属 DID **MUST** 与该 `serviceDid` 一致；
+- 验证方 **MUST** 解析该 `serviceDid`，检查 `keyid` 指向的验证方法是否被 `authentication` 关系授权，并使用其公钥验证请求签名。
+
 若原生 `did:web` 主体参与 ANP 即时消息协议，则：
 
 1. Agent DID 文档应当（SHOULD）至少包含一个 `ANPMessageService`；
 2. Group DID 文档必须（MUST）至少包含一个 `ANPMessageService`；
 3. 同一个 `ANPMessageService` 可以（MAY）同时承载直接消息、群消息、能力协商、安全 Overlay 公开材料访问以及对象控制等能力；
 4. Home Role、Key Role、Group Role、Join Role、Capability Role、Object Role 是 `ANPMessageService` 背后的逻辑角色，而不是 DID Document 中额外独立的标准 `service.type`；
-5. 若存在多个 `ANPMessageService`，调用方应当（SHOULD）根据 `profiles`、`securityProfiles`、`priority` 或本地策略选择。
+5. 若该服务会参与跨域服务到服务调用，其 `ANPMessageService` 条目应当（SHOULD）声明 `serviceDid`；
+6. 若存在多个 `ANPMessageService`，调用方应当（SHOULD）根据 `profiles`、`securityProfiles`、`priority` 或本地策略选择。
 
 只要这些服务条目在 DID Document 中声明正确，实现就可以按 did:wba/ANP 的应用层或消息层协议使用这些服务，而不要求 DID 方法必须是 `did:wba`。
 
@@ -129,6 +136,7 @@
    - 不执行 did:wba 特有的路径绑定、公钥指纹和 proof 强制规则；
    - 若存在 `ANPHandleService`，按 WNS v1 规则执行基于 domain 的名称绑定校验；
    - 若存在 `ANPMessageService`，按 ANP Profile 2 的统一消息入口语义进行服务发现和能力选择；
+   - 若 `ANPMessageService` 声明了 `serviceDid`，则按 P8 的规则使用该 DID 完成跨域服务到服务身份认证；
    - 仍然可以接入 did:wba 的跨平台身份认证、Handle、ANP 服务发现和 E2EE 等上层能力。
 
 应用实现**不应（SHOULD NOT）**仅因为某个 DID 是原生 `did:web`、且不包含 did:wba 特有的 `e1_` / `k1_` 路径绑定或 proof，而拒绝其参与跨域身份认证、Handle 集成、`ANPMessageService` 服务发现或端到端加密通信。
