@@ -49,17 +49,17 @@
 
 原生 `did:web` 可以兼容 did:wba 的 Handle / WNS 体系。
 
-当 `did:web` DID Document 在 `service` 中声明 `HandleService` 时，验证者可以（MAY）对其执行与 did:wba 相同的双向绑定验证逻辑：
+当 `did:web` DID Document 在 `service` 中声明 `ANPHandleService` 时，验证者可以（MAY）对其执行与 did:wba 相同的双向绑定验证逻辑：
 
 1. 通过 Handle Resolution Endpoint 解析 Handle，获得 DID；
 2. 解析该 DID；
-3. 在 DID Document 中查找 `HandleService`；
-4. 验证 `HandleService.serviceEndpoint` 与该 Handle 对应的 Resolution Endpoint 一致。
+3. 在 DID Document 中查找 `ANPHandleService`；
+4. 验证 `ANPHandleService.serviceEndpoint` 与该 Handle 对应的 Resolution Endpoint 一致。
 
 对于原生 `did:web`，双向绑定验证只依赖：
 
 - Handle → DID 的解析结果；
-- DID Document 中的 `HandleService` 声明；
+- DID Document 中的 `ANPHandleService` 声明；
 
 而**不需要**执行 did:wba 的 `e1_` / `k1_` 指纹绑定检查。
 
@@ -85,7 +85,7 @@
 原生 `did:web` DID Document 也可以（MAY）声明 did:wba 网络中的服务类型，例如：
 
 - `AgentDescription`
-- `HandleService`
+- `ANPHandleService`
 
 只要这些服务条目在 DID Document 中声明正确，实现就可以按 did:wba 的应用层协议使用这些服务，而不要求 DID 方法必须是 `did:wba`。
 

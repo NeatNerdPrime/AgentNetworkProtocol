@@ -205,7 +205,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
     },
     {
       "id": "did:wba:example.com%3A8800:user:alice:e1_<fingerprint>#handle",
-      "type": "HandleService",
+      "type": "ANPHandleService",
       "serviceEndpoint": "https://example.com/.well-known/handle/alice"
     },
     {
@@ -258,7 +258,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
   - **id**：服务的唯一标识符。
   - **type**：服务类型。目前支持以下类型：
     - `AgentDescription`：智能体描述服务，`serviceEndpoint` 指向遵循[ANP-智能体描述协议规范](/chinese/07-ANP-智能体描述协议规范.md)的文档。
-    - `HandleService`：Handle 绑定服务，用于 WNS（WBA Name Space）双向绑定验证。`serviceEndpoint` 指向该 DID 主体声明使用的 Handle Provider 域下的 HTTPS 端点（如 `https://example.com/.well-known/handle/alice`）。在本规范 v1 中，验证者执行反向绑定校验时，仅使用 `serviceEndpoint` 的 domain 部分与输入 Handle 的 domain 进行一致性比较，不要求 path 完全一致；后续版本可以引入 `providerDid` 等更强的 Name Service 提供者标识机制。通过在 DID Document 中声明 `HandleService`，DID 持有者确认其关联 Handle 所属的 Name Service 域，验证者可据此完成双向验证。详见 [04-ANP-基于DID-WBA的命名空间规范](04-ANP-基于DID-WBA的命名空间规范.md)。
+    - `ANPHandleService`：Handle 绑定服务，用于 WNS（WBA Name Space）双向绑定验证。`serviceEndpoint` 指向该 DID 主体声明使用的 Handle Provider 域下的 HTTPS 端点（如 `https://example.com/.well-known/handle/alice`）。在本规范 v1 中，验证者执行反向绑定校验时，仅使用 `serviceEndpoint` 的 domain 部分与输入 Handle 的 domain 进行一致性比较，不要求 path 完全一致；后续版本可以引入 `providerDid` 等更强的 Name Service 提供者标识机制。通过在 DID Document 中声明 `ANPHandleService`，DID 持有者确认其关联 Handle 所属的 Name Service 域，验证者可据此完成双向验证。详见 [04-ANP-基于DID-WBA的命名空间规范](04-ANP-基于DID-WBA的命名空间规范.md)。
     - `ANPMessageService`：ANP 即时消息统一服务入口。若 DID 主体参与 ANP 即时消息协议，`serviceEndpoint` **MAY** 指向其统一的 ANP 消息端点；私聊、群聊、密钥材料访问、附件控制等能力由该单一服务入口承载，具体方法与能力声明遵循 ANP Profile 2 及相关 Profile。
   - **serviceEndpoint**：服务的端点URL。 
 

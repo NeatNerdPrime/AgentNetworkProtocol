@@ -276,12 +276,12 @@ The Handle Provider declares the Handle-to-DID mapping through the Resolution En
 
 ### 6.2 DID Document Declaration (Reverse)
 
-The DID holder adds a `HandleService` type entry in the `service` section of their DID Document, declaring their associated Handle:
+The DID holder adds a `ANPHandleService` type entry in the `service` section of their DID Document, declaring their associated Handle:
 
 ```json
 {
   "id": "did:wba:example.com:user:alice#handle",
-  "type": "HandleService",
+  "type": "ANPHandleService",
   "serviceEndpoint": "https://example.com/.well-known/handle/alice"
 }
 ```
@@ -289,7 +289,7 @@ The DID holder adds a `HandleService` type entry in the `service` section of the
 **Field Descriptions:**
 
 - `id`: Unique identifier for the service; using the `#handle` suffix is recommended
-- `type`: MUST be `HandleService`
+- `type`: MUST be `ANPHandleService`
 - `serviceEndpoint`: URL pointing to the Handle Resolution Endpoint
 
 ### 6.3 Verification Flow
@@ -306,7 +306,7 @@ sequenceDiagram
     H-->>V: DID
     V->>D: 2. Resolve DID to get DID Document
     D-->>V: DID Document
-    Note over V: 3. Check if HandleService in<br/>DID Document points to the same Handle
+    Note over V: 3. Check if ANPHandleService in<br/>DID Document points to the same Handle
     alt Bidirectionally consistent
         Note over V: ✓ Verification passed
     else Inconsistent
@@ -318,7 +318,7 @@ sequenceDiagram
 
 1. Resolve the Handle via the Handle Resolution Endpoint to obtain the DID
 2. Resolve the DID according to specification 03 to obtain the DID Document
-3. Find entries of type `HandleService` in the DID Document's `service` section
+3. Find entries of type `ANPHandleService` in the DID Document's `service` section
 4. Check whether the entry's `serviceEndpoint` points to the same Handle's Resolution Endpoint
 
 If both directions are consistent, the binding relationship is trusted; otherwise, it SHOULD be treated as untrusted and the user SHOULD be warned.
@@ -327,7 +327,7 @@ If both directions are consistent, the binding relationship is trusted; otherwis
 
 ### 7.1 Integration with DID Document (Spec 03)
 
-A new `HandleService` type is added to the DID Document's `service` section to support reverse verification (Section 6).
+A new `ANPHandleService` type is added to the DID Document's `service` section to support reverse verification (Section 6).
 
 ```json
 {
@@ -339,7 +339,7 @@ A new `HandleService` type is added to the DID Document's `service` section to s
     },
     {
       "id": "did:wba:example.com:user:alice#handle",
-      "type": "HandleService",
+      "type": "ANPHandleService",
       "serviceEndpoint": "https://example.com/.well-known/handle/alice"
     }
   ]
@@ -412,7 +412,7 @@ Users may need to migrate their Handle from one Handle Provider to another. Duri
 
 - The old Handle Provider SHOULD return a `301 Moved Permanently` redirect, with the `Location` header pointing to the new Handle Provider's Resolution Endpoint
 - Both old and new Handle Providers SHOULD maintain resolution capability during the migration period
-- The DID holder needs to update the `HandleService` in their DID Document to point to the new Handle Provider
+- The DID holder needs to update the `ANPHandleService` in their DID Document to point to the new Handle Provider
 
 ## 9. Security Considerations
 
