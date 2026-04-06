@@ -1,4 +1,4 @@
-# did:wba方法规范（V0.1）
+# did:wba方法规范（V0.2）
 
 ## 摘要
 
@@ -245,7 +245,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 - **id**：必须字段，不可以携带IP，但是可以携带端口，携带端口时，冒号需要编码为`%3A`。后面使用冒号进行路径分割。对于新创建的路径型 DID，最后一个 path segment 必须（MUST）是 `e1_<fingerprint>`。
 
-- **verificationMethod**：必须字段，包含验证方法的数组，定义了用于验证DID主体的公钥信息。对于需要支持端到端加密（E2EE）通信的场景，`verificationMethod` 中**应**同时包含签名密钥和密钥协商密钥，实现密钥分离。签名密钥用于身份认证和文档断言；密钥协商密钥（如 `X25519KeyAgreementKey2019`）用于 HPKE 密钥封装。两类密钥各司其职，单一密钥泄露不会同时影响身份认证和通信机密性。
+- **verificationMethod**：必须字段，包含验证方法的数组，定义了用于验证DID主体的公钥信息。对于需要支持端到端加密（E2EE）通信的场景，`verificationMethod` 中**应**同时包含签名密钥和密钥协商密钥，实现密钥分离。签名密钥用于身份认证和文档断言；密钥协商密钥（如 `X25519KeyAgreementKey2019`）用于上层协议的密钥协商或机密信息接收。两类密钥各司其职，单一密钥泄露不会同时影响身份认证和通信机密性。
 
   对于采用默认路径方案的路径型 DID，`verificationMethod` 中必须（MUST）至少存在一个 Ed25519 `Multikey` 作为绑定密钥，其等价公钥 JWK 的 RFC 7638 thumbprint 与 DID 路径最后的 `e1_` 指纹段完全一致。
 
@@ -260,7 +260,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 - **assertionMethod**：可选字段，列出用于表达断言的验证方法。对于采用 e1 profile 且使用标准 DID Document proof 的 DID，绑定密钥或用于生成该 proof 的 Ed25519 `Multikey` 必须（MUST）被 `assertionMethod` 授权。
 
-- **keyAgreement**：可选字段，定义了用于密钥协商的公钥信息，可以用于两个DID之间的加密通信。验证方法一般使用X25519KeyAgreementKey2019等可以用于密钥交换的密钥协商算法。`keyAgreement` 可以是字符串引用（指向 `verificationMethod` 中的条目）或嵌入式对象。对于端到端加密（E2EE）场景（详见 [09-ANP-端到端即时消息协议规范](09-ANP-端到端即时消息协议规范.md)），此字段用于 HPKE 密钥封装，**应**包含 `X25519KeyAgreementKey2019` 类型的条目。如果 DID 文档中没有 `keyAgreement` 或没有 X25519 类型条目，则表示该智能体不支持 E2EE。
+- **keyAgreement**：可选字段，定义了用于密钥协商的公钥信息，可以用于两个DID之间的加密通信。验证方法一般使用X25519KeyAgreementKey2019等可以用于密钥交换的密钥协商算法。`keyAgreement` 可以是字符串引用（指向 `verificationMethod` 中的条目）或嵌入式对象。对于端到端加密（E2EE）场景，此字段用于向上层协议提供密钥协商材料。上层协议可以是私聊端到端加密 Profile、群组端到端加密 Profile 或其它未来定义的安全 Overlay；本规范 **不**把 `keyAgreement` 写死为某一种特定算法流程。新部署通常 **应** 包含 `X25519KeyAgreementKey2019` 或语义等价的 X25519 条目。如果 DID 文档中没有 `keyAgreement` 或没有可供上层协议使用的协商条目，则表示该智能体不支持相关 E2EE 能力。
 
   - **子字段**:
     - **id**：密钥协商方法的唯一标识符。
@@ -285,7 +285,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 > 1. 公钥信息目前支持两种格式，`publicKeyJwk` 和 `publicKeyMultibase`。详细见 [https://www.w3.org/TR/did-extensions-properties/#verification-method-properties](https://www.w3.org/TR/did-extensions-properties/#verification-method-properties)。
 > 2. 验证方法类型定义见 [https://www.w3.org/TR/did-extensions-properties/#verification-method-types](https://www.w3.org/TR/did-extensions-properties/#verification-method-types)。对于 e1 绑定密钥，推荐使用 `Multikey`。
 
-> 6. 对于需要支持端到端加密通信的场景，建议采用密钥分离设计：签名/断言密钥与密钥协商密钥分开管理。签名/断言密钥不参与密钥协商，密钥协商密钥不参与签名。详细的 E2EE 协议设计参见 [09-ANP-端到端即时消息协议规范](09-ANP-端到端即时消息协议规范.md)。
+> 6. 对于需要支持端到端加密通信的场景，建议采用密钥分离设计：签名/断言密钥与密钥协商密钥分开管理。签名/断言密钥不参与密钥协商，密钥协商密钥不参与签名。具体如何使用这些材料，由上层私聊 E2EE、群组 E2EE 等 Profile 分别定义。
 > 7. 对于采用默认路径方案的新创建路径型 DID，绑定密钥必须（MUST）满足：
 >    - 使用 `Multikey` / `publicKeyMultibase` 表示；
 >    - 被 `authentication` 关系授权；
