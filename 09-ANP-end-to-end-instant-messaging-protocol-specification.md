@@ -183,7 +183,6 @@ Therefore:
 
 - Large objects are not transferred through the cross-domain service invocation link;
 - The download link can be made into a locator instead of a long-term direct link;
-- Can ask for `requires_ticket = true`;
 - Even if the link is leaked, object-level encryption can be used to ensure that the third party cannot get the clear text.
 
 ### 4.5 Federation: Direct call from service to service

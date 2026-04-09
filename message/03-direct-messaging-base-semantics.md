@@ -681,10 +681,7 @@ An implementation conforming to this Profile MUST support at least:
               "value_b64u": "BASE64URL_DIGEST"
             },
             "access_info": {
-              "object_uri": "https://objects.example.com/o/abc",
-              "uri_mode": "locator",
-              "requires_ticket": true,
-              "ticket_delivery": "fetch"
+              "object_uri": "https://objects.example.com/o/abc"
             }
           }
         ],
