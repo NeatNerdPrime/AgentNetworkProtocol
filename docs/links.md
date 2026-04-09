@@ -4,7 +4,7 @@ For ease of reference, all ANP-related materials are organized by **Specificatio
 
 ## Specifications
 
-- [ANP Getting Started Guide](anp-getting-started-guide.md)
+- [ANP Getting Started Guide](/docs/anp-getting-started-guide.md)
 - [did:wba Method Specification](/03-did-wba-method-design-specification.md)
 - [ANP End-to-End Instant Messaging Protocol Overview](/09-ANP-end-to-end-instant-messaging-protocol-specification.md)
 - [ANP Profile 1: Core Binding](/message/01-core-binding.md)
