@@ -505,7 +505,7 @@ The modifications to the sourceHello and destinationHello messages are as follow
 ```json
 {
   "version": "1.0",
-  "type": "sourceHello",  // destinationHello同理
+  "type": "sourceHello",  // destinationHello uses the same structure
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -678,6 +678,10 @@ This specification mainly discusses the design of the meta-protocol and the desi
 At the same time, we believe that with the support of the meta-protocol, numerous communication protocols achieving consensus among agents will emerge on the agent network, far exceeding the number of protocols formulated by humans.
 
 However, how to design a reasonable protocol election consensus algorithm, how to incentivize agents to report their negotiated consensus protocols, and how to enable agents to easily obtain consensus protocols negotiated by other agents still require further discussion.
+
+## Challenges
+
+If AI cannot effectively integrate protocol code with application business logic and data processing code, and instead only uses protocols to process formats, the role played by the meta-protocol will be much smaller.
 
 ## Copyright Notice
 Copyright (c) 2024 GaoWei Chang  
