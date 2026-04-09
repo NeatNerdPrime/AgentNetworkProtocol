@@ -681,7 +681,10 @@ An implementation conforming to this Profile MUST support at least:
               "value_b64u": "BASE64URL_DIGEST"
             },
             "access_info": {
-              "object_uri": "https://objects.example.com/o/abc"
+              "object_uri": "https://objects.example.com/objects/obj-plain-001"
+            },
+            "encryption_info": {
+              "mode": "none"
             }
           }
         ],
@@ -691,6 +694,8 @@ An implementation conforming to this Profile MUST support at least:
   }
 }
 ```
+
+> Note: This attachment manifest example is aligned with P7. It no longer carries an explicit control-plane service DID in `access_info`. Before downloading, the receiver should resolve the sender DID of the original message to the sender's public `ANPMessageService`, and then call `attachment.get_download_ticket`.
 
 ### 13.3 `direct.send` example with did:wba originator certificate
 

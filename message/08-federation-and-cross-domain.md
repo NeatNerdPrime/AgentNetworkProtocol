@@ -410,11 +410,11 @@ For cross-domain `attachment.get_download_ticket`:
 
 ### 9.1 Final processing endpoint
 
-The protocol-level final target **MUST** for `attachment.get_download_ticket` is the public `ANPMessageService` identified by attachment manifest `access_info.control_service_did`. This public service endpoint can be internally rerouted to the Object Service that actually handles the object control logic, but this is an implementation detail.
+The protocol-level final target for `attachment.get_download_ticket` **MUST** be the public `ANPMessageService` exposed by the original sender DID of the message carrying the attachment manifest. That public service endpoint can be internally rerouted to the Object Service that actually handles the object control logic, but this is an implementation detail.
 
 Therefore, the "final processing endpoint" in standard interoperability semantics is:
 
-- Protocol level: `control_service_did` corresponding public `ANPMessageService`
+- Protocol level: the public `ANPMessageService` corresponding to the original sender DID of the attachment message
 - Implementation level: the internal Object Service behind the service (optional)
 
 The caller **MUST NOT** guesses the control plane service based only on the URL domain name of `object_uri`.
@@ -434,13 +434,15 @@ This mode is suitable for:
 - Requires unified service-to-service identity authentication;
 - The Agent itself does not directly handle all cross-domain service invocation details.
 
+In this mode, the local domain service **MUST** resolve the public `ANPMessageService` from the original sender DID of the attachment message, and send `attachment.get_download_ticket` to that service.
+
 #### Mode B: Agent direct mode (deployment extension)
 
-The requesting agent directly calls the public `ANPMessageService` corresponding to the object control service.
+The requesting agent directly resolves the original sender DID of the attachment message and calls its public `ANPMessageService`.
 
 This mode **is not part of v1 MTI**; if enabled by deployment, you must resolve it yourself:
 
-- How Agent obtains and verifies target `serviceDid`
+- How the Agent obtains and verifies the target `serviceDid` based on the original sender DID of the attachment message
 - How the client performs outer service authentication
 - How the client handles rate limiting, retrying and auditing strategies in a unified manner
 
@@ -473,7 +475,7 @@ An implementation conforming to this Profile MUST support at least:
 5. Support routing `group.join`, `group.add`, `group.remove`, `group.leave`, `group.update_profile`, `group.update_policy` and `group.send` directly to the final Group Host Service;
 6. When used in combination with P6, supports the correct cross-domain landing point of `group.e2ee.create`, `group.e2ee.add`, `group.e2ee.remove`, `group.e2ee.send`;
 7. When used in combination with P5/P6, supports cross-domain routing of `direct.e2ee.get_prekey_bundle` and `group.e2ee.get_key_package`;
-8. Send `attachment.get_download_ticket` to the public control service identified by `control_service_did`;
+8. Send `attachment.get_download_ticket` to the public `ANPMessageService` exposed by the original sender DID of the attachment message;
 9. Explicitly prohibit regular forwarding of object bytes through the cross-domain service invocation link;
 10. Support at least one mechanism for distributing sorted group events to member domains; when used in combination with P6, **MUST** supports cross-domain distribution of `group.e2ee.notice`;
 11. Declare `serviceDid` for the `ANPMessageService` that participates in the cross-domain call, and verify the outer HTTP Message Signatures according to the method level caller anchor;

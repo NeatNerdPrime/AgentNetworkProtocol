@@ -451,7 +451,7 @@ When the target `serviceDid` of a service-scoped method is known to the caller, 
 4. If you need precise capability boundaries, call `anp.get_capabilities` on the same entry;
 5. This `serviceDid` can be regarded as a trusted cross-domain service identity only after passing the runtime service identity binding verification specified in P8.
 
-If a business object (such as `access_info.control_service_did` in attachment manifest) explicitly provides control plane `serviceDid`, the caller **MUST** preferentially uses the `serviceDid` as the discovery anchor instead of inferring the control plane service from the URL domain name of `object_uri`.
+For attachment download ticket retrieval, the caller **MUST** use the original sender DID of the message carrying the attachment manifest as the discovery anchor and resolve its public `ANPMessageService`. In group scenarios, this DID is taken from the original sender of the group message, not from `group_did`. The caller **MUST NOT** infer the control-plane service only from the URL domain name of `object_uri`.
 
 
 ### 9.4 Service selection

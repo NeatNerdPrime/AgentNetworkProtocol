@@ -83,7 +83,7 @@ The standard mainline path **MUST** for v1 is:
 3. The sender uploads the object bytes through independent HTTPS `PUT`;
 4. The sender calls `attachment.commit_object`;
 5. The sender sends the attachment manifest through `direct.send` or `group.send`;
-6. The receiver obtains and downloads ticket through `attachment.get_download_ticket`;
+6. The receiver resolves the public `ANPMessageService` of the original sender DID of the message carrying the attachment manifest, and then obtains the download ticket through `attachment.get_download_ticket`;
 7. The receiver downloads the object through independent HTTPS `GET object_uri` and carries ticket in the `Authorization` header;
 8. The receiver verifies the digest; if the object has `object-e2ee` enabled, decryption and post-decryption verification are performed.
 
@@ -185,7 +185,7 @@ flowchart TD
 A[Sender Client] -->|attachment.create_slot| S[Control Service]
 A -->|HTTPS PUT object bytes| O[objectdata plane]
 A -->|direct.send / group.send\nattachment_manifest| M[receiver or group Host]
-    M -->|attachment.get_download_ticket| S
+    M -->|resolve by original message sender_did\nattachment.get_download_ticket| S
     M -->|HTTPS GET object_uri\nAuthorization: Bearer ticket| O
 ```
 
@@ -200,7 +200,7 @@ sequenceDiagram
     participant B as Receiver Client B
 
     A->>AS: attachment.create_slot (mode=none)
-    AS-->>A: upload_uri + object_uri + control_service_did
+    AS-->>A: upload_uri + object_uri
     A->>OS: HTTPS PUT plaintext bytes
     A->>AS: attachment.commit_object
     AS-->>A: committed = true
@@ -208,7 +208,7 @@ sequenceDiagram
     AS->>BS: direct.send
     BS-->>AS: accepted
     BS-->>B: direct.incoming / equivalent delivery
-    B->>AS: attachment.get_download_ticket
+    B->>AS: attachment.get_download_ticket (resolved via the original message sender_did)
     AS-->>B: download_ticket
     B->>OS: HTTPS GET object_uri + Authorization
     OS-->>B: plain text byte
@@ -226,7 +226,7 @@ sequenceDiagram
     participant B as Receiver Client B
 
     A->>AS: attachment.create_slot (mode=object-e2ee)
-    AS-->>A: upload_uri + object_uri + control_service_did
+    AS-->>A: upload_uri + object_uri
     A->>A: Locally generated object_key + nonce\nLocal encrypted file
     A->>OS: HTTPS PUT ciphertext bytes
     A->>AS: attachment.commit_object
@@ -236,7 +236,7 @@ sequenceDiagram
     BS-->>AS: accepted
     BS-->>B: direct.incoming / equivalent delivery
     B->>B: Extract the inner manifest\nGet object_key + nonce
-    B->>AS: attachment.get_download_ticket
+    B->>AS: attachment.get_download_ticket (resolved via the original message sender_did)
     AS-->>B: download_ticket
     B->>OS: HTTPS GET object_uri + Authorization
     OS-->>B: Cipher text
@@ -254,14 +254,14 @@ sequenceDiagram
     participant M as Group member client
 
     A->>AS: attachment.create_slot (mode=none)
-    AS-->>A: upload_uri + object_uri + control_service_did
+    AS-->>A: upload_uri + object_uri
     A->>OS: HTTPS PUT plaintext bytes
     A->>AS: attachment.commit_object
     AS-->>A: committed = true
     A->>GH: group.send (transport-protected, manifest)
     GH-->>A: accepted + group_receipt
     GH-->>M: group.incoming
-    M->>AS: attachment.get_download_ticket
+    M->>AS: attachment.get_download_ticket (resolved via the original message sender_did)
     AS-->>M: download_ticket
     M->>OS: HTTPS GET object_uri + Authorization
     OS-->>M: plain text byte
@@ -279,7 +279,7 @@ sequenceDiagram
     participant M as Group member client
 
     A->>AS: attachment.create_slot (mode=object-e2ee)
-    AS-->>A: upload_uri + object_uri + control_service_did
+    AS-->>A: upload_uri + object_uri
     A->>A: Locally generated object_key + nonce\nLocal encrypted file
     A->>OS: HTTPS PUT ciphertext bytes
     A->>AS: attachment.commit_object
@@ -288,7 +288,7 @@ sequenceDiagram
     GH-->>A: accepted + group_receipt
     GH-->>M: group.incoming
     M->>M: Extract the inner manifest\nGet object_key + nonce
-    M->>AS: attachment.get_download_ticket
+    M->>AS: attachment.get_download_ticket (resolved via the original message sender_did)
     AS-->>M: download_ticket
     M->>OS: HTTPS GET object_uri + Authorization
     OS-->>M: Cipher text
@@ -361,8 +361,7 @@ The recommended structure of Attachment Message is as follows:
         "value_b64u": "BASE64URL_DIGEST"
       },
       "access_info": {
-        "object_uri": "https://objects.example.com/objects/obj-001",
-        "control_service_did": "did:example:objects-service"
+        "object_uri": "https://objects.example.com/objects/obj-001"
       },
       "encryption_info": {
         "mode": "none"
@@ -408,7 +407,7 @@ Field description:
 - `mime_type`: MIME type of the original file; **MUST**
 - `size`: Upload object byte size, decimal string; **MUST**
 - `digest`: Upload object byte summary; **MUST**
-- `access_info`: Object download location and control plane discovery information; **MUST**
+- `access_info`: Object download location information; **MUST**
 - `encryption_info`: object-level encryption information; **MUST**
 - `media_info`: Supplementary description of media objects such as pictures, audio and video; **MAY**
 
@@ -432,8 +431,7 @@ The structure of `access_info` is as follows:
 
 ```json
 {
-  "object_uri": "https://objects.example.com/objects/obj-001",
-  "control_service_did": "did:example:objects-service"
+  "object_uri": "https://objects.example.com/objects/obj-001"
 }
 ```
 
@@ -441,10 +439,12 @@ rule:
 
 1. `object_uri` **MUST** be the `https://` URL
 2. `object_uri` represents a locator-style object address in v1; it is not a permanent public direct link
-3. `control_service_did` **MUST** exists, and **MUST** be equal to the public `ANPMessageService.serviceDid` responsible for the control plane method of the object.
-4. The receiver **MUST** calls `attachment.get_download_ticket` before downloading
-5. When the receiver downloads, **MUST** initiates `GET` for `object_uri` and carries ticket in the `Authorization` header.
-6. The caller **MUST NOT** only guesses the control plane service based on the URL domain name of `object_uri`; **MUST** use `control_service_did` as the discovery anchor point
+3. The receiver **MUST** call `attachment.get_download_ticket` before downloading
+4. The receiver **MUST** resolve the public `ANPMessageService` from the original sender DID of the message carrying the attachment manifest
+5. In group scenarios, the original sender DID above **MUST** be taken from the original sender of the group message carrying the attachment manifest (for example, `group.incoming.meta.sender_did`)
+6. `attachment.get_download_ticket` **MUST** be sent to the `serviceDid` of that public service
+7. When downloading, the receiver **MUST** initiate `GET` for `object_uri` and carry the ticket in the `Authorization` header
+8. The caller **MUST NOT** infer the control-plane service only from the URL domain name of `object_uri`
 
 ### 7.6 `media_info`
 
@@ -658,7 +658,7 @@ Authorization: Bearer {download_ticket}
 When the Object control service handles `attachment.get_download_ticket`, **MUST** checks:
 
 1. `meta.target.kind = "service"`
-2. `meta.target.did = access_info.control_service_did`
+2. `meta.target.did` **MUST** be equal to the public `ANPMessageService.serviceDid` resolved from the original sender DID of the attachment message
 3. `requester_did = meta.sender_did`
 4. Access Grant corresponding to `(message_id, attachment_id, object_uri)` exists
 5. `message_security_profile` is consistent with Access Grant
@@ -667,9 +667,9 @@ When the Object control service handles `attachment.get_download_ticket`, **MUST
 
 ### 9.7 Cross-service synchronization
 
-v1 **Not separately standardized** Access Grant synchronization protocol between multiple internal services.
+v1 **does not separately standardize** the Access Grant synchronization protocol between multiple internal services.
 
-If the implementation behind `control_service_did` is not the sender service itself, the deployer **MUST** ensures that the control service can obtain the required Access Grant in local state or internal synchronization.
+Under the default v1 path, download tickets are issued by the public `ANPMessageService` of the original sender of the attachment message. Whether this public service internally reroutes to an independent Object Service is an implementation detail. If the deployer splits the object-control component internally, it **MUST** ensure that the externally exposed service can obtain the Access Grant required for issuing the download ticket through local state or internal synchronization.
 
 ### 9.8 Access boundaries after member changes
 
@@ -769,7 +769,6 @@ A successful response **MUST** contain at least:
 - `slot_id`
 - `upload_uri`
 - `object_uri`
-- `control_service_did`
 - `commit_token`
 - `expires_at`
 
@@ -777,7 +776,7 @@ A successful response **MAY** contain:
 
 - `upload_headers`
 
-When the sender subsequently constructs `attachment_manifest.access_info`, `object_uri` and `control_service_did` **SHOULD** be directly taken from the successful response of `attachment.create_slot` or `attachment.commit_object`
+When the sender subsequently constructs `attachment_manifest.access_info`, `object_uri` **SHOULD** be taken directly from the successful response of `attachment.create_slot` or `attachment.commit_object`; before downloading, the receiver discovers the ticket service based on the original sender DID of the attachment message as defined by this Profile.
 
 ### 10.3 `attachment.commit_object`
 
@@ -821,7 +820,6 @@ A successful response **MUST** contain at least:
 - `committed`
 - `attachment_id`
 - `object_uri`
-- `control_service_did`
 - `committed_at`
 
 Specifically:
@@ -869,7 +867,7 @@ When object access requires ticket, the receiver obtains the temporary download 
 This method **MUST** use:
 
 - `meta.target.kind = "service"`
-- `meta.target.did = access_info.control_service_did`
+- `meta.target.did` **MUST** be equal to the public `ANPMessageService.serviceDid` resolved from the original sender DID of the attachment message
 
 `body` **MUST** contain at least:
 
@@ -894,6 +892,7 @@ Field rules:
 - `message_security_profile` refers to the message security mode that carries the attachment manifest, not the `meta.security_profile` called this time by control plane
 - `message_target_did` refers to the target Agent DID of the original direct messages
 - `group_did` refers to the group DID to which the original group messages belongs
+- Before sending the ticket request, the caller **MUST** first resolve the public `ANPMessageService` from the original sender DID of the attachment message; in group scenarios, this DID is taken from the original sender of the group message, not from `group_did`
 
 #### 10.5.3 Successful response
 
@@ -1000,7 +999,7 @@ An implementation conforming to this Profile MUST support at least:
 6. `attachment_message.attachments`
 7. `attachment_manifest`’s `attachment_id`, `mime_type`, `size`, `digest`, `access_info`, `encryption_info`
 8. `access_info.object_uri`
-9. `access_info.control_service_did`
+9. Discover the target service of `attachment.get_download_ticket` based on the original sender DID of the attachment message
 10. `digest.alg = sha-256`
 11. Standalone HTTPS `PUT upload_uri`
 12. Standalone HTTPS `GET object_uri`
@@ -1036,7 +1035,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
       "sender_did": "did:example:agent-a",
       "target": {
         "kind": "service",
-        "did": "did:example:objects-service"
+        "did": "did:example:domain-a"
       },
       "operation_id": "op-70001",
       "created_at": "2026-03-29T14:00:00Z"
@@ -1071,7 +1070,6 @@ If an implementation claims to support E2EE attachments, it MUST also:
       "Content-Type": "application/octet-stream"
     },
     "object_uri": "https://objects.example.com/objects/obj-abc",
-    "control_service_did": "did:example:objects-service",
     "commit_token": "ct-abc-123",
     "expires_at": "2026-03-29T14:15:00Z"
   }
@@ -1093,7 +1091,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
       "sender_did": "did:example:agent-a",
       "target": {
         "kind": "service",
-        "did": "did:example:objects-service"
+        "did": "did:example:domain-a"
       },
       "operation_id": "op-70002",
       "created_at": "2026-03-29T14:03:00Z"
@@ -1124,7 +1122,6 @@ If an implementation claims to support E2EE attachments, it MUST also:
     "committed": true,
     "attachment_id": "att-001",
     "object_uri": "https://objects.example.com/objects/obj-abc",
-    "control_service_did": "did:example:objects-service",
     "committed_at": "2026-03-29T14:03:05Z"
   }
 }
@@ -1145,7 +1142,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
       "sender_did": "did:example:agent-a",
       "target": {
         "kind": "service",
-        "did": "did:example:objects-service"
+        "did": "did:example:domain-a"
       },
       "operation_id": "op-70003",
       "created_at": "2026-03-29T14:04:00Z"
@@ -1187,7 +1184,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
       "sender_did": "did:example:agent-b",
       "target": {
         "kind": "service",
-        "did": "did:example:objects-service"
+        "did": "did:example:domain-a"
       },
       "operation_id": "op-70004",
       "created_at": "2026-03-29T14:10:00Z"
@@ -1279,8 +1276,7 @@ Content-Length: 1048592
               "value_b64u": "BASE64URL_SHA256_OF_PLAINTEXT"
             },
             "access_info": {
-              "object_uri": "https://objects.example.com/objects/obj-plain-001",
-              "control_service_did": "did:example:objects-service"
+              "object_uri": "https://objects.example.com/objects/obj-plain-001"
             },
             "encryption_info": {
               "mode": "none"
@@ -1337,8 +1333,7 @@ Content-Length: 1048592
               "value_b64u": "BASE64URL_SHA256_OF_PLAINTEXT"
             },
             "access_info": {
-              "object_uri": "https://objects.example.com/objects/obj-group-plain-001",
-              "control_service_did": "did:example:objects-service"
+              "object_uri": "https://objects.example.com/objects/obj-group-plain-001"
             },
             "encryption_info": {
               "mode": "none"
@@ -1405,8 +1400,7 @@ Content-Length: 1048592
           "value_b64u": "BASE64URL_SHA256_OF_CIPHERTEXT"
         },
         "access_info": {
-          "object_uri": "https://objects.example.com/objects/obj-abc",
-          "control_service_did": "did:example:objects-service"
+          "object_uri": "https://objects.example.com/objects/obj-abc"
         },
         "encryption_info": {
           "mode": "object-e2ee",
@@ -1485,8 +1479,7 @@ Content-Length: 1048592
           "value_b64u": "BASE64URL_SHA256_OF_CIPHERTEXT"
         },
         "access_info": {
-          "object_uri": "https://objects.example.com/objects/obj-group-e2ee-001",
-          "control_service_did": "did:example:objects-service"
+          "object_uri": "https://objects.example.com/objects/obj-group-e2ee-001"
         },
         "encryption_info": {
           "mode": "object-e2ee",
