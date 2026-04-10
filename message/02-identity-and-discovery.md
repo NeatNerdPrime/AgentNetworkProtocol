@@ -11,39 +11,39 @@
 
 ## 1. Purpose
 
-This Profile defines ANP's identity model and discovery model, specifying:
+This Profile defines the identification model and discovery model of ANP, stipulating:
 
 1. How to use DID to represent Agent and Group;
 2. Which attributes in the DID document have normative significance for ANP;
-3. How the ANP service endpoint is expressed in the DID document;
+3. How to express ANP service endpoint in DID document;
 4. How the caller discovers the interactive ANP service based on the DID document;
 5. Which dynamic states must not be put into DID documents.
 
 This Profile does not define:
 
 - The DID method itself;
-- The DID resolution protocol itself;
-- Device identifiers;
-- Internal replica synchronization;
+- DID parsing protocol itself;
+- Equipment identification;
+- Internal copy synchronization;
 - Specific E2EE algorithm details;
 - Specific group state machine details.
 
 ---
 
-## 2. Terminology and normative conventions
+## 2. Terminology and Normative Conventions
 
-### 2.1 Normative keywords
+### 2.1 Normative Keywords
 
-In this document, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, **OPTIONAL** are interpreted as normative requirements according to their capitalized form.
+In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, **OPTIONAL** are interpreted as normative requirements according to their capitalized form.
 
 ### 2.2 Terminology
 
 - **Agent DID**: Represents the DID of an Agent protocol subject.
-- **Group DID**: Represents the DID of a group protocol subject.
+- **Group DID**: Represents the DID of a group agreement subject.
 - **Controller**: An entity capable of updating DID documents or initiating controlled actions on behalf of DID.
-- **ANPMessageService**: The unified ANP service endpoint published through the DID document.
-- **Federated Service DID**: The service DID used by the deployer in cross-domain service-to-service HTTP authentication, typically declared by `ANPMessageService.serviceDid`.
-- **Discovery**: The process of resolving a DID to its DID document and selecting the appropriate service endpoint for subsequent interactions.
+- **ANPMessageService**: The unified ANP service entrance for DID documents to be exposed to the outside world.
+- **Federated Service DID**: The service DID used by the deployer in cross-domain service-to-service HTTP authentication, typically asserted by `ANPMessageService.serviceDid`.
+- **Discovery**: The process of parsing a DID document based on its DID document and selecting the appropriate service endpoint to complete subsequent interactions.
 
 ---
 
@@ -51,44 +51,44 @@ In this document, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**
 
 ### 3.1 Basic principles
 
-ANP adopts the following first-class identifiers:
+ANP adopts the following first class designations:
 
 - **Agent DID**
 - **Group DID**
 
-The ANP protocol layer does not define device DIDs, terminal DIDs, session DIDs, or replica DIDs.  
+The ANP protocol layer does not define device DIDs, terminal DIDs, session DIDs, or replica DIDs.
 If there are multiple running copies, multiple devices, and multiple executors within an implementation, these entities belong to the internal implementation issues of the Agent and do not belong to the ANP interoperability boundary.
 
 ### 3.2 Agent DID
 
-Each Agent that can send or receive messages as an ANP protocol subject **MUST** hold an `agent_did`.
+Each Agent capable of sending or receiving messages as an ANP protocol subject MUST hold an `agent_did`.
 
 `agent_did` is used for:
 
 1. Identify the sender and receiver of the direct message;
 2. Identify the initiator of the control operation;
-3. Parse available service endpoints;
+3. service endpoint can be used for analysis;
 4. Obtain public materials required for security overlay;
 5. Establish authorization and audit context.
 
 ### 3.3 Group DID
 
-Every group that can be discovered across domains, referenced, managed, or sent group messages **MUST** hold a `group_did`.
+Each group that can be discovered, referenced, managed, or group messages sent across domains **MUST** hold an `group_did`.
 
 `group_did` is used for:
 
-1. Serve as the global application-layer identifier of the group;
+1. As the global application layer identifier of the group;
 2. Serve as the anchor point for group discovery and governance;
-3. Serve as the common target identifier for group management and group messages;
-4. Serve as the discovery entry point for group service endpoints;
-5. Serve as the binding target for subsequent group encryption profiles.
+3. As a common target identifier for group management and group messaging;
+4. Serves as the discovery entrance of group service endpoint;
+5. Serve as the binding object for subsequent group encryption profiles.
 
-### 3.4 Encryption identification separation
+### 3.4 Separation of Cryptographic Identifiers
 
-If a subsequent security overlay profile defines independent cryptographic internal identifiers, such as `crypto_group_id`, `session_id`, `channel_id`, then:
+If a subsequent security overlay profile defines independent cryptographic internal identifiers, such as `crypto_group_id`, `session_id`, and `channel_id`, then:
 
-- They **MAY** differ from `group_did` or `agent_did`;
-- But the corresponding Profile **MUST** clearly specify how these internal identifiers are cryptographically bound to the DID;
+- They **MAY** be not the same as `group_did` or `agent_did`;
+- But the corresponding Profile **MUST** clearly stipulates how to cryptographically bind these internal identifiers to DID;
 - This binding **MUST** be verifiable by the receiver.
 
 ### 3.5 ANP identity layering
@@ -96,15 +96,15 @@ If a subsequent security overlay profile defines independent cryptographic inter
 To avoid mixing different levels of identities across documents, ANP distinguishes at least the following three types of DIDs:
 
 1. **Business Origin DID**: Business initiator or business logic sending subject, such as `meta.sender_did` in the request;
-2. **Logical Issuer DID**: The issuing subject that certain notifications, receipt or governance objects logically represent, such as `group_did`;
-3. **Service DID**: The service identity used when executing hop-level service to service calls, that is, `ANPMessageService.serviceDid`.
+2. **Logical Issuer DID**: The issuing subject that some notifications, receipt or governance objects logically represent, such as `group_did`;
+3. **Service DID**: The service identity used when executing hop-level service-to-service invocation, that is, `ANPMessageService.serviceDid`.
 
 The above three categories of identities:
 
 - **MUST NOT** be automatically treated as the same subject;
-- **MUST** The corresponding Profile clearly states who is responsible for signing, who is responsible for authorizing, and who is responsible for routing;
-- In the cross-domain scenario, `serviceDid` **MUST NOT** replaces the business entity DID;
-- `serviceDid` only means "which public service endpoint is executing one-hop service call", **MUST NOT** is directly used to participate in the determination of business roles such as `owner/admin/member` in the group.
+- The corresponding Profile **MUST** clearly state who is responsible for signing, who is responsible for authorizing, and who is responsible for routing;
+- In cross-domain scenarios, `serviceDid` **MUST NOT** replace the business-entity DID;
+- `serviceDid` only indicates "which public service entrance is performing a one-hop service call", **MUST NOT** be directly used to participate in the determination of business roles such as `owner/admin/member` in the group.
 
 ---
 
@@ -114,10 +114,10 @@ The above three categories of identities:
 
 For the ANP, the DID document has the following responsibilities:
 
-1. Provide a stable identity entry point;
+1. Provide a stable identity entrance;
 2. Declare authentication relationships and trusted key materials;
-3. Expose service endpoints;
-4. Provide service discovery clues.
+3. Exposure service endpoint;
+4. Provide clues to service discovery.
 
 DID documents **MUST NOT** be treated as:
 
@@ -131,24 +131,24 @@ DID documents **MUST NOT** be treated as:
 
 For DID documents used by ANP:
 
-- `id` **MUST** exists;
-- `service` **MUST** exists for DIDs that are actively discovered and interacted with;
-- `service` **MAY** Default for DIDs used only for validation or reference;
-- `authentication` **MUST** be present for a DID that would appear in the request as the business originator DID;
-- If declarative signature objects are supported, `assertionMethod` **SHOULD** exists;
-- If encryption Overlay is supported, `keyAgreement` **SHOULD** exists;
-- `capabilityInvocation` is an optional expansion capability, **MAY** exists, but does not fall within the v1 minimum interoperability requirements.
+- `id` **MUST** exist;
+- `service` **MUST** exist for DIDs that are actively discovered and interacted with;
+- `service` **MAY** be omitted for DIDs used only for validation or reference;
+- `authentication` **MUST** exist for a DID that would appear in the request as the business originator DID;
+- If declarative signature objects are supported, `assertionMethod` **SHOULD** exist;
+- If encryption Overlay is supported, `keyAgreement` **SHOULD** exist;
+- `capabilityInvocation` is optional expansion capability, **MAY** exist, but is not part of v1 Minimum Interoperability Requirements.
 
 ### 4.3 DID document minimization principle
 
-Information in the DID document **SHOULD** remains:
+Information in the DID document **SHOULD** remain:
 
 - Low frequency changes;
 - low sensitivity;
 - Low relevancy;
 - Directly related to DID usage.
 
-Any content that does not meet the above requirements is **SHOULD** moved to controlled service endpoints instead of being directly embedded in the DID document.
+Any content that does not meet the above requirements is **SHOULD** moved to a controlled service endpoint provider rather than embedded directly into the DID document.
 
 ---
 
@@ -163,31 +163,33 @@ An Agent DID document for ANP MUST express at least:
 
 ### 5.2 Authentication relationship
 
-If the Agent DID will appear in `meta.sender_did` as a business initiator, or in the `keyid` verification link of any business proof claiming to use `anp-rfc9421-origin-proof-v1`, then the DID document **MUST** provides a `authentication` relationship.
+If the Agent DID will appear in `meta.sender_did` as the business initiator identity, or in the `keyid` verification link of any business proof that claims to use `anp-rfc9421-origin-proof-v1`, then the DID document **MUST** provide the `authentication` relationship.
 
-`authentication` **MAY** Defaults if the Agent DID is used only in passive reference, object ownership, or offline verification contexts and does not participate in ANP interactions as a request initiator.
+If a request uses `auth.origin_proof`, the authenticator **MUST** check whether the authentication method pointed to by `keyid` is authorized by the `authentication` relationship for this DID document.
 
-If the Agent needs to assert on group management objects, declaration objects, and signature control objects, the DID document **SHOULD** provides the `assertionMethod` relationship.
+`authentication` **MAY** be omitted if the Agent DID is used only for passive reference, object ownership, or offline verification, and does not participate in ANP interactions as a request initiator.
+
+If the Agent needs to assert on group management objects, declaration objects, and signature control objects, the DID document **SHOULD** provide the `assertionMethod` relationship.
 
 ### 5.3 Key negotiation relationship
 
-If the Agent supports any E2EE Overlay, the DID document **SHOULD** provides the `keyAgreement` relationship.  
-The authentication method **MUST** used by `keyAgreement` is used only to represent the public key material that can be used by this DID when negotiating keys or receiving confidential information.
+If the Agent supports any E2EE Overlay, the DID document **SHOULD** provide the `keyAgreement` relationship.
+Any verification method referenced by `keyAgreement` **MUST** be used only to represent public-key material for key agreement or for receiving confidential information.
 
-### 5.4 Service endpoint
+### 5.4 Service Endpoints
 
-Agent DID documents that support receiving Direct, Capability, Object control plane, or other ANP capabilities that require active discovery MUST contain at least one `ANPMessageService`.
+Any Agent DID document that supports Direct Messaging, capability discovery, object-control operations, or any other ANP capability that requires active discovery **MUST** contain at least one `ANPMessageService`.
 
-This unified service portal **MAY** also carries the following capabilities:
+This unified service entry **MAY** also carry the following capabilities:
 
-- Main entry point for direct messages;
+- Main entrance for direct messages;
 - Negotiation of capabilities;
 - Secure Overlay public material access;
-- Object control plane was found with the object download entry point.
+- object control plane found with object download portal.
 
-If the deployer internally splits these capabilities into multiple components, this splitting is an implementation detail; the DID document **SHOULD NOT** exposes multiple independent ANP service types for each of these capabilities.
+If the deployer internally splits these capabilities into multiple components, that split is an implementation detail; the DID document **SHOULD NOT** expose multiple independent ANP service types for each capability.
 
-The externally exposed attachment control plane method **MUST** be still accessed through the unified `ANPMessageService` exposed in the DID document. Whether the deployer internally routes requests to independent Object Service, Key Service or Group Host subcomponents is an implementation detail and does not change the external standard service discovery model.
+Publicly available attachments Control-Plane Methods **MUST** be still accessed through the unified `ANPMessageService` exposed in the DID document. Whether the deployer internally routes requests to independent Object Service, Key Service or Group Host subcomponents is an implementation detail and does not change the external standard service discovery model.
 
 ---
 
@@ -203,7 +205,7 @@ A Group DID document for ANP MUST express at least:
 
 ### 6.2 Group control rights
 
-`controller` can be a single DID or multiple DIDs.  
+`controller` can be a single DID or multiple DIDs.
 If there are multiple controllers, the internal collaboration mechanism between them is not defined by this Profile, but:
 
 - The legality of DID document updates **MUST** be guaranteed by the DID method;
@@ -214,10 +216,10 @@ If there are multiple controllers, the internal collaboration mechanism between 
 
 For Group DID documents that support `anp.group.base.v1`:
 
-- `assertionMethod` **MUST** exists;
-- `capabilityInvocation` **MAY** exists as an additional governance capability delegation relationship, but does not replace `assertionMethod`.
+- `assertionMethod` **MUST** exist;
+- `capabilityInvocation` **MAY** exist as an additional governance capability delegation relationship, but does not replace `assertionMethod`.
 
-When group management objects, group policy objects, and group status objects need to be signed for verification, the verifier **MUST** use the verification relationships allowed by the DID document.
+When group-management objects, group-policy objects, and group-state objects require signatures, the verifier **MUST** use a verification relationship permitted by the DID document.
 
 ### 6.4 Group DID document prohibited content
 
@@ -230,12 +232,12 @@ The following MUST NOT be embedded directly into the Group DID document:
 - message-by-message status;
 - One-time pre-key list;
 - MLS KeyPackage real-time collection;
-- Frequently changing out-of-band group entry credentials/governance queue;
+- Highly changing invitation/group governance queue;
 - Agent internal replica list.
 
 ### 6.5 Group DID document optional content
 
-The following **MAY** exists, but sensitive disclosure must be avoided:
+The following **MAY** exist, but sensitive disclosure must be avoided:
 
 - Group display name;
 - Group icon reference;
@@ -244,58 +246,58 @@ The following **MAY** exists, but sensitive disclosure must be avoided:
 - Document version information;
 - Summary of service capabilities.
 
-If an optional field poses significant privacy or dependency risks, the implementation SHOULD NOT write it into the DID document and should instead provide it from the restricted service endpoint.
+If an optional field may pose a significant privacy leak or relevance risk, the implementation **SHOULD NOT** write it into the DID document and should instead provide it with restricted service endpoint.
 
 ---
 
-## 7. ANP service endpoint type
+## 7. ANP Service Endpoint Types
 
 ### 7.1 General
 
-ANP performs service discovery based on `service` in the DID document.  
+ANP does service discovery based on `service` in the DID document.
 All ANP service endpoint objects **MUST** have:
 
 - `id`
 - `type`
 - `serviceEndpoint`
 
-The service endpoint object **MAY** carries a small number of static hints, but v1 standard interoperability only requires:
+The service endpoint object **MAY** carry a small number of static hints, but v1 standard interoperability only requires:
 
 - `profiles`
 - `securityProfiles`
 - `serviceDid`
 
-In the current version, the ANP standard service type **SHOULD** exposed by the DID document only uses `ANPMessageService`.  
-If an implementation internally splits a direct messaging, group, key, object, or cross-domain forwarding capability into multiple components, such splitting is an implementation detail and not separate standards `service type` in the DID document.
+In the current version, the DID document **SHOULD** expose only one standard ANP service type: `ANPMessageService`.
+If an implementer internally splits direct messaging, groups, keys, objects, or cross-domain forwarding capabilities into multiple components, this splitting is an implementation detail and not separate standards `service type` in the DID document.
 
-To reduce service selection ambiguity when calling cross-domain, each DID document **MUST** exposes only one `ANPMessageService` that can be called by cross-domain.  
-If there are multiple service components within the implementation, they **MUST** be converged under the same publicly available cross-domain `ANPMessageService`.
+To reduce service-selection ambiguity in cross-domain calls, each DID document **MUST** expose only one `ANPMessageService` that may be called across domains.
+If there are multiple service components within the implementation, they **MUST** be converged under the same externally exposed cross-domain `ANPMessageService`.
 
 ### 7.2 `ANPMessageService`
 
 #### 7.2.1 Semantics
 
-`ANPMessageService` represents the Unified Messaging and Interaction Portal discovered publicly by ANP in DID documents.
+`ANPMessageService` represents the Unified Messaging and Interaction entry discovered publicly by ANP in the DID document.
 
 #### 7.2.2 Purpose
 
-- Receive `direct.send`
+-Receive `direct.send`
 - Receive `group.get_info`, `group.send`, `group.e2ee.send` and group management/group E2EE related actions
-- Provides `anp.get_capabilities`
+- Provide `anp.get_capabilities`
 - Provide access to public materials required by Direct/Group E2EE
 - Bearer reception or distribution of `group.e2ee.notice` (if deployment supports group E2EE)
-- Provides `attachment.create_slot`, `attachment.commit_object`, `attachment.abort_object`, `attachment.get_download_ticket`
+- Provide `attachment.create_slot`, `attachment.commit_object`, `attachment.abort_object`, `attachment.get_download_ticket`
 - Service anchor discovered as object HTTP(S) download portal (if supported by deployment)
 
-Externally exposed attachment control plane methods **MUST** be still accessible through the unified `ANPMessageService` exposed by this DID. Whether the deployer internally routes requests to independent Object Service, Key Service or Group Host subcomponents is an implementation detail and does not change the external standard service discovery model.
+Externally exposed attachment Control-Plane Methods **MUST** be still entered through the unified `ANPMessageService` exposed by this DID. Whether the deployer internally routes requests to independent Object Service, Key Service or Group Host subcomponents is an implementation detail and does not change the external standard service discovery model.
 
 #### 7.2.3 Requirements
 
 - An Agent DID document that can be actively discovered and interacted with **MUST** contain at least one `ANPMessageService`
 - A Group DID document **MUST** contain at least one `ANPMessageService`
-- If this `ANPMessageService` will participate in a cross-domain service-to-service call, its service endpoint **MUST** declares `serviceDid`
+- If this `ANPMessageService` will participate in cross-domain service-to-service invocation, its service entry **MUST** declare `serviceDid`
 - If there are multiple components within the implementation, the DID document **MUST** only exposes a unified entry and returns finer-grained capability boundaries through runtime capability negotiation.
-- Externally exposed service-scoped methods, including key material methods and attachment control plane methods, **MUST** use the `serviceDid` of the unified entry as the target service identity anchor, unless the corresponding Profile is explicitly declared as endpoint-local
+- Externally exposed service-scoped methods, including key material methods and attachments Control-Plane Methods, **MUST** use the `serviceDid` of the unified entrance as the target service identity anchor, unless the corresponding Profile is explicitly declared as endpoint-local
 
 
 ### 7.3 Logical role of `ANPMessageService`
@@ -304,28 +306,28 @@ This section is only used for **non-normative explanation** of the common capabi
 
 #### 7.3.1 Home Role
 
-Home Role represents the main entry capability on the Agent side, which is used to receive `direct.send`, return capability information, and indicate further interaction paths.
+Home Role represents the main entry capability on the Agent side, which is used to receive `direct.send`, return capability information and indicate further interaction paths.
 
 #### 7.3.2 Key Role
 
 Key Role represents the ability to publish or discover public materials required by the security overlay, and is used for:
 
 - Discover required disclosure materials for direct messaging E2EE
-- Discover the public materials and onboarding/bootstrap related materials required by the group E2EE; materials added by members are discovered through the unified entry point corresponding to the Agent DID, and cryptographic results such as `welcome` / `ratchet_tree` are delivered by subsequent notices
+- Introductory materials needed to discover the group E2EE
 - Discover public objects defined by subsequent security profiles
 
 #### 7.3.3 Group Role
 
-Group Role represents the main entry point or Host capability of the group and is used for:
+Group Role represents the main entrance or Host capability of the group and is used for:
 
 - Process group management actions after `group.create`
 - Receive `group.send` and `group.e2ee.send`
-- Expose group policy, group E2EE capabilities or related control entry points
-- Serves as the authoritative entry point for sorting group status changes
+- Exposing group policies, group E2EE capabilities or related control entrances
+- Serves as the authoritative entry point for ordering group-state changes
 
 #### 7.3.4 Join Role
 
-Join Role means joining entry capabilities related to onboarding/bootstrap; if out-of-band invitation credentials exist, they belong to deployment extensions, not v1 core capabilities.
+Join Role represents the ability to join the entry related to invitations.
 
 #### 7.3.5 Capability Role
 
@@ -333,59 +335,59 @@ Capability Role represents the capability negotiation entry capability.
 
 #### 7.3.6 Object Role
 
-The Object role represents capabilities such as object upload, object access control, download ticket issuance, and discovery of object download entry points.
+Object Role represents the capabilities of object uploading, object access control, Download Ticket issuance, and object download portal discovery.
 
-#### 7.3.7 cross-domain forwarding function
+#### 7.3.7 Cross-Domain forwarding function
 
-The deployer **MAY** implements the cross-domain forwarding or domain gateway function behind `ANPMessageService`, but the current version **does not** define a separate DID service type for this function.
+The deployer **MAY** implement the cross-domain forwarding or domain gateway function behind `ANPMessageService`, but the current version **does not** define an independent DID service type for this function.
 
-If the deployer enables cross-domain service-to-service calls, then when the domain gateway or domain service performs outer HTTP authentication, **SHOULD** uses the federated service DID reserved by the domain name owner instead of the normal Agent DID or Group DID. The corresponding rules are defined by P8.
+If the deployer enables cross-domain service-to-service invocation, when the domain gateway or domain service performs outer HTTP authentication, **SHOULD** use the federated service DID reserved by the domain name owner instead of the ordinary Agent DID or Group DID. The corresponding rules are defined by P8.
 
 #### 7.3.8 Transparent directory and audit index
 
-If the deployer supports directory transparency, transparent logging or audit indexing, it MAY be provided as an extension of `ANPMessageService`; the current version does not define a separate DID service type.
+If the deployer supports directory transparency, transparent logs or audit indexes, **MAY** provide them as extension capabilities of `ANPMessageService`; the current version does not define a separate independent DID service type.
 
 ---
 
-## 8. ANP service endpoint extension fields
+## 8. ANP Service Endpoint Extension Fields
 
-In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v1 static hints; the remaining capability information **SHOULD** is sunk to `anp.get_capabilities`.
+In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v1 static hints; the remaining capability information **SHOULD** sink to `anp.get_capabilities`.
 
 ### 8.1 `profiles`
 
 - Type: string array
-- Semantics: The set of ANP Profiles directly supported by the service endpoint
+- Semantics: ANP Profile collection directly supported by service endpoint
 - Requirements: **SHOULD**
 - Note: This field only expresses static, cacheable coarse-grained hints and does not replace runtime capability negotiation.
 
 ### 8.2 `securityProfiles`
 
 - Type: string array
-- Semantics: The set of security modes supported by the service endpoint
+- Semantics: service endpoint supported security profile collection
 - Requirements: **SHOULD**
-- Description: This field indicates the endpoint-level support range and does not guarantee that all methods are available in all security modes.
+- Description: This field indicates the set of security profiles supported at the endpoint level. It does not guarantee that every method is available under every advertised security profile.
 
 ### 8.3 `acceptedContentTypes`
 
 - Type: string array
-- Semantics: The set of message content types acceptable to the service endpoint
-- Requirements: **Not as v1 standard DID hint**
+- Semantics: Set of acceptable message content types for the service endpoint
+- Requirements: **Not a standard v1 DID hint**
 - Description:
-  - If you need to expose such information, **SHOULD** is returned through `anp.get_capabilities`;
-  - If this field appears in a DID document, the recipient **MAY** treats it as an implementation extension.
+  - If you need to expose such information, **SHOULD** return through `anp.get_capabilities`;
+  - If this field appears in a DID document, the recipient **MAY** treat it as an implementation extension.
 
 ### 8.4 `acceptedObjectTypes`
 
 - Type: string array
-- Semantics: Set of control plane object types acceptable to the service endpoint
-- Requirements: **Not as v1 standard DID hint**
-- Description: It is recommended to return as a runtime capability rather than statically writing to a DID document.
+- Semantics: Set of acceptable control-plane object types for the service endpoint
+- Requirements: **Not a standard v1 DID hint**
+- Description: This information is RECOMMENDED as a runtime capability rather than a static DID-document hint.
 
 ### 8.5 `priority`
 
 - Type: Integer
 - Semantics: endpoint priority
-- Requirements: **Not as v1 standard DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description:
   - The v1 specification does not rely on `priority` in the DID document for service selection;
   - If the deployment customizes this field, it should be treated as a private extension.
@@ -394,27 +396,27 @@ In order to facilitate cross-implementation discovery, this Profile only uses a 
 
 - Type: string array
 - Semantics: caller → service caller authentication method supported by this endpoint
-- Requirements: **Not as v1 standard DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description:
   - This capability typically changes with the runtime gateway configuration;
   - More suitable for exposure via `anp.get_capabilities`;
-  - It also **does** not describe the proof bearer format for the business layer `anp-rfc9421-origin-proof-v1`.
+  - It also does **not** describe the proof bearer format for business layer `anp-rfc9421-origin-proof-v1`.
 
 ### 8.7 `serviceDid`
 
 - Type: string
 - Semantics: The `ANPMessageService` DID used in cross-domain service-to-service HTTP authentication
-- Requirement: **MUST** if this endpoint participates in cross-domain service-to-service calls
+- Requirement: **MUST** if this endpoint participates in cross-domain service-to-service invocation
 
-rule:
+Rules:
 
 1. `serviceDid` **MUST** be a DID string, not a DID URL;
-2. The `keyid` **MUST** of the outer HTTP Message Signatures points to a verification method authorized by the `authentication` relationship in the `serviceDid` document;
-3. For `did:web` and `did:wba` deployment, `serviceDid` **SHOULD** preferentially uses the naked domain name DID;
-4. `serviceDid` expresses "which service identity is executing the cross-domain call", not the business subject identity expressed by `meta.sender_did`;
+2. `keyid` **MUST** of the outer HTTP Message Signatures points to a verification method authorized by the `authentication` relationship in the `serviceDid` document;
+3. For the deployment of `did:web` and `did:wba`, `serviceDid` **SHOULD** preferentially uses the bare-domain DID;
+4. `serviceDid` expresses "which service identity is performing the cross-domain call", not the business subject identity expressed by `meta.sender_did`;
 5. The specific runtime verification process of `serviceDid` is defined by P8;
 6. `serviceDid` in the DID document is a discovery hint, and true trust establishment is subject to successful P8 runtime verification;
-7. For service-scoped methods, the caller **SHOULD** binds `meta.target.did` to the target public `ANPMessageService.serviceDid`; object control plane, key material methods and group E2EE onboarding / bootstrap related methods all follow this principle, unless the specific Profile is explicitly declared as endpoint-local.
+7. For the service-scoped method, the caller **SHOULD** bind `meta.target.did` to the target public `ANPMessageService.serviceDid`; object control plane, key material method and group joining material method all follow this principle, unless the specific Profile is explicitly declared as endpoint-local.
 
 ---
 
@@ -427,9 +429,9 @@ The discovery process for `agent_did` is as follows:
 1. Parse `agent_did` and obtain the DID document;
 2. Read the `service` list;
 3. Select the only cross-domain `ANPMessageService`;
-4. If subsequent cross-domain service-to-service calls are involved, read the `serviceDid` of the service endpoint;
+4. If cross-domain service-to-service invocation will be used later, read the `serviceDid` declared in the selected service entry;
 5. Combine `profiles`, `securityProfiles`, runtime capability negotiation results and local policies to determine the specific capabilities available on the unified portal;
-6. To explicitly negotiate capabilities, call `anp.get_capabilities` on the same entry.
+6. For explicit negotiation capabilities, call `anp.get_capabilities` on the same entry.
 
 ### 9.2 Group Discovery
 
@@ -437,9 +439,9 @@ The discovery process for `group_did` is as follows:
 
 1. Parse `group_did` and obtain the DID document;
 2. Read the unique `ANPMessageService`;
-3. If subsequent cross-domain service-to-service calls are involved, read the `serviceDid` of the service endpoint;
-4. Combine `profiles`, `securityProfiles`, runtime capability negotiation results and local policies to determine the group management, group messages, join or group E2EE related capabilities available on the unified portal;
-5. If group E2EE is enabled, the group-side public materials, cryptographic result delivery capabilities and related control actions bound to the group encryption profile will be discovered through the same entry point; materials added by members will still be discovered through the unified entry point corresponding to the Agent DID.
+3. If cross-domain service-to-service invocation will be used later, read the `serviceDid` declared in the selected service entry;
+4. Combine `profiles`, `securityProfiles`, runtime capability negotiation results and local policies to determine the group management, group messaging, joining or group E2EE related capabilities available on the unified portal;
+5. If group E2EE is enabled, the group-side public materials, cryptographic result delivery capabilities and related control actions bound to the group encryption profile will be discovered through the same entrance; materials added by members will still be discovered through the unified entrance corresponding to the Agent DID.
 
 ### 9.3 Service DID discovery
 
@@ -448,18 +450,18 @@ When the target `serviceDid` of a service-scoped method is known to the caller, 
 1. Parse the DID document corresponding to `serviceDid`;
 2. Select the `ANPMessageService` corresponding to the `serviceDid`;
 3. Read its `serviceEndpoint` and static hint;
-4. If you need precise capability boundaries, call `anp.get_capabilities` on the same entry;
+4. For precise capability boundaries, call `anp.get_capabilities` on the same entry;
 5. This `serviceDid` can be regarded as a trusted cross-domain service identity only after passing the runtime service identity binding verification specified in P8.
 
-For attachment download ticket retrieval, the caller **MUST** use the original sender DID of the message carrying the attachment manifest as the discovery anchor and resolve its public `ANPMessageService`. In group scenarios, this DID is taken from the original sender of the group message, not from `group_did`. The caller **MUST NOT** infer the control-plane service only from the URL domain name of `object_uri`.
+For attachment Download Ticket retrieval, the caller **MUST** use the original message sender DID carrying the attachment list as the discovery anchor and resolves its public `ANPMessageService`; in a group scenario, the DID is taken from the original group message sender, not `group_did`. The caller **MUST NOT** use only the URL domain name of `object_uri` to push back the control plane service.
 
 
 ### 9.4 Service selection
 
 If there are multiple candidate endpoints, the caller **MUST** first selects in the following order:
 
-1. First filter according to the requested `profile`;
-2. Then filter according to the requested `security_profile`;
+1. First filter by the requested `profile`;
+2. Then filter by the requested `security_profile`;
 3. Then use the runtime capability negotiation results as authoritative verification;
 4. If there are still multiple results, select according to the local policy.
 
@@ -467,12 +469,12 @@ The v1 specification does not rely on `supportedMethods`, `logicalRoles` or `pri
 
 ### 9.5 Caching
 
-The caller **MAY** caches the DID parsing results and service selection results.  
-But **SHOULD** is re-parsed in the following situations:
+The caller **MAY** cache the DID parsing results and service selection results.
+But **SHOULD** be re-parsed in the following situations:
 
 - Signature verification failed;
 - Key negotiation failed;
-- Service endpoint return capability changes;
+- service endpoint returns ability changes;
 - Suspected change of DID control;
 - `serviceDid` verification failed;
 - endpoint-origin binding failed;
@@ -485,24 +487,26 @@ But **SHOULD** is re-parsed in the following situations:
 
 ### 10.1 Use of `keyAgreement`
 
-If an Agent DID or Group DID document declares `keyAgreement`, subsequent security Profiles **MUST** only use the methods allowed therein as the basis for receiving confidential information or key negotiation for this DID.
+If an Agent DID or Group DID document declares `keyAgreement`, subsequent security profiles **MUST** only use the methods allowed therein as the basis for receiving confidential information or key negotiation for that DID.
 
 ### 10.2 Signature verification relationship
 
 When an object is claimed to be asserted by a DID:
 
-- If the object is an authentication control action, the verifier **SHOULD** checks `authentication`;
-- If the object is a declaration or a signature assertion behavior, the verifier **SHOULD** checks `assertionMethod`;
-- If the object is a governance capability invocation behavior, the verifier **MAY** checks `capabilityInvocation`, but this is not the minimum interoperability requirement for v1.
+Among them, for requests using `auth.origin_proof`, the verifier **MUST** treat this as an authentication control action and checks `authentication`.
 
-### 10.3 Dynamic safety material external placement
+- If the object is an authentication control action, the verifier **SHOULD** check `authentication`;
+- If the object is a declaration or a signature assertion behavior, the verifier **SHOULD** check `assertionMethod`;
+- If the object is a governance capability invocation action, the verifier **MAY** check for `capabilityInvocation`, but this is not v1 Minimum Interoperability Requirements.
 
-The following **SHOULD** is provided through the controlled service endpoint and is not embedded in the DID document:
+### 10.3 Dynamic security material external placement
+
+The following **SHOULD** be provided via controlled service endpoint and is not embedded in the DID document:
 
 - High-frequency rotation of public materials;
-- One-time addition of materials or onboarding materials;
+- Disposable guidance materials;
 - Group epoch related materials;
-- Dynamic group status summary.
+- Dynamic group-state summaries.
 
 ---
 
@@ -512,29 +516,29 @@ The following **SHOULD** is provided through the controlled service endpoint and
 
 `group_did` is the application layer global identifier of the group and is not equal to any specific cryptography implementation internal ID.
 
-### 11.2 External group management
+### 11.2 Externalized Group Governance
 
-Objects such as group membership, role authorization, deployment extension group credential status, member status, policy version, group status summary, etc., **SHOULD** is provided by:
+Group membership, role authorization, invitation status, member status, policy versions, group-state summaries, and similar objects **SHOULD** be expressed through:
 
-- Group corresponding `ANPMessageService`
+- `ANPMessageService` corresponding to the group
 - Or future group governance Profile
 
 Provided with a signature rather than in a DID document.
 
-### 11.3 Separation of control rights from group policy
+### 11.3 Separation of Control and Group Policy
 
-The `controller` in the DID document only indicates who has the authority to control the DID document itself;
-"Who can adding members, removing members, and change policies" within the group belong to application layer governance rules and should not be mechanically derived directly from `controller`.  
+`controller` in a DID document only indicates who has control over the DID document itself;
+"Who may add members, remove members, or change policies" within the group is an application-layer governance rule set and should not be derived mechanically from `controller`.
 In the same way, `serviceDid` only represents the service calling identity and should not be directly interpreted as a business role subject such as `owner/admin/member` in the group.
 
 ---
 
 ## 12. Privacy and Minimum Disclosure
 
-### 12.1 Service endpoint minimization
+### 12.1 Service Endpoint Minimization
 
-The `service` item **SHOULD** in the DID document is minimized.  
-If a service is not required to be publicly discovered, **SHOULD NOT** appears in the DID document.
+The `service` section in the DID document **SHOULD** be minimized.
+If a service is not required for public discovery, it **SHOULD NOT** appear in the DID document.
 
 ### 12.2 Relevance control
 
@@ -546,22 +550,22 @@ Implementers **SHOULD** avoid:
 
 ### 12.3 Separation of public and restricted
 
-Information necessary for public discovery **MAY** is placed into the DID document;
-Information requiring access control **SHOULD** is returned by the restricted service endpoint.
+Information necessary for public discovery **MAY** be placed into the DID document;
+Information requiring access control **SHOULD** returned by restricted service endpoint.
 
 ---
 
-## 13. Minimum interoperability requirements
+## 13. Minimum Interoperability Requirements
 
 An implementation conforming to this Profile MUST at least:
 
 1. Each Agent has `agent_did`;
 2. Each Group has `group_did`;
 3. The Agent DID and Group DID documents must provide at least one `ANPMessageService`;
-4. Support service discovery based on DID documents;
-5. Static hint supports at least `profiles`, `securityProfiles`, `serviceDid`;
+4. Support the execution of service discovery based on DID documents;
+5. Static hint supports at least `profiles`, `securityProfiles`, and `serviceDid`;
 6. Runtime capabilities are authoritative with `anp.get_capabilities`;
-7. Do not embed dynamic group status in DID documents;
+7. Do not embed dynamic group state in DID documents;
 8. Do not introduce the device/replica concept into the protocol layer.
 
 ---
@@ -671,23 +675,23 @@ An implementation conforming to this Profile MUST at least:
 
 ---
 
-## 15. Registry placeholder
+## 15. Registry Placeholder
 
 Subsequent versions of this standard **SHOULD** establish the following registry:
 
 1. ANP DID Service Type registry;
-2. ANP service endpoint extension field registration form;
+2. ANP service endpoint extended field registration form;
 3. ANP identity discovery error code registry;
 4. ANP group governance object type registry.
 
 ---
 
-## 16. Reference implementation description (non-normative)
+## 16. Reference Implementation Notes (Non-Normative)
 
 Implementers should adopt the following principles when implementing this Profile:
 
 - The DID document is a "stable entry", not a "real-time status table";
-- The service endpoint is the "discovery anchor", not the "full data container";
+- service endpoint is "discovery anchor point", not "all data containers";
 - Dynamic capabilities should be returned through `anp.get_capabilities` as much as possible instead of being piled in the DID document;
 - Group DID is an "application layer group identifier", not a "unique serialization of all cryptographic internal states";
 - Concepts such as devices, replicas, and internal executors remain inside the Agent and do not enter the wire protocol.

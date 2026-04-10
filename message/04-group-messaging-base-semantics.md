@@ -5,28 +5,28 @@
 - Status: Draft
 - Version: 0.4.0 (Final Revision)
 - Language: English
-- Applicability: This Profile applies to the group life cycle, group management and group messages basic semantics based on Group DID, and does not include the group end-to-end encryption algorithm itself.
+- Applicability: This Profile applies to the group life cycle, group management and group message base semantics based on Group DID, and does not include the group end-to-end encryption algorithm itself.
 
 ---
 
-> Note: This revision converges the v1 core into two paths: "self-service joining, direct adding members":
+> Note: This revised draft converges the v1 core into two paths: "self-service joining and direct addition":
 >
 > 1. `group.invite`, `group.accept_invite` and standard `invitation` objects have been moved out of the v1 core;
-> 2. `membership_request`, `membership_request_digest`, `group.approve_membership`, `group.reject_membership` have been moved out of the v1 core;
+> 2. `membership_request`, `membership_request_digest`, `group.approve_membership`, and `group.reject_membership` have been moved out of the v1 core;
 > 3. `group_policy` converges to `message_security_profile + bootstrap_security_profile + admission_mode + permissions`;
 > 4. Non-member governance directed notification `group.governance_notice` has been moved out of v1 core;
-> 5. Reserve `group.state_changed` as an ordered status notification within the group.
+> 5. Reserve `group.state_changed` as the order status notification within the group.
 
 ---
 
 ## 1. Purpose
 
-This Profile defines the group basic semantic layer of ANP, stipulating:
+This Profile defines the group base semantics layer of ANP, stipulating:
 
 1. Group DID serves as the application layer global identifier of the group;
-2. Basic actions such as group creation, self-service joining, direct adding members, removal of members, leaving the group, update group profile, update group policy;
-3. Basic semantics of group messages `group.send`;
-4. Sorting responsibilities of Group Host Service;
+2. Basic actions such as group creation, self-service joining, direct member addition, member removal, leaving the group, updating group information, and updating group policies;
+3. base semantics of group message `group.send`;
+4. ordering responsibilities of Group Host Service;
 5. How Group E2EE Overlay is superimposed on the application semantics of this Profile.
 
 This Profile does not define:
@@ -36,50 +36,50 @@ This Profile does not define:
 - Read and online status;
 - Device or internal copy concept;
 - Group external directory synchronization details;
-- Deploy specific delivery mechanisms for private invitation links, Join Token or other out-of-band group membership credentials;
+- Deploy a specific delivery mechanism for private invitation links, Join Token or other out-of-band group membership credentials;
 - How dynamic group state is stored inside the Agent.
 
 ---
 
-## 2. Terminology and normative conventions
+## 2. Terminology and Normative Conventions
 
-### 2.1 Normative keywords
+### 2.1 Normative Keywords
 
-In this document, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, **OPTIONAL** are interpreted as normative requirements according to their capitalized form.
+In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, **OPTIONAL** are interpreted as normative requirements according to their capitalized form.
 
 ### 2.2 Terminology
 
 - **Group**: Group protocol subject identified by `group_did`.
-- **Group Host Service**: Responsible for the basic status sorting, policy application and group messages entry point service of the group.
+- **Group Host Service**: The service responsible for the basic status ordering, policy application and group message entry of the group.
 - **Group State**: The application layer state of a group at a certain moment, including information, policies, membership relationships, etc.
 - **Group State Version**: The current group state version identifier assigned by the Group Host Service.
-- **Group Event Sequence**: The group event monotonically increasing sequence number assigned by the Group Host Service, covering control operations and group messages.
+- **Group Event Sequence**: The group event monotonically increasing sequence number assigned by the Group Host Service covers control operations and group messages.
 - **Member**: Agent member in the group.
-- **Admission Mode**: The group’s admission path is open to non-members by default. The standard values ​​for this Profile v1 are `admin-add`, `open-join`. Among them, the Chinese "automatic join" online protocol value is uniformly written as `open-join`.
-- **Policy**: Application layer rules that determine who can send messages, directly adding members, remove members, update profiles, and update policies.
-- **Actor Proof**: The application layer signature proof generated by the Agent that initiated the group operation or group messages based on the did:wba JSON bearer authentication.
-- **Group Receipt**: A verifiable receipt object generated by the Group Host and used to prove that a certain group operation or group messages has been accepted by the group and obtained a certain status position.
-- **Logical Group Target URI**: In order to make the application layer signature stable across forwarding, the logical group target URI defined by this Profile, rather than the specific HTTP URL of a certain hop.
-- **Group State Changed Event**: A group state change event object ordered by the Group Host and synchronized to the currently active members.
+- **Admission Mode**: The group’s admission path is open to non-members by default. The standard values ​​of this Profile v1 are `admin-add` and `open-join`. Among them, the Chinese "automatic join" online protocol value is uniformly written as `open-join`.
+- **Policy**: Application-layer rules that determine who may send messages, add members directly, remove members, update group information, and update policies.
+- **Origin Proof**: Application layer origin proof generated by the Agent that initiates group operations or group messages based on did:wba JSON bearer authentication.
+- **Group Receipt**: A verifiable receipt object generated by the Group Host and used to prove that a group operation or group message has been accepted by the group and obtained a certain status.
+- **Logical Target URI**: To make application layer signatures stable across forwards, a logical target URI defined globally by P1 Appendix A, rather than a specific HTTP URL for a hop.
+- **Group State Changed Event**: Group state change event object synchronized by Group Host ordering to the currently active members.
 
 ---
 
-## 3. Design principles
+## 3. Design Principles
 
 ### 3.1 A group, a Group DID
 
-Each group **MUST** has one `group_did`. `group_did` is the application layer global identifier of the group and is used for:
+Each group **MUST** have one `group_did`. `group_did` is the application layer global identifier of this group and is used for:
 
 - Group discovery;
 - Group management;
-- group messagesaddressing;
+- Group message addressing;
 - Binding anchor point for subsequent Group E2EE Overlay.
 
-### 3.2 Group Host is responsible for sorting
+### 3.2 Group Host is responsible for ordering
 
-All operations that change the group status **MUST** be accepted and sequenced by the Group Host Service.
+All operations that change group state **MUST** be accepted and ordered by the Group Host Service.
 
-The Group Host Service **MUST** maintains a decidable linear ordering of group state changes and assigns a new `group_state_version` to each accepted state change.
+The Group Host Service **MUST** maintain a well-defined linear ordering of group-state changes and assign a new `group_state_version` to each accepted state change.
 
 ### 3.3 Separation of application semantics and cryptographic semantics
 
@@ -89,29 +89,29 @@ This Profile only defines the application layer actions and objects of the group
 
 Group members are still agents at the protocol layer. Any replicas, workers, devices, or terminals that exist within the Agent do not enter the interoperability semantics of this Profile.
 
-### 3.5 Non-target
+### 3.5 Non-Goals
 
-This Profile **not** provides:
+This Profile does **not** provide:
 
 - Global history playback;
 - Strong synchronization semantics;
-- Device level membership;
--Device level delivery;
+- Device-level membership;
+- Device-level delivery;
 - Internal executor-level permission control;
 - Standardized approval flow.
 
-### 3.6 Separation of initiator authentication and group result witnessing
+### 3.6 Separation of Initiator Authentication and Group Result Witnessing
 
 There are usually two signatures with different semantics in group scenarios:
 
-1. **Initiator's signature**: Proves that a certain `sender_did` indeed initiated the group operation or group messages;
-2. **Group result witness**: Prove that an operation or message has been accepted by the group and obtained a confirmed `group_state_version`, `group_event_seq` or equivalent status position.
+1. **Initiator's signature**: Proves that a certain `sender_did` actually initiated the group operation or group message;
+2. **group result witnessing**: Proves that an operation or message has been accepted by the group and assigned a confirmed `group_state_version`, `group_event_seq`, or equivalent state position.
 
 This Profile requires:
 
-- All requests that will change the group status, and `group.send`, **MUST** carry the initiator's `auth.actor_proof`;
-- The signature **SHOULD** of the group DID appears in the `group_receipt` returned by the Group Host;
-- The receiver **MUST NOT** replaces the initiator's signature with the group signature, and also **MUST NOT** replaces the group result witness with the initiator's signature.
+- All requests that will change the group state, and `group.send`, **MUST** carry the initiator's `auth.origin_proof`;
+- The Group DID signature **SHOULD** appear in the `group_receipt` returned by the Group Host;
+- Recipients **MUST NOT** replace the initiator's signature with the group signature, and **MUST NOT** replace group-result witnessing with the initiator's signature.
 
 ### 3.7 Group entry path convergence
 
@@ -120,7 +120,7 @@ In the v1 core, only two standard actions are reserved for non-members joining t
 - `group.join`: The target Agent initiates joining independently and immediately becomes a member of `active` upon success;
 - `group.add`: Existing authorized members directly add the target Agent to the group, and it will take effect immediately upon success.
 
-This Profile v1 does not define standard `invitation` objects, `invitation_id`, `group.invite`, or `group.accept_invite`. If the deployment requires invitation links, Join Tokens, or other out-of-band credentials to assist `group.join`, these capabilities **MUST** be handled as deployment extensions, and **MUST NOT** create standard member status before `group.join` succeeds.
+This Profile v1 does not define the standard `invitation` object, `invitation_id`, `group.invite`, or `group.accept_invite`. If the deployment requires an invitation link, Join Token, or other out-of-band credentials to assist `group.join`, these capabilities **MUST** be handled as deployment extensions, and **MUST NOT** create standard member status before `group.join` succeeds.
 
 This Profile v1 does not define a standardized approval flow, nor does it introduce the `pending` intermediate governance state into the core.
 
@@ -130,23 +130,23 @@ This Profile v1 does not define a standardized approval flow, nor does it introd
 
 ### 4.1 Summary list of rules
 
-|scene|Entry method|Immediate results|Authoritative Object/State|When does it become `active`|Remark|
+| Scenario | Entry Method | Immediate Result | Authoritative Object/State | When Becomes `active` | Remarks |
 |---|---|---|---|---|---|
-|Join by yourself| `group.join` |The caller joins the group| `group_member.status = active` |This join takes effect immediately|Applies only to `open-join`|
-|Direct adding members| `group.add` |The target is added directly| `group_member.status = active` |Effective immediately in this adding members|Typically used with `admin-add`|
-|Members actively leave the group| `group.leave` |Member leaves group| `group_member.status = left` |not applicable|Only for current `active` members|
-|Administrator removes member| `group.remove` |Member removed from group| `group_member.status = removed` |not applicable|Applies only to current `active` members|
+| Self-service joining | `group.join` | The caller joins the group | `group_member.status = active` | This join will take effect immediately | Only applicable to `open-join` |
+| Add a member directly | `group.add` | The target is added directly | `group_member.status = active` | Effective immediately for this addition | Typically used for `admin-add` |
+| Members actively leave the group | `group.leave` | Members withdraw from the group | `group_member.status = left` | Not applicable | Only for current `active` members |
+| Administrator removes member | `group.remove` | Member removed from group | `group_member.status = removed` | Not applicable | Applies only to current `active` members |
 
-> Note: If the deployer guides joining through an out-of-band invitation link, Join Token or on-site reminder, the standard interoperability layer will still **MUST** show a successful result of `group.join` or `group.add` in the end.
+> Note: If the deployer guides joining through the out-of-band invitation link, Join Token or on-site reminder, the standard interoperability layer will still **MUST** show a successful result of `group.join` or `group.add` in the end.
 
 ### 4.2 Status object comparison table
 
-|object|critical state|meaning|
+| Object | Key Status | Meaning |
 |---|---|---|
-| `group_member` | `active` |Application layer membership is in effect|
-| `group_member` | `left` / `removed` |Membership has ended|
+| `group_member` | `active` | Application layer membership is in effect |
+| `group_member` | `left` / `removed` | Membership ended |
 
-### 4.3 State machine diagram
+### 4.3 State Machine Diagram
 
 ```mermaid
 stateDiagram-v2
@@ -171,19 +171,19 @@ The standard name of this Profile is:
 
 ### 5.2 Dependencies
 
-This Profile **MUST** depends on the following Profiles:
+This Profile **MUST** depend on the following Profiles:
 
 - `anp.core.binding.v1`
 - `anp.identity.discovery.v1`
 
-### 5.3 Safe Mode
+### 5.3 Security Profile
 
 When this Profile is used as an independently running basic group profile:
 
 - `meta.profile` **MUST** equal `anp.group.base.v1`
-- `meta.security_profile` **MUST** be equal to `transport-protected`
+- `meta.security_profile` **MUST** equal `transport-protected`
 
-If the Group E2EE Overlay is subsequently superimposed, the corresponding security Profile **MUST** specifies how to cryptographically bind the group status object of this Profile to the group messages object.
+If the Group E2EE Overlay is subsequently superimposed, the corresponding security profile **MUST** specify how to cryptographically bind the group state object and group message object of this profile.
 
 ---
 
@@ -193,23 +193,23 @@ If the Group E2EE Overlay is subsequently superimposed, the corresponding securi
 
 `group_did` is the application layer global identifier of the group.
 
-`group_did`：
+`group_did`:
 
-- **MUST** as the target identifier for group management operations;
-- **MUST** as the target identifier of the group messages operation;
-- **MUST NOT** Automatically equivalent to the internal `group_id` in any particular cryptography implementation.
+- **MUST** be used as the target identifier for group-management operations;
+- **MUST** serve as the target identifier for group-message operations;
+- **MUST NOT** be treated as automatically equivalent to the internal `group_id` of any particular cryptographic implementation.
 
 ### 6.2 `group_state_version`
 
-`group_state_version` represents the version of the current group application status.
+`group_state_version` identifies the current version of the application-layer group state.
 
 The requirements are as follows:
 
-- **MUST** assigned by Group Host Service;
-- **MUST** treated as opaque string;
-- Each successful group state change **MUST** generates a new `group_state_version`;
-- group messages is sent **MUST NOT** because the message itself advances new `group_state_version`;
-- group messages The `group_state_version` returned in a successful response represents the snapshot of the group state to which the message was accepted.
+- **MUST** be assigned by the Group Host Service;
+- **MUST** be treated as an opaque string;
+- Each successful group-state change **MUST** generate a new `group_state_version`;
+- Sending a group message **MUST NOT** advance `group_state_version`;
+- The `group_state_version` returned in the successful response to a group message identifies the group-state snapshot to which that message was accepted.
 
 ### 6.3 `group_event_seq`
 
@@ -218,13 +218,13 @@ The requirements are as follows:
 The requirements are as follows:
 
 - **MUST** monotonically increases within the same group;
-- **MUST** Coverage group control operations with group messages;
+- **MUST** cover group control operations and group messages;
 - **MUST** be represented by a decimal string;
 - **MUST NOT** directly serves as the only basis for security semantics.
 
 ### 6.4 Role model
 
-This Profile minimum interoperability **MUST** supports the following roles:
+This Profile minimum interoperability **MUST** support the following roles:
 
 - `owner`
 - `admin`
@@ -236,13 +236,13 @@ The role hierarchy is fixed at:
 
 The interpretation rules are as follows:
 
-- When an action requires a minimum character of `member`, `admin` and `owner` are automatically satisfied;
-- When an action requires a minimum character of `admin`, `owner` is automatically satisfied;
+- When an action requires the minimum character to be `member`, `admin` and `owner` are automatically satisfied;
+- When an action requires the minimum character to be `admin`, `owner` is automatically satisfied;
 - v1 **MUST NOT** introduce custom roles within the minimum interoperability scope.
 
-### 6.5 Member Status
+### 6.5 Member status
 
-This Profile minimum interoperability **MUST** supports the following member states:
+This Profile minimum interoperability **MUST** support the following member states:
 
 - `active`
 - `left`
@@ -254,7 +254,7 @@ This Profile minimum interoperability **MUST** supports the following member sta
 
 ### 7.1 `group_policy`
 
-`group_policy` represents the group's application layer authorization and group entry rule objects.
+`group_policy` represents the application layer authorization and group entry rule objects of the group.
 
 The recommended structure is as follows:
 
@@ -280,7 +280,7 @@ Field description:
 - `message_security_profile`: string, **SHOULD**, recommended values: `transport-protected`, `group-e2ee`
 - `bootstrap_security_profile`: string, **SHOULD**, recommended values: `transport-protected`, `group-e2ee`
 - `admission_mode`: string, **MUST**
-- `permissions`: object, **MUST**
+- `permissions`: Object, **MUST**
 - `attachments_allowed`: Boolean value, **MAY**
 - `max_members`: decimal string, **MAY**
 
@@ -294,7 +294,7 @@ The interpretation rules are as follows:
    - `group.join`
    - and subsequent Overlay's clearly defined onboarding / bootstrap methods
 
-3. `admission_mode` **MUST** Take one of the following:
+3. `admission_mode` **MUST** take one of the following values:
    - `admin-add`
    - `open-join`
 
@@ -315,7 +315,7 @@ The interpretation rules are as follows:
    - `group.join` **MUST** be allowed when `admission_mode = "open-join"`
    - Whether `group.add` is available is still determined by `permissions.add`
 
-7. If `max_members` exists, Group Host **MUST** interprets it as the `active` member limit.
+7. If `max_members` exists, Group Host **MUST** interpret it as the `active` member limit.
 
 ### 7.2 `group_member`
 
@@ -329,10 +329,10 @@ Minimum recommended fields:
 - `joined_at`: RFC 3339 time string, **MAY**
 - `added_by`: DID string, **MAY**
 
-illustrate:
+Notes:
 
-- `role` By default, the receiver **MUST** interprets as `member`;
-- `status = active` indicates that application layer membership has taken effect;
+- By default, the receiver **MUST** interpret `role` as `member`;
+- `status = active` indicates that the application layer membership has taken effect;
 - `status = left` or `removed` indicates that the membership has been terminated;
 - `added_by` is only recommended if the current membership was established by `group.add`.
 
@@ -340,27 +340,27 @@ illustrate:
 
 This Profile v1 does not define the standard `invitation` object, nor does it define `invitation_id`.
 
-If the deployment requires invitation links, Join Tokens, or other out-of-band credentials to assist `group.join`, these objects **MAY** exist, but they:
+If the deployment requires an invitation link, Join Token, or other out-of-band credentials to assist `group.join`, these objects **MAY** exist, but they:
 
-- **MUST NOT** is considered a v1 core interworking object;
-- **MUST NOT** Make standard member state before `group.join` succeeds;
-- **SHOULD** Distributed through controlled channels.
+- **MUST NOT** be considered a v1 core interworking object;
+- **MUST NOT** create a standard member state before `group.join` succeeds;
+- **SHOULD** be distributed through controlled channels.
 
 ### 7.4 `group_profile`
 
-`group_profile` represents the group's presentation data object.
+`group_profile` represents the group's presentational data object.
 
 Recommended fields:
 
-- `display_name`: string, provided by **SHOULD** when creating group creation
+- `display_name`: string, provided by **SHOULD** when creating a group
 - `description`: string, **MAY**
 - `avatar_uri`: string, **MAY**
 - `discoverability`: string, **MAY**, recommended values: `private`, `listed`, `public`
-- `labels`: object, **MAY**
+- `labels`: Object, **MAY**
 
 ### 7.5 `group_state_ref`
 
-`group_state_ref` represents the group status reference object.
+`group_state_ref` represents the group state reference object.
 
 Minimum recommended fields:
 
@@ -369,32 +369,33 @@ Minimum recommended fields:
 - `policy_hash`: string, **MAY**
 - `roster_hash`: string, **MAY**
 
-### 7.6 group messages load
+### 7.6 Group message payload
 
 `meta.content_type` **MUST** for `group.send` exists.
 
-This Profile minimum interoperability **MUST** supports the following content types:
+This Profile minimum interoperability **MUST** support the following content types:
 
 - `text/plain`
 - `application/json`
 - `application/anp-attachment-manifest+json`
 
-Among the `body` of `group.send`, among the three: `text`, `payload`, and `payload_b64u`:
+Among `group.send` and `body`, among `text`, `payload` and `payload_b64u`:
 
-- **MUST** Exactly one appears;
+- Exactly one of these fields **MUST** be present;
 - If more than one appears, the recipient **MUST** reject the request;
-- If none of the three are present, the receiver **MUST** reject the request.
+- If none of the three are present, the receiving party **MUST** reject the request.
 
 For `payload_b64u`:
 
 - **MUST** use no padding base64url;
 - **SHOULD** be used only for binary extensions or private extension objects.
 
+
 ### 7.7 `auth` object
 
-All requests that change the group state except `group.get_info`, and `group.send`, whose `params` **MUST** contain a `auth` object.
+All requests that change the group state, except `group.get_info`, and `group.send`, whose `params` **MUST** contain an `auth` object.
 
-The proof bearer rules in this section follow the shared Origin Proof convention in Appendix A of P1; P4 only defines the business semantics of `actor_proof`, Signed Group Payload, and signature component mapping.
+The proof bearer rules, Signed Request Object and signature component mapping in this section **MUST** reuse the unified definition in P1 Appendix A; P4 **no longer** defines independent proof field names, independent Signed Payload structures or local `@target-uri` mappings.
 
 The recommended structure is as follows:
 
@@ -402,7 +403,7 @@ The recommended structure is as follows:
 {
   "auth": {
     "scheme": "anp-rfc9421-origin-proof-v1",
-    "actor_proof": {
+    "origin_proof": {
       "contentDigest": "sha-256=:BASE64_SHA256_DIGEST:",
       "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1733402096;expires=1733402156;nonce=\"abc123\";keyid=\"did:wba:example.com:user:alice:e1_<fingerprint>#key-1\"",
       "signature": "sig1=:BASE64_SIGNATURE:"
@@ -414,68 +415,32 @@ The recommended structure is as follows:
 Field requirements:
 
 - `auth.scheme` **MUST** equal `anp-rfc9421-origin-proof-v1`
-- `auth.actor_proof` **MUST** exists in all state-changing group operations and `group.send`
-- `auth` itself **MUST NOT** into `contentDigest`
+- `auth.origin_proof` **MUST** exist in all state-changing group operations and `group.send`
+- `auth` itself **MUST NOT** enter `contentDigest`
 
-### 7.8 Signed Group Payload
+### 7.8 Binding to the Shared Signed Request Object
 
-`auth.actor_proof.contentDigest` **MUST** binds a standard business object that does not contain `auth`, called **Signed Group Payload**.
+`auth.origin_proof.contentDigest` **MUST** bind the shared **Signed Request Object** defined in P1 Appendix A.
 
-The general structure is as follows:
+For Group Base:
 
-```json
-{
-  "method": "group.<action>",
-  "meta": {
-    "profile": "anp.group.base.v1",
-    "security_profile": "transport-protected",
-    "sender_did": "did:wba:...",
-    "target": {
-      "kind": "group | service",
-      "did": "did:wba:..."
-    },
-    "operation_id": "op-...",
-    "created_at": "2026-03-29T12:00:00Z"
-  },
-  "body": {
-    "...": "..."
-  }
-}
-```
+- For message class methods such as `group.send`, `meta.message_id` and `meta.content_type` **MUST** exist
+- For `group.create`, `meta.target.kind` **MUST** be `service`
+- For other group operations targeting existing groups, `meta.target.kind` **MUST** be `group`
 
-Specifically:
+### 7.8.1 Reference to the Global Component Mapping
 
-- For message class methods such as `group.send`, `meta.message_id` and `meta.content_type` **MUST** exist;
-- For `group.create`, `meta.target.kind` **MUST** is `"service"`;
-- For other group operations targeting an existing group, `meta.target.kind` **MUST** is `"group"`.
+All Group Base methods requiring `auth.origin_proof` **MUST** use the global signature component map defined in P1 Appendix A.
 
-The rules are as follows:
+Therefore:
 
-- The sender **MUST** use RFC 8785 JCS to normalize and serialize the object before calculating `contentDigest`;
-- The default optional field **MUST** in Signed Group Payload is omitted directly;
-- Upstream service routing information, local cache fields, and operation and maintenance tracking fields **MUST NOT** be included in the Signed Group Payload.
-
-#### 7.8.1 ANP-WBA group signature component mapping
-
-When the did:wba authentication information is carried in the ANP JSON-RPC request, in order to ensure that the signature can be forwarded across services and remain stable, this Profile performs the following application layer mapping on the key components in `Signature-Input`:
-
-- `@method`: mapped to the current ANP group business method name, such as `group.create`, `group.send`, `group.add`
-- `@target-uri`:
-  - When the method is `group.create`, the mapping is `anp://service/<pct-encoded meta.target.did>`
-  - When the method targets an existing group, the mapping is `anp://group/<pct-encoded target group_did>`
-- `content-digest`: Digest value mapped to Signed Group Payload
-
-Validation rules:
-
-1. The verifier **MUST** rebuild the Signed Group Payload first;
-2. The verifier **MUST** use RFC 8785 JCS to normalize and serialize it;
-3. The verifier **MUST** use the reconstructed `@method`, `@target-uri` and `content-digest` to restore the signature input;
-4. If the request is `group.create`, then `@target-uri` **MUST NOT** is reconstructed as a group URI;
-5. If the request is for an existing group, `@target-uri` **MUST NOT** is reconstructed as a service URI.
+- For `group.create`, the verifier reconstructs `@target-uri = anp://service/<pct-encoded meta.target.did>` based on `meta.target.kind = "service"`
+- For group operations targeting an existing group, the verifier rebuilds `@target-uri = anp://group/<pct-encoded meta.target.did>` based on `meta.target.kind = "group"`
+- The above results come from the global rules of P1, and are **not** a set of local mappings independently defined by P4
 
 ### 7.9 `group_receipt`
 
-`group_receipt` indicates that a group operation or group messages has been accepted by the Group Host and written to the verifiable witness object of the group state machine.
+`group_receipt` indicates that a group operation or group message has been accepted by the Group Host and written to the verifiable witness object of the group state machine.
 
 Recommended fields:
 
@@ -489,15 +454,33 @@ Recommended fields:
 - `actor_did`: string, **MUST**
 - `accepted_at`: RFC 3339 time string, **MUST**
 - `payload_digest`: string, **MUST**
-- `proof`: object, **SHOULD**
+- `proof`: object, **SHOULD**; when `group_receipt` will leave the domain where the Group Host is located and be dependent on other domains **MUST**
 
-If `group_receipt.proof` exists, then:
+`group_receipt.proof` **MUST** reuse the shared **Object Proof Profile** defined in P1 Appendix B.
 
-- `proof.verificationMethod` **MUST** points to an authentication method authorized by `group_did` document `assertionMethod`;
-- Sign `group_receipt` objects using `eddsa-jcs-2022` for default `e1_` did:wba group DID, `proof` **SHOULD**;
-- The purpose of the signature of `group_receipt` is to prove "the group has accepted this result", not to prove "who initiated the request".
+For `group_receipt`:
 
-### 7.10 Group status change event object
+- issuer DID **MUST** be `group_did`
+- The protected document **MUST** be the entire `group_receipt` after removing `proof`
+- `proof.verificationMethod` **MUST** point to the authentication method authorized by `assertionMethod` in the `group_did` DID document
+- The signature Purpose of `group_receipt` is to prove "the group has accepted this result", rather than to prove "who initiated the request"
+
+In addition to the sharing rules of P1 Appendix B, `group_receipt` still **MUST** contain at least the following security-critical fields, and are therefore protected in their entirety by `proof`:
+
+- `receipt_type`
+- `group_did`
+- `group_state_version`
+- `group_event_seq`
+- `subject_method`
+- `operation_id`
+- `actor_did`
+- `accepted_at`
+- `payload_digest`
+- `message_id`, if present, is also **MUST** included and protected
+
+After `group_receipt.proof` has been verified successfully, the verifier **MUST** continue to check that the above fields are consistent with the actual response, the notification context, and the corresponding group-state position.
+
+### 7.10 Group State Change Event Object
 
 This section converges the state change events used by `group.state_changed` into a unified event object, and distinguishes specific events through `event_type`.
 
@@ -526,8 +509,8 @@ The recommended structure of the unified event object is as follows:
 The common rules are as follows:
 
 1. `body` **MUST** of `group.state_changed` directly carries an event object;
-2. It **MUST NOT** is used to send out-of-band group entry credentials, reminders, or result notifications to objects that have not yet become group members;
-3. It **SHOULD** maintains the same sequential semantics as `group_event_seq`;
+2. It **MUST NOT** be used to send out-of-band group entry credentials, reminders or result notifications to objects that have not yet become group members;
+3. It **SHOULD** maintain the same sequential semantics as `group_event_seq`;
 4. If `subject_method = "group.join"` or `"group.add"`, then `event_type = "member-activated"`.
 
 #### 7.10.2 Standard `event_type`
@@ -540,11 +523,11 @@ This Profile v1 recommends the following `event_type`:
 - `group-profile-updated`
 - `group-policy-updated`
 
-Specifically:
+Among them:
 
-- `member-activated` **MUST** includes `subject_did` and `membership_status = "active"`
+- `member-activated` **MUST** contain `subject_did` and `membership_status = "active"`
 - `member-removed` **MUST** contain `subject_did`
-- `member-left` **MUST** includes `subject_did`
+- `member-left` **MUST** contain `subject_did`
 - `group-profile-updated` **SHOULD** contain `group_profile`
 - `group-policy-updated` **SHOULD** contain `group_policy`
 
@@ -552,16 +535,16 @@ Specifically:
 
 ## 8. Standard methods and notifications
 
-Except for `group.get_info`, requests for all state-changing methods in this section **MUST** satisfy the following general rules:
+Except for `group.get_info`, requests for all state-changing methods in this section MUST meet the following general rules:
 
 - `params.auth.scheme` **MUST** equal `anp-rfc9421-origin-proof-v1`
-- `params.auth.actor_proof` **MUST** exists and binds the corresponding Signed Group Payload
-- If the request crosses domain boundaries, the original `auth.actor_proof` **MUST** be forwarded with the message and **MUST NOT** is overridden by the intermediate service
+- `params.auth.origin_proof` **MUST** exist and binds the corresponding Signed Request Object
+- If the request crosses a domain boundary, the original `auth.origin_proof` **MUST** be forwarded with the message and **MUST NOT** be overwritten by the intermediate service
 
-For all state-changing methods accepted by the Group Host, and `group.send`:
+For all state-changing methods accepted by the Group Host, as well as `group.send`:
 
-- In non-cross-domain implementations, a successful response **SHOULD** returns `group_receipt`
-- When the response result will leave the domain where the Group Host is located and be relied on by other domains, a successful response **MUST** returns `group_receipt`
+- In a non-federated deployment, the successful response **SHOULD** return `group_receipt`
+- If the response leaves the Group Host's domain and is intended to be relied upon by another domain, the successful response **MUST** return `group_receipt`, and `group_receipt.proof` **MUST** be present
 
 The following two Notification / asynchronous message methods:
 
@@ -574,31 +557,31 @@ Belongs to **OPTIONAL push capability**. They are not required minimum interoper
 
 #### 8.1.1 Semantics
 
-Create a new group and assign new `group_did` and initial `group_state_version` by the Group Host Service.
+Create a new group and assign a new `group_did` and initial `group_state_version` by the Group Host Service.
 
-#### 8.1.2 Request requirements
+#### 8.1.2 Request Requirements
 
-`group.create` request **MUST** satisfies:
+`group.create` request **MUST** satisfy:
 
 1. `method = "group.create"`
 2. `meta.profile = "anp.group.base.v1"`
 3. `meta.security_profile = "transport-protected"`
-4. `meta.sender_did` **MUST** exists
+4. `meta.sender_did` **MUST** exist
 5. `meta.target.kind = "service"`
 6. `meta.target.did` **MUST** equal target `ANPMessageService.serviceDid`
-7. `meta.operation_id` **MUST** exists
-8. `body.group_profile` **SHOULD** exists
-9. `body.group_policy` **MUST** exists
-10. `body.initial_members` **MAY** exists
-11. `params.auth.actor_proof` **MUST** exists
+7. `meta.operation_id` **MUST** exist
+8. `body.group_profile` **SHOULD** exist
+9. `body.group_policy` **MUST** exist
+10. `body.initial_members` **MAY** exist
+11. `params.auth.origin_proof` **MUST** exist
 
 Regarding `body.initial_members`, Group Host **MUST** be processed according to the following rules:
 
-- The creator himself **MUST** becomes `owner` and immediately `active`;
-- Other `initial_members`, if present, is interpreted by the Group Host **MAY** as the creation phase equivalent of `group.add`;
+- The creator himself **MUST** become `owner` and immediately `active`;
+- If other `initial_members` exists, the Group Host **MAY** interpret it as the equivalent `group.add` during the creation phase;
 - Entries in `initial_members` that do not explicitly declare `role` **MUST** be interpreted as `member`.
 
-#### 8.1.3 Successful response
+#### 8.1.3 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -620,10 +603,10 @@ A successful response **MAY** contain:
 
 Get a snapshot of the current group's basic information.
 
-#### 8.2.2 Request requirements
+#### 8.2.2 Request Requirements
 
-- `meta.target.kind` **MUST** is `"group"`
-- `meta.target.did` **MUST** targets `group_did`
+- `meta.target.kind` **MUST** be `"group"`
+- `meta.target.did` **MUST** target `group_did`
 
 `body` **MAY** contain:
 
@@ -632,11 +615,11 @@ Get a snapshot of the current group's basic information.
 
 The identity requirements are as follows:
 
-- When the group's `discoverability = "public"` or `"listed"`, `group.get_info` **MAY** is called as an anonymous read; in this case, `meta.sender_did` **MAY** is omitted;
-- When the group's `discoverability = "private"`, the caller **MUST** provides an identity;
-- If the requested projection is outside the caller's visible range, the receiver **MUST** returns `group.policy_violation`.
+- When the group's `discoverability = "public"` or `"listed"`, `group.get_info` **MAY** be called as an anonymous read; at this time, `meta.sender_did` **MAY** be omitted;
+- When the group's `discoverability = "private"`, the caller **MUST** provide an identity;
+- If the requested projection is outside the caller's visible range, the receiver **MUST** return `group.policy_violation`.
 
-#### 8.2.3 Successful response
+#### 8.2.3 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -647,10 +630,10 @@ A successful response **MUST** contain at least:
 A successful response **MAY** contain:
 
 - `group_policy` (only if `include_policy = true` and the caller has permission to view)
-- `member_list` (only if `include_member_list = true` and the caller has permission to view; its element type **MUST** is `group_member`)
-- `member_count` (decimal string; if present, **SHOULD** represents the current number of `active` members)
+- `member_list` (only if `include_member_list = true` and the caller has permission to view; its element type **MUST** be `group_member`)
+- `member_count` (decimal string; if present, **SHOULD** represent the current number of `active` members)
 
-If `member_list` is returned, its content **SHOULD** contain only the current `active` members.
+If `member_list` is returned, its content **SHOULD** only contains the current `active` member.
 
 ### 8.3 `group.join`
 
@@ -658,20 +641,20 @@ If `member_list` is returned, its content **SHOULD** contain only the current `a
 
 `group.join` is used for non-members to initiate joining independently. For v1 cores, the caller immediately becomes a member of `active` on success.
 
-#### 8.3.2 Request requirements
+#### 8.3.2 Request Requirements
 
 `body` **MAY** contain:
 
 - `reason_text`
 
-If the group is not currently in `open-join` mode, the recipient **MUST** reject the request and **SHOULD** returns `group.policy_violation`.
+If the group is not currently in `open-join` mode, the recipient **MUST** reject the request and **SHOULD** return `group.policy_violation`.
 
-#### 8.3.3 Successful response
+#### 8.3.3 Successful Response
 
 A successful response **MUST** contain at least:
 
 - `group_did`
-- `membership_status`, and **MUST** is `active`
+- `membership_status`, and **MUST** be `active`
 - `group_state_version`
 
 A successful response **MAY** contain:
@@ -682,9 +665,9 @@ A successful response **MAY** contain:
 
 #### 8.4.1 Semantics
 
-Members with permissions directly add the target Agent to the group; upon success, the target immediately becomes a member of `active`.
+Members with permissions can directly add the target Agent to the group; upon success, the target will immediately become a member of `active`.
 
-#### 8.4.2 Request requirements
+#### 8.4.2 Request Requirements
 
 `body` **MUST** contain:
 
@@ -695,15 +678,15 @@ Members with permissions directly add the target Agent to the group; upon succes
 - `role`
 - `reason_text`
 
-When `role` is not provided explicitly, the receiver **MUST** interprets it as `member`.
+When `role` is not provided explicitly, the receiver **MUST** interpret `member` as such.
 
-#### 8.4.3 Successful response
+#### 8.4.3 Successful Response
 
 A successful response **MUST** contain at least:
 
 - `group_did`
 - `member_did`
-- `membership_status`, and **MUST** is `active`
+- `membership_status`, and **MUST** be `active`
 - `group_state_version`
 
 A successful response **MAY** contain:
@@ -714,9 +697,9 @@ A successful response **MAY** contain:
 
 #### 8.5.1 Semantics
 
-Remove a current `active` member from the group by an authorized member.
+A current `active` member is removed from the group by an authorized member.
 
-#### 8.5.2 Request requirements
+#### 8.5.2 Request Requirements
 
 `body` **MUST** contain:
 
@@ -731,7 +714,7 @@ Remove a current `active` member from the group by an authorized member.
 - If the target is currently at `active`, then `group.remove` **MUST** make it `group_member.status = "removed"`;
 - If the target is already `left`, `removed`, or does not exist, the recipient **MUST** reject the request.
 
-#### 8.5.4 Successful response
+#### 8.5.4 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -750,11 +733,11 @@ A successful response **MAY** contain:
 
 Indicates that the current sender actively exits the group.
 
-#### 8.6.2 Request requirements
+#### 8.6.2 Request Requirements
 
-- `meta.sender_did` **MUST** be the current outlier member
+- `meta.sender_did` **MUST** be the current leave-group member
 
-#### 8.6.3 Successful response
+#### 8.6.3 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -772,15 +755,15 @@ A successful response **MAY** contain:
 
 Update the group display data object.
 
-#### 8.7.2 Request requirements
+#### 8.7.2 Request Requirements
 
 `body` **MUST** contain:
 
 - `group_profile_patch`
 
-`group_profile_patch` **MUST** Use RFC 7386 JSON Merge Patch semantics.
+`group_profile_patch` **MUST** use RFC 7386 JSON Merge Patch semantics.
 
-#### 8.7.3 Successful response
+#### 8.7.3 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -798,15 +781,15 @@ A successful response **MAY** contain:
 
 Update the group policy object.
 
-#### 8.8.2 Request requirements
+#### 8.8.2 Request Requirements
 
 `body` **MUST** contain:
 
 - `group_policy_patch`
 
-`group_policy_patch` **MUST** Use RFC 7386 JSON Merge Patch semantics.
+`group_policy_patch` **MUST** use RFC 7386 JSON Merge Patch semantics.
 
-#### 8.8.3 Successful response
+#### 8.8.3 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -822,11 +805,11 @@ A successful response **MAY** contain:
 
 #### 8.9.1 Semantics
 
-Send an application layer group messages to a certain group.
+Send an application layer group message to a group.
 
-#### 8.9.2 Request requirements
+#### 8.9.2 Request Requirements
 
-A conforming `group.send` request **MUST** satisfies:
+A compliant `group.send` request **MUST** satisfy:
 
 1. `method = "group.send"`
 2. `meta.profile = "anp.group.base.v1"`
@@ -834,22 +817,22 @@ A conforming `group.send` request **MUST** satisfies:
 4. `meta.target.kind = "group"`
 5. `meta.target.did` **MUST** be the target `group_did`
 6. `meta.sender_did` **MUST** be the current sender Agent DID
-7. `meta.message_id` **MUST** exists
-8. `meta.operation_id` **MUST** exists
-9. `meta.content_type` **MUST** exists
-10. `body` **MUST** satisfy the load mutual exclusion rules
-11. `params.auth.actor_proof` **MUST** exists and binds Signed Group Payload
+7. `meta.message_id` **MUST** exist
+8. `meta.operation_id` **MUST** exist
+9. `meta.content_type` **MUST** exist
+10. `body` **MUST** satisfy the payload mutual exclusion rule
+11. `params.auth.origin_proof` **MUST** exist and binds Signed Request Object
 
-#### 8.9.3 `group.send` of `body`
+#### 8.9.3 `body` of `group.send`
 
-`body` of `group.send` can contain:
+`group.send` of `body` can contain:
 
 - `thread_id`: string, **MAY**
 - `reply_to_message_id`: string, **MAY**
-- `annotations`: object, **MAY**
-- `text` / `payload` / `payload_b64u`: **MUST** exactly one of the three appears
+- `annotations`: Object, **MAY**
+- Exactly one of `text`, `payload`, or `payload_b64u` **MUST** be present
 
-#### 8.9.4 Successful response
+#### 8.9.4 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -867,20 +850,20 @@ A successful response **MAY** contain:
 
 ### 8.10 `group.incoming`
 
-`group.incoming` is used to asynchronously push a group messages that has been accepted by the Group Host to the currently active member Agent. It **MUST** be used as a Notification.
+`group.incoming` is used to asynchronously push a group message that has been accepted by the Group Host to the currently active member Agent. It **MUST** be used as a Notification.
 
-If `group.incoming` is implemented, its Notification envelope **MUST** satisfies:
+If `group.incoming` is implemented, its Notification envelope **MUST** satisfy:
 
 - `meta.profile = "anp.group.base.v1"`
-- `meta.security_profile` **MUST** be equal to the security mode when this group messages is accepted
+- `meta.security_profile` **MUST** be equal to security profile when the group message is accepted
 - `meta.target.kind = "agent"`
 - `meta.target.did` **MUST** equal to the current notification recipient DID
-- `meta.sender_did` **MUST** equal the traffic sender DID of the original group messages
+- `meta.sender_did` **MUST** equal to the service sender DID of the original group message
 - `meta.operation_id` **MUST** equal original `group.send.meta.operation_id`
 - `meta.message_id` **MUST** equal original `group.send.meta.message_id`
-- `meta.content_type` **MUST** equal `meta.content_type` of the original group messages
+- `meta.content_type` **MUST** equal `meta.content_type` of the original group message
 
-The recommended `body` structure is as follows:
+The recommended structure of `body` is as follows:
 
 ```json
 {
@@ -898,30 +881,30 @@ The recommended `body` structure is as follows:
 
 The rules are as follows:
 
-- `body` **MUST** carries the same business load as the original group messages;
-- If `params.auth` exists, then:
-  - `params.auth.scheme` **MUST** be equal to `anp-rfc9421-origin-proof-v1`
-  - `params.auth.actor_proof` **MUST** be a lossless copy of the original `actor_proof`
+- `body` **MUST** carry the service payload consistent with the original group message;
+- If `params.auth` is present, then:
+  - `params.auth.scheme` **MUST** equal `anp-rfc9421-origin-proof-v1`
+  - `params.auth.origin_proof` **MUST** be a lossless copy of the original `origin_proof`
   - Intermediate service **MUST NOT** rewrite new business proof.
 
 ### 8.11 `group.state_changed`
 
-`group.state_changed` is the standard asynchronous notification method for group status changes, used to synchronize ordered member status changes, group profile changes, and group policy changes to currently active members. It **MUST** be used as a Notification.
+`group.state_changed` is the standard asynchronous notification method for group-state changes. It is used to synchronize ordered membership changes, group-data changes, and group-policy changes to currently active members. It **MUST** be used as a notification.
 
-Its Notification envelope **MUST** satisfies:
+Its Notification envelope **MUST** satisfy:
 
 - `meta.profile = "anp.group.base.v1"`
 - `meta.security_profile = "transport-protected"`
 - `meta.target.kind = "agent"`
 - `meta.target.did` **MUST** equal to the current notification recipient DID
-- `meta.sender_did` **MUST** be equal to `body.group_did`
-- `body` **MUST** directly carries and only carries one event object defined in Section 7.10
+- `meta.sender_did` **MUST** equal `body.group_did`
+- `body` **MUST** directly carry exactly one event object defined in Section 7.10
 
-`group.state_changed` **MUST NOT** Used for out-of-band credential delivery, non-member alerts, or any targeted governance notification that overrides `direct.send`.
+`group.state_changed` **MUST NOT** be used for out-of-band group-membership credential delivery, non-member reminders, or any targeted governance notification that would otherwise use `direct.send`.
 
 ---
 
-## 9. Flow chart overview (non-normative)
+## 9. Flow Overview (Non-Normative)
 
 ### 9.1 Self-service joining path (`open-join`)
 
@@ -934,26 +917,26 @@ sequenceDiagram
     H-->>B: membership_status = active
 ```
 
-### 9.2 Direct adding members path (`admin-add`)
+### 9.2 Direct member-addition path (`admin-add`)
 
 ```mermaid
 sequenceDiagram
-    participant A as administrator
+    participant A as Administrator
     participant H as Group Host
-    participant B as target member
+    participant B as Target Member
 
     A->>H: group.add
     H-->>A: member_did + membership_status = active
-    H-->>B: group.state_changed / or deploy custom notifications
+    H-->>B: group.state_changed / or deployment-specific custom notification
 ```
 
-### 9.3 group messages path
+### 9.3 Group message path
 
 ```mermaid
 sequenceDiagram
-    participant A as Sender member
+    participant A as Sending Member
     participant H as Group Host
-    participant M as other members
+    participant M as Other Members
 
     A->>H: group.send
     H-->>A: accepted + group_event_seq
@@ -962,11 +945,11 @@ sequenceDiagram
 
 ---
 
-## 10. Sorting, concurrency and conflicts
+## 10. ordering, Concurrency and Conflict
 
-### 10.1 Sorting Responsibilities
+### 10.1 ordering Responsibilities
 
-Group Host Service **MUST** maintains a linear ordering for all accepted events for the same `group_did`. Sorting coverage:
+Group Host Service **MUST** maintain linear ordering for all accepted events for the same `group_did`. ordering covers:
 
 - `group.create`
 - `group.join`
@@ -977,32 +960,32 @@ Group Host Service **MUST** maintains a linear ordering for all accepted events 
 - `group.update_policy`
 - `group.send`
 
-### 10.2 group messages and status version
+### 10.2 Group message and status version
 
 After `group.send` is accepted:
 
-- **MUST** allocate new `group_event_seq`;
-- **MUST NOT** Advance new `group_state_version` due to the message itself;
-- The `group_state_version` returned in the response with `group_receipt` represents the "snapshot of the group state to which this message was accepted".
+- **MUST** allocate a new `group_event_seq`;
+- **MUST NOT** advance `group_state_version` because of the message itself;
+- The `group_state_version` returned with `group_receipt` represents the group-state snapshot to which the message was accepted.
 
 ### 10.3 Idempotence and deduplication
 
-For group status changes with group messages, the receiver **MUST** be based on:
+For group-state changes and group messages, the recipient **MUST** use the following fields as the idempotency basis:
 
 - `sender_did`
 - `group_did`
 - `method`
 - `operation_id`
 
-Perform idempotent judgments.
+The receiver **MUST** perform idempotency checks using that tuple.
 
-For `group.send`, the receiver **SHOULD** is further based on:
+For `group.send`, the receiver **SHOULD** additionally use the following fields for duplicate detection:
 
 - `sender_did`
 - `group_did`
 - `message_id`
 
-Perform duplicate identification.
+The receiver **SHOULD** perform duplicate detection using that tuple.
 
 ---
 
@@ -1010,21 +993,21 @@ Perform duplicate identification.
 
 ### 11.1 Secure transmission requirements
 
-This Profile, when run independently, **MUST** relies on a certified secure transport layer.
+This Profile, when run independently, **MUST** rely on a certified secure transport layer.
 
 ### 11.2 Group operation initiator authentication
 
 For all state-changing group operations and `group.send`:
 
-- Group Host Service **MUST** Verify `auth.actor_proof`;
-- `keyid` of `auth.actor_proof` belongs to a DID **MUST** consistent with `meta.sender_did`;
-- The authentication method pointed to by `keyid` **MUST** be authorized by the DID document's `authentication` relationship;
+- The Group Host Service **MUST** authenticate `auth.origin_proof`;
+- The DID to which `keyid` of `auth.origin_proof` belongs **MUST** be consistent with `meta.sender_did`;
+- The authentication method pointed to by `keyid` **MUST** be authorized by the `authentication` relationship of the DID document;
 - For path type `e1_` DID, Group Host Service **MUST** verify the relationship between the DID and the bound public key according to the did:wba specification;
 - The proof bearer rule **MUST** also satisfies the shared Origin Proof convention of P1 Appendix A.
 
 ### 11.3 The relationship between initiator authentication and group policy authorization
 
-"Who can adding members, removing members, update information, update policies, send messages" and other permissions in the group are **MUST** determined by `group_policy`.
+Permissions such as "who may add members, remove members, update group information, update policies, or send messages" **MUST** be determined by `group_policy`.
 
 Specifically, the receiver **MUST** be based on:
 
@@ -1041,40 +1024,42 @@ Determine whether the current request is authorized.
 
 The signature of the group DID is **not** the second signature of the client's inbound request. Its correct use is:
 
-- Witness the results of accepted group status changes;
-- Witness accepted `group.send` results;
+- Witness the results of accepted group state changes;
+- Witness the accepted `group.send` result;
 - Provide cross-domain callers with portable proof that the operation/message was indeed accepted by the group.
 
-### 11.5 cross-domain forward
+For `group_receipt.proof`, its proof syntax, protected documents and verification steps **MUST** reuse the shared Object Proof Profile in P1 Appendix B.
+
+### 11.5 Cross-Domain forwarding
 
 If group operations or group messages are forwarded via other services:
 
-- Original `auth.actor_proof` **MUST** remains unchanged and forwarded with the request;
-- Target Group Host **MUST** Independent Verification `auth.actor_proof`;
+- The original `auth.origin_proof` **MUST** remain unchanged and forwarded with the request;
+- The target Group Host **MUST** independently verify `auth.origin_proof`;
 - **MUST** additionally perform service-level authentication between service hops.
 
 ### 11.6 Access Token optimization
 
 The access token process **MAY** based on did:wba is used to optimize repeated calls between the caller and the Group Host, or between services, but:
 
-- access token **MUST NOT** replaces `auth.actor_proof`;
-- sender-constrained access token **SHOULD** takes precedence over ordinary Bearer tokens.
+- An access token **MUST NOT** replace `auth.origin_proof`;
+- sender-constrained access token **SHOULD** take precedence over ordinary Bearer tokens.
 
-### 11.7 Safe mode requirements
+### 11.7 security profile requirements
 
-If `message_security_profile` in group policy requires `group-e2ee`:
+If `message_security_profile` in the group policy requires `group-e2ee`:
 
-- For `group.send` and member-only group operations after becoming a member of `active`, the sender **MUST** use Group E2EE Profile;
-- Group Host Service **MUST** reject requests related to `transport-protected`.
+- For member-only group operations on `group.send` and after becoming a member of `active`, the sender **MUST** use Group E2EE Profile;
+- Group Host Service MUST reject requests related to `transport-protected`.
 
-If `bootstrap_security_profile` in group policy requires `group-e2ee`:
+If `bootstrap_security_profile` in the group policy requires `group-e2ee`:
 
 - For `group.join` and subsequent Overlay's clearly defined onboarding / bootstrap methods, the sender **MUST** use Group E2EE Profile;
 - Group Host Service **MUST NOT** silently downgrade to `transport-protected` without explicit negotiation.
 
 ### 11.8 Binding points with Overlay
 
-Subsequent Group E2EE Overlay **SHOULD** binds at least the following fields:
+Subsequent Group E2EE Overlay **SHOULD** bind at least the following fields:
 
 - `group_did`
 - `sender_did`
@@ -1082,7 +1067,7 @@ Subsequent Group E2EE Overlay **SHOULD** binds at least the following fields:
 - `message_id`
 - `content_type`
 - `security_profile`
-- `auth.actor_proof.contentDigest` or equivalent summary of originator certification
+- `auth.origin_proof.contentDigest` or equivalent origin proof digest
 
 ---
 
@@ -1090,38 +1075,38 @@ Subsequent Group E2EE Overlay **SHOULD** binds at least the following fields:
 
 On the premise of following the ANP Core public error model, this Profile recommends the following `anp_code`:
 
-| `code` | `anp_code` |meaning|
+| `code` | `anp_code` | Meaning |
 |---|---|---|
-| 3000 | `group.not_member` |The caller is not a member of the group|
-| 3001 | `group.already_member` |The target is already a group member|
-| 3002 | `group.admission_not_allowed` |The current path to join the group is unavailable, or the prerequisites for joining the group are not met.|
-| 3003 | `group.policy_violation` |Operation violates group policy|
-| 3005 | `group.member_conflict` |Member status conflict|
-| 3006 | `group.security_mode_required` |Group requires higher security mode|
-| 3007 | `group.host_unavailable` |Group Host is temporarily unavailable|
-| 3008 | `group.invalid_actor_proof` |Invalid, expired or missing originator certificate|
-| 3009 | `group.actor_did_mismatch` |`meta.sender_did` is inconsistent with the DID to which `keyid` belongs|
-| 3010 | `group.invalid_group_receipt` |Group receipt signature is invalid or does not match the returned result|
+| 3000 | `group.not_member` | The caller is not a member of the group |
+| 3001 | `group.already_member` | The target is already a group member |
+| 3002 | `group.admission_not_allowed` | The current path to join the group is unavailable, or the prerequisites for joining the group are not met |
+| 3003 | `group.policy_violation` | Operation violates group policy |
+| 3005 | `group.member_conflict` | Member status conflict |
+| 3006 | `group.security_mode_required` | The group has higher requirements security profile |
+| 3007 | `group.host_unavailable` | Group Host is temporarily unavailable |
+| 3008 | `group.invalid_origin_proof` | Initiator origin proof is invalid, expired or missing |
+| 3009 | `group.origin_did_mismatch` | The DIDs to which `meta.sender_did` and `keyid` belong are inconsistent |
+| 3010 | `group.invalid_group_receipt` | The group receipt signature is invalid or does not match the returned result |
 
 ---
 
-## 13. Privacy Notice
+## 13. Privacy Considerations
 
 ### 13.1 Minimum Disclosure of Member List
 
-Even if an implementation supports `include_member_list`, the Group Host **SHOULD** returns only the minimum necessary membership information to authorized callers. For public groups, anonymous reads **SHOULD NOT** expose the full member list by default.
+Even if an implementation supports `include_member_list`, the Group Host **SHOULD** only returns the minimum necessary membership information to the authorized caller. For public groups, anonymous reads **SHOULD NOT** expose the full member list by default.
 
-### 13.2 Propagation of out-of-band group credentials
+### 13.2 Propagation of out-of-band group entry credentials
 
-If the deployer uses private invitation links, Join Tokens, or other out-of-band credentials to trigger `group.join`, the implementer **SHOULD** avoids exposing these actionable credentials to unrelated parties and **SHOULD** preferentially delivers them through controlled channels, out-of-band channels, or protected direct messaging.
+If the deployer uses private invitation links, Join Tokens, or other out-of-band credentials to trigger `group.join`, the implementer **SHOULD** avoid exposing these actionable credentials to unrelated parties and **SHOULD** preferentially delivers them through controlled channels, out-of-band channels, or protected direct messagings.
 
 ### 13.3 Public discovery and anonymous reading
 
-When the group is set to `public` or `listed`, an anonymous read **SHOULD** returns only a minimal data snapshot; the caller **SHOULD NOT** infers internal membership, role distribution, or other unnecessary state due to anonymous reads.
+When the group is set to `public` or `listed`, an anonymous read **SHOULD** return only a minimal data snapshot; the caller **SHOULD NOT** infer internal membership, role distribution, or any other unnecessary state from such reads.
 
 ---
 
-## 14. Minimum interoperability requirements
+## 14. Minimum Interoperability Requirements
 
 An implementation conforming to this Profile MUST support at least:
 
@@ -1139,7 +1124,7 @@ An implementation conforming to this Profile MUST support at least:
 12. `group_event_seq`
 13. Role: `owner`, `admin`, `member`
 14. Member status: `active`, `left`, `removed`
-15. Unified event object semantics for `group.state_changed`
+15. Unified event object semantics of `group.state_changed`
 16. Safe transmission operation mode
 
 If an implementation provides a push capability, its `group.incoming` and `group.state_changed` **MUST** follow the standard Notification semantics of this Profile.
@@ -1169,8 +1154,8 @@ If an implementation provides a push capability, its `group.incoming` and `group
     },
     "auth": {
       "scheme": "anp-rfc9421-origin-proof-v1",
-      "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
         "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774787400;expires=1774787460;nonce=\"n-30001\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
@@ -1178,7 +1163,7 @@ If an implementation provides a push capability, its `group.incoming` and `group
     "body": {
       "group_profile": {
         "display_name": "Cross-Domain Agents",
-        "description": "Collaboration group",
+        "description": "Collaboration Group",
         "discoverability": "private"
       },
       "group_policy": {
@@ -1206,7 +1191,7 @@ If an implementation provides a push capability, its `group.incoming` and `group
 }
 ```
 
-Example of successful response:
+Successful Response example:
 
 ```json
 {
@@ -1227,7 +1212,15 @@ Example of successful response:
       "operation_id": "op-30001",
       "actor_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
       "accepted_at": "2026-03-29T12:30:01Z",
-      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:"
+      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:groups.example:team:dev:e1_<fingerprint>#assert-1",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-03-29T12:30:01Z",
+        "proofValue": "zBASE58MULTIBASE_PROOF"
+      }
     }
   }
 }
@@ -1254,8 +1247,8 @@ Example of successful response:
     },
     "auth": {
       "scheme": "anp-rfc9421-origin-proof-v1",
-      "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
         "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774788000;expires=1774788060;nonce=\"n-30002\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
@@ -1269,7 +1262,7 @@ Example of successful response:
 }
 ```
 
-Example of successful response:
+Successful Response example:
 
 ```json
 {
@@ -1289,7 +1282,15 @@ Example of successful response:
       "operation_id": "op-30002",
       "actor_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
       "accepted_at": "2026-03-29T12:40:01Z",
-      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:"
+      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:groups.example:team:dev:e1_<fingerprint>#assert-1",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-03-29T12:40:01Z",
+        "proofValue": "zBASE58MULTIBASE_PROOF"
+      }
     }
   }
 }
@@ -1316,8 +1317,8 @@ Example of successful response:
     },
     "auth": {
       "scheme": "anp-rfc9421-origin-proof-v1",
-      "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
         "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774788300;expires=1774788360;nonce=\"n-30003\";keyid=\"did:wba:c.example:agents:carol:e1_<fingerprint>#key-1\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
@@ -1329,7 +1330,7 @@ Example of successful response:
 }
 ```
 
-Example of successful response:
+Successful Response example:
 
 ```json
 {
@@ -1348,7 +1349,15 @@ Example of successful response:
       "operation_id": "op-30003",
       "actor_did": "did:wba:c.example:agents:carol:e1_<fingerprint>",
       "accepted_at": "2026-03-29T12:45:01Z",
-      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:"
+      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:groups.example:public:news:e1_<fingerprint>#assert-1",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-03-29T12:45:01Z",
+        "proofValue": "zBASE58MULTIBASE_PROOF"
+      }
     }
   }
 }
@@ -1377,8 +1386,8 @@ Example of successful response:
     },
     "auth": {
       "scheme": "anp-rfc9421-origin-proof-v1",
-      "actor_proof": {
-        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
         "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774788600;expires=1774788660;nonce=\"n-30004\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
@@ -1391,7 +1400,7 @@ Example of successful response:
 }
 ```
 
-Example of successful response:
+Successful Response example:
 
 ```json
 {
@@ -1415,7 +1424,15 @@ Example of successful response:
       "message_id": "msg-30004",
       "actor_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
       "accepted_at": "2026-03-29T12:50:01Z",
-      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_GROUP_PAYLOAD:"
+      "payload_digest": "sha-256=:BASE64_SHA256_OF_SIGNED_REQUEST_OBJECT:",
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:groups.example:team:dev:e1_<fingerprint>#assert-1",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-03-29T12:50:01Z",
+        "proofValue": "zBASE58MULTIBASE_PROOF"
+      }
     }
   }
 }
@@ -1423,7 +1440,7 @@ Example of successful response:
 
 ---
 
-## 16. Registry placeholder
+## 16. Registry Placeholder
 
 Subsequent versions of this standard **SHOULD** establish the following registry:
 
@@ -1435,12 +1452,12 @@ Subsequent versions of this standard **SHOULD** establish the following registry
 
 ---
 
-## 17. Reference implementation description (non-normative)
+## 17. Reference Implementation Notes (Non-Normative)
 
 Implementers should adopt the following principles when implementing this Profile:
 
-- The v1 core only maintains the `group_member` group entry result object and does not introduce the standard `invitation` or standardized approval object;
-- `group_policy` uses a fixed `admission_mode + permissions` structure, which is cleaner and easier to implement than a large number of Boolean switches;
-- `group.incoming` is responsible for group messages push, `group.state_changed` is responsible for orderly status synchronization within the group;
+- The v1 core only maintains the `group_member` group entry result object and does not introduce standard `invitation` or standardized approval objects;
+- `group_policy` uses a fixed `admission_mode + permissions` structure, which is clearer and easier to implement than a large number of Boolean switches;
+- `group.incoming` is responsible for group message push, and `group.state_changed` is responsible for orderly status synchronization within the group;
 - Capabilities such as private invitation links, Join Token, and site reminders are deployment extensions, not v1 core interoperability requirements;
-- `group.send` does not participate in group status version concurrency control. The server only needs to verify "whether the sender is currently a member of `active` and has `send` permissions".
+- `group.send` does not participate in group state version concurrency control. The server only needs to verify "whether the sender is currently a member of `active` and has `send` permissions."
