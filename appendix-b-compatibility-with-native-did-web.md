@@ -49,7 +49,7 @@ In compatibility mode, the identity binding semantics of `did:web` comes from th
 
 Native `did:web` is compatible with did:wba's Handle / WNS system.
 
-When `did:web` DID Document declares `ANPHandleService` in `service`, the verifier MAY perform bidirectional binding verification according to the v1 rules of the [ANP DID:WBA Namespace Specification](04-anp-did-wba-name-space-specification.md):
+When a `did:web` DID Document declares `ANPHandleService` in `service`, the verifier MAY perform bidirectional binding verification using the legacy domain-based compatibility model derived from earlier WNS behavior. This compatibility model is intentionally weaker than the mainline WNS exact-handle / provider-confirmed model defined in the [ANP DID:WBA Namespace Specification](04-anp-did-wba-name-space-specification.md):
 
 1. Parse the Handle through the Handle Resolution Endpoint and obtain the DID;
 2. Parse the DID;
@@ -57,7 +57,7 @@ When `did:web` DID Document declares `ANPHandleService` in `service`, the verifi
 4. Extract the scheme and domain of `ANPHandleService.serviceEndpoint`;
 5. Verify that `serviceEndpoint` uses `https` and its domain is consistent with the domain of the input Handle.
 
-In compatibility mode, the role of `ANPHandleService.serviceEndpoint` is consistent with WNS v1: it is mainly used to declare the Handle Provider domain used by the DID subject, rather than requiring the declaration of a precise Handle Resolution Endpoint.
+In compatibility mode, the role of `ANPHandleService.serviceEndpoint` remains domain-oriented: it is mainly used to declare the Handle Provider domain used by the DID subject, rather than requiring the declaration of a precise Handle Resolution Endpoint.
 
 Therefore, the reverse binding check for native `did:web`:
 
@@ -104,7 +104,7 @@ The native `did:web` DID Document can also (MAY) declare the service type in the
 Specifically:
 
 - `AgentDescription` is used to discover agent description documents that follow the [ANP Agent Description Protocol Specification](07-anp-agent-description-protocol-specification.md);
-- `ANPHandleService` is used to express that the DID holder accepts the name binding relationship of a certain Handle Provider domain;
+- `ANPHandleService` is used to express, in compatibility mode, that the DID holder accepts the name binding relationship of a certain Handle Provider domain;
 - `ANPMessageService` is used to express the Unified Messaging and Interaction Portal for ANP's public discovery in DID documents.
 
 If the `ANPMessageService` entry declares `serviceDid`, this field is used to express "which DID this service uses for signing in cross-domain service-to-service HTTP authentication." For native `did:web` deployment:
@@ -134,7 +134,7 @@ Implementers SHOULD distinguish between two parsing modes:
 2. **did:web compatibility mode**
    - Parsed according to `did:web` specification;
    - Do not implement did:wba's unique path binding, public key fingerprint and proof enforcement rules;
-   - If `ANPHandleService` exists, perform domain-based name binding verification according to WNS v1 rules;
+   - If `ANPHandleService` exists, perform the legacy domain-based name binding verification used by the `did:web` compatibility mode;
    - If `ANPMessageService` exists, perform service discovery and capability selection according to the unified message entry semantics of ANP Profile 2;
    - If `ANPMessageService` declares `serviceDid`, use this DID to complete cross-domain service-to-service identity authentication according to the rules of P8;
    - You can still access did:wba's cross-platform identity authentication, Handle, ANP service discovery, E2EE and other upper-layer capabilities.

@@ -62,6 +62,7 @@ The design goals of WNS include:
 | **DID Rotation** | For path-type did:wba, the process in which the DID changes because the binding key or binding profile changes |
 | **WNS** | WBA Name Space, the namespace system defined by this specification |
 | **Handle Resolution Document** | The JSON document returned by the Handle Resolution Endpoint, containing Handle-to-DID mapping information |
+| **DID Confirmation Endpoint** | A confirmation endpoint under the Handle Provider's domain, used to confirm that a DID is indeed resolved by that Provider without disclosing a specific Handle in the DID Document |
 
 ## 3. Handle Format Specification
 
@@ -199,6 +200,43 @@ The JSON document returned by the Handle Resolution Endpoint has the following f
 | `versionId` | Optional | Mapping version identifier used for caching and troubleshooting |
 | `ttl` | Optional | Suggested cache lifetime in seconds |
 
+### 4.3.1 DID Confirmation Endpoint
+
+When the DID holder does not want to disclose a specific Handle in the DID Document, the Handle Provider MAY provide a DID Confirmation Endpoint.
+
+**Recommended URL:**
+
+```text
+https://{domain}/.well-known/handle/by-did?did={urlencoded-did}
+```
+
+- **Method**: `GET`
+- **Response Content-Type**: `application/json`
+
+**Example Response:**
+
+```json
+{
+  "did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "confirmed": true,
+  "status": "active",
+  "updated": "2025-01-01T00:00:00Z",
+  "ttl": 300
+}
+```
+
+**Field Descriptions:**
+
+| Field | Required/Optional | Description |
+|-------|-------------------|-------------|
+| `did` | Required | The DID being confirmed |
+| `confirmed` | Required | MUST be `true`, indicating that this DID is indeed resolved by the current Handle Provider |
+| `status` | Optional | The current resolution status of this DID at the Handle Provider |
+| `updated` | Optional | Last update time in ISO 8601 format |
+| `ttl` | Optional | Suggested cache lifetime in seconds |
+
+When a DID Confirmation Endpoint is used, the response document SHOULD NOT directly return a specific `handle`, so as to avoid indirectly disclosing the Handle via the DID Document.
+
 ### 4.4 Handle-to-DID Mapping Rules
 
 Handles and DIDs have a one-to-one correspondence maintained by the Handle Provider. The mapping follows these rules:
@@ -299,13 +337,28 @@ The Handle Provider declares the Handle-to-DID mapping through the Resolution En
 
 ### 6.2 DID Document Declaration (Reverse)
 
-The DID holder adds an entry of type `ANPHandleService` to the `service` section of the DID Document to declare the associated Handle:
+The DID holder adds an entry of type `ANPHandleService` to the `service` section of the DID Document to declare the Handle binding service endpoint it uses. `ANPHandleService.serviceEndpoint` no longer merely expresses the provider domain. Instead, it is a dereferenceable HTTPS endpoint. This endpoint supports the following two compatible modes:
+
+1. **Public Handle mode**: `serviceEndpoint` directly uses the standard Resolution Endpoint of that Handle.
+2. **Private confirmation mode**: `serviceEndpoint` points to the DID Confirmation Endpoint, which confirms that the DID is indeed resolved by the Handle Provider without disclosing a specific Handle in the DID Document.
+
+**Public Handle mode example:**
 
 ```json
 {
   "id": "did:wba:example.com:user:alice:e1_<fingerprint>#handle",
   "type": "ANPHandleService",
-  "serviceEndpoint": "https://example.com/.well-known/handle/"
+  "serviceEndpoint": "https://example.com/.well-known/handle/alice"
+}
+```
+
+**Private confirmation mode example:**
+
+```json
+{
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>#handle",
+  "type": "ANPHandleService",
+  "serviceEndpoint": "https://example.com/.well-known/handle/by-did?did=did%3Awba%3Aexample.com%3Auser%3Aalice%3Ae1_%3Cfingerprint%3E"
 }
 ```
 
@@ -313,15 +366,14 @@ The DID holder adds an entry of type `ANPHandleService` to the `service` section
 
 - `id`: Unique identifier of the service; using the `#handle` suffix is recommended.
 - `type`: MUST be `ANPHandleService`.
-- `serviceEndpoint`: An HTTPS endpoint under the Handle Provider's domain. In v1 of this specification, verifiers use only the domain portion of this URL for reverse binding verification.
+- `serviceEndpoint`: MUST be a dereferenceable absolute HTTPS URI under the Handle Provider's domain. In Public Handle mode, it SHOULD directly use the standard Handle Resolution Endpoint. In Private confirmation mode, it MAY use the DID Confirmation Endpoint.
 
-`ANPHandleService` is used to express the DID holder's reverse declaration of the Handle binding relationship.
+`ANPHandleService` is used to express the DID holder's reverse declaration of its Handle binding service.
 
-In v1 of this specification, the main role of `ANPHandleService.serviceEndpoint` is to declare the Handle Provider domain used by the DID. It is neither a Profile page entry point nor a messaging service endpoint. It is a domain declaration used for name-binding verification.
+- In Public Handle mode, the DID holder explicitly declares the Resolution Endpoint of a specific Handle, and the verifier can perform a strong check on whether the input Handle exactly matches the DID.
+- In Private confirmation mode, the DID holder declares only the accepted Handle Provider and DID confirmation endpoint. The verifier can confirm the provider relationship, but cannot infer from that alone that a specific Handle has been precisely reverse-confirmed.
 
-In v1, verifiers only compare whether the domain of `ANPHandleService.serviceEndpoint` matches the domain of the input Handle. The path does not need to match exactly. To keep implementations simple and readable, `serviceEndpoint` may be the Resolution Endpoint for the corresponding Handle, or another stable HTTPS URL under the same domain. However, its domain MUST match the Handle domain.
-
-Future versions may introduce stronger Name Service provider identifiers such as `providerDid`, while preserving compatibility, to support clearer provider identity expression and migration verification.
+Future versions may introduce stronger Name Service provider identity or privacy-preserving mechanisms such as `providerDid` and `handleCommitment`, while preserving compatibility.
 
 ### 6.3 Verification Flow
 
@@ -341,42 +393,66 @@ sequenceDiagram
     participant D as DID Document Server
 
     V->>H: 1. Resolve Handle to obtain DID
-    H-->>V: DID
+    H-->>V: Handle Resolution Document
     V->>D: 2. Resolve DID to obtain DID Document
     D-->>V: DID Document
-    Note over V: 3. Check whether the domain of<br/>ANPHandleService matches the Handle domain
-    alt Bidirectionally consistent
-        Note over V: ✓ Verification passed
-    else Inconsistent
-        Note over V: ✗ Verification failed; Handle binding is untrusted
+    Note over V: 3. Find ANPHandleService and read serviceEndpoint
+    V->>H: 4. Dereference serviceEndpoint
+    H-->>V: Handle Resolution Document or DID Confirmation Document
+    alt Public Handle mode and exact match
+        Note over V: ✓ exact-handle
+    else Private confirmation mode and confirmed=true
+        Note over V: ✓ provider-confirmed
+    else Verification failed
+        Note over V: ✗ unverified
     end
 ```
 
 **Verification Steps:**
 
-1. Resolve the Handle through the Handle Resolution Endpoint and obtain the DID.
-2. Resolve the DID according to Specification 03 and obtain the DID Document.
+1. Resolve the input Handle through the standard Handle Resolution Endpoint, obtain the Handle Resolution Document, and extract its `did`.
+2. Resolve that `did` according to Specification 03 and obtain the DID Document.
 3. Find entries of type `ANPHandleService` in the DID Document's `service` section.
-4. Extract the domain of the entry's `serviceEndpoint` and compare it with the domain of the input Handle.
+4. Verify that `serviceEndpoint` is an absolute `https` URI and that its hostname is consistent with the domain of the input Handle.
+5. Send a `GET` request to `serviceEndpoint` and parse the returned JSON document.
+6. If `serviceEndpoint` is equal to the standard Resolution Endpoint of the input Handle, and the returned document's `did` is identical to the `did` from Step 1, and the returned document's `handle` exactly matches the input Handle, the verifier has completed precise bidirectional binding verification for that specific Handle.
+7. If the returned document does not contain `handle`, but contains `confirmed = true`, and the returned document's `did` is identical to the `did` from Step 1, this means that the DID is indeed resolved by the Handle Provider. This result confirms only the provider relationship.
+8. All other cases MUST be treated as verification failure or insufficient verification strength.
 
-If the domains are consistent, the binding relationship is trusted. Otherwise, it MUST be treated as untrusted. Implementers MAY further warn the user.
+For security-sensitive scenarios that require confirmation of a specific Handle, the verifier MUST obtain the precise bidirectional binding verification result defined in Step 6. The provider confirmation result in Step 7 is not sufficient on its own for such scenarios.
 
-### 6.3.1 Rules for Using `ANPHandleService` (v1)
+### 6.3.1 Rules for Using `ANPHandleService` (v2)
 
 When performing bidirectional binding verification, the verifier should use `ANPHandleService.serviceEndpoint` according to the following rules:
 
-1. Extract the domain from the input Handle.
-2. Resolve the Handle through the Handle Resolution Endpoint and extract the `did` from the result.
-3. Resolve the DID Document for that `did`.
+1. Extract the domain and local-part from the input Handle, and construct the standard Resolution Endpoint for that Handle: `https://{domain}/.well-known/handle/{local-part}`.
+2. Resolve the Handle through that Resolution Endpoint, obtain the Handle Resolution Document, and extract its `did`.
+3. Resolve the DID Document for that `did` according to Specification 03.
 4. Find the entry where `type = "ANPHandleService"` in the DID Document's `service` section.
-5. Extract the URL scheme and domain of that entry's `serviceEndpoint`.
-6. Verify that `serviceEndpoint` uses `https`, and compare its domain with the Handle domain extracted in Step 1.
-7. If they are consistent, it indicates that the DID holder accepts the naming relationship provided by the Handle's domain.
-8. If `ANPHandleService` is absent, or the domain of `serviceEndpoint` is inconsistent, the Handle binding MUST NOT be treated as a verified binding.
+5. Verify that the entry's `serviceEndpoint` is an absolute `https` URI and that its hostname MUST match the Handle domain extracted in Step 1.
+6. Send a `GET` request to `serviceEndpoint` and obtain the returned JSON document.
+7. If `serviceEndpoint` is exactly the same as the standard Resolution Endpoint constructed in Step 1, and the returned document's `did` is identical to the `did` from Step 2, and the returned document's `handle` exactly matches the input Handle, then that Handle and DID are considered to have completed precise bidirectional binding verification.
+8. If the returned document does not contain `handle`, but contains `confirmed = true`, and the returned document's `did` is identical to the `did` from Step 2, this means that the DID is indeed resolved by the Handle Provider where `ANPHandleService` resides. This result confirms only the provider relationship and MUST NOT by itself be treated as meaning that a specific Handle and DID have completed precise bidirectional binding verification.
+9. If `ANPHandleService` does not exist, `serviceEndpoint` is not `https`, the hostname is inconsistent, dereferencing `serviceEndpoint` fails, the returned document's `did` is inconsistent, or the checks in Step 7 or Step 8 fail, the binding MUST NOT be treated as verified.
+10. For security-sensitive scenarios such as identity authentication, authorization decisions, and recipient confirmation before message sending that require confirmation of a specific Handle, the verifier MUST obtain the precise bidirectional binding verification result defined in Step 7. The provider confirmation result in Step 8 is not sufficient for such scenarios.
 
-In v1 of this specification, reverse binding verification compares only the domain. It does not require the `serviceEndpoint` path to be exactly equal to any specific Resolution Endpoint. Future versions may introduce `providerDid` to enable stronger Name Service provider identity verification while preserving compatibility.
+**Notes:**
 
-For security-sensitive scenarios such as identity authentication, authorization decisions, and recipient confirmation before message sending, verifiers MUST perform the checks above.
+- When the DID holder is willing to disclose its Handle, `ANPHandleService.serviceEndpoint` SHOULD directly use the standard Resolution Endpoint of that Handle.
+- When the DID holder does not want to disclose its Handle in the DID Document, `ANPHandleService.serviceEndpoint` MAY point to a DID Confirmation Endpoint, which returns `did` and `confirmed = true`.
+- Future versions may introduce `providerDid`, `handleCommitment`, or other stronger privacy-preserving binding mechanisms while preserving compatibility.
+
+### 6.3.2 Verification Result Semantics
+
+To avoid conflating verification results of different strengths, implementers SHOULD distinguish at least the following three results:
+
+| Result | Description |
+|--------|-------------|
+| `exact-handle` | The input Handle and DID have completed precise bidirectional binding verification |
+| `provider-confirmed` | The resolution relationship between the DID and the Handle Provider has been confirmed, but no specific Handle has been confirmed |
+| `unverified` | Verification failed, or only a result with insufficient trust strength was obtained |
+
+`provider-confirmed` is suitable for DID-first, directory browsing, or privacy-friendly Handle Provider confirmation scenarios. Only `exact-handle` satisfies high-assurance scenarios that require confirmation of a specific Handle.
 
 ## 7. Integration with the ANP Protocol Stack
 
@@ -403,7 +479,17 @@ The DID Document adds the `ANPHandleService` service type to support reverse ver
 
 For did:wba using the default path profile, WNS does not define the binding fingerprint format and does not redefine the `e1_` / `k1_` rules through WNS. Those semantics are entirely handled by Specification 03.
 
-In v1 of this specification, verifiers use only the domain portion of `ANPHandleService.serviceEndpoint` for reverse binding verification and do not require the path to match exactly.
+The example above shows Public Handle mode. If the DID holder does not want to disclose a specific Handle in the DID Document, `ANPHandleService.serviceEndpoint` MAY instead use a DID Confirmation Endpoint, for example:
+
+```json
+{
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>#handle",
+  "type": "ANPHandleService",
+  "serviceEndpoint": "https://example.com/.well-known/handle/by-did?did=did%3Awba%3Aexample.com%3Auser%3Aalice%3Ae1_%3Cfingerprint%3E"
+}
+```
+
+In this mode, the verifier can confirm only the provider relationship and cannot, based on that alone, treat a specific Handle as having completed precise bidirectional binding verification.
 
 ### 7.2 Integration with Agent Description Protocol (Spec 07)
 
@@ -456,6 +542,7 @@ Handle Providers MUST satisfy the following requirements:
 
 - MUST provide the resolution service over HTTPS.
 - MUST implement the `/.well-known/handle/{local-part}` endpoint.
+- MAY implement the `/.well-known/handle/by-did` DID Confirmation Endpoint.
 - SHOULD support HTTP caching headers (at least `Cache-Control` and `ETag`; `Last-Modified` is optional).
 - SHOULD implement rate limiting to prevent abuse.
 - When returning `429 Too Many Requests`, SHOULD include `Retry-After`.
@@ -473,9 +560,9 @@ Users may need to migrate a Handle from one Handle Provider to another. During m
 
 - The old Handle Provider MAY return `301 Moved Permanently` or `308 Permanent Redirect`, with the `Location` header pointing to the new Handle Provider's Resolution Endpoint.
 - During the migration period, the old and new Handle Providers SHOULD both maintain resolution capability.
-- The DID holder needs to update `ANPHandleService` in the DID Document so that it continues to declare the Name Service domain in use.
+- The DID holder needs to update `ANPHandleService` in the DID Document so that it continues to point to the Public Handle Resolution Endpoint or DID Confirmation Endpoint under the new Handle Provider's domain.
 - After resolving the result at the new address, the client MUST re-run bidirectional binding verification and MUST NOT accept the new binding solely based on the redirect.
-- If stronger provider identity needs to be expressed in the future without breaking the current v1 interoperability model, a `providerDid` mechanism may be introduced in a later version.
+- If stronger provider identity needs to be expressed in the future without breaking the current interoperability model, a `providerDid` mechanism may be introduced in a later version.
 
 ### 8.4 Underlying DID Rotation
 
@@ -486,6 +573,7 @@ For path-type did:wba using the default path profile, the underlying DID rotates
 - During the rotation window, the Handle Provider SHOULD reduce the cache TTL to reduce the time during which clients may use an outdated mapping.
 - Clients MUST NOT assume that a Handle is always bound to the same DID; the current resolution result is the authoritative current DID for that Handle.
 - For security-sensitive operations, after obtaining a new DID through a Handle, the client MUST re-run bidirectional binding verification.
+- If the upper-layer operation requires confirmation of a specific Handle, the client MUST require an `exact-handle` result and MUST NOT accept only `provider-confirmed`.
 - Policies for deactivating, retaining, or keeping the old DID in parallel are determined jointly by Specification 03 and the specific deployment. WNS is responsible only for the mapping between the stable name and the current DID.
 
 ## 9. Security Considerations
@@ -517,16 +605,18 @@ Specific policies are defined by each Handle Provider.
 - The Handle Resolution Endpoint exposes the existence of a Handle (for example, through differences among `200`, `404`, and `410`). Handle Providers SHOULD implement rate limiting to mitigate enumeration attacks.
 - Handle Providers SHOULD NOT return sensitive information beyond the mapping relationship in the Resolution Endpoint.
 - Handle Providers SHOULD try to normalize error response structures to avoid leaking unnecessary state through excessive differences.
+- If the DID holder does not want to disclose a specific Handle in the DID Document, it MAY use the DID Confirmation Endpoint mode and return only provider-level confirmation information.
 - For display-only scenarios, clients MAY delay bidirectional binding verification to reduce unnecessary cross-site resolution requests.
 
 ### 9.5 Anti-Tampering
 
 The core anti-tampering mechanism of WNS is bidirectional binding verification (Section 6):
 
-1. The Handle Provider declares Handle → DID in the forward direction.
-2. The DID holder declares the Name Service domain of the Handle in the reverse direction through `ANPHandleService` in the DID Document.
-3. In v1 of this specification, the verifier checks domain consistency in both directions.
-4. Future versions may introduce `providerDid` to provide stronger Name Service provider identity verification.
+1. The Handle Provider declares Handle → DID through the standard Resolution Endpoint in the forward direction.
+2. The DID holder declares, through `ANPHandleService` in the DID Document, a dereferenceable HTTPS endpoint under the same Handle Provider domain in the reverse direction.
+3. The verifier dereferences that endpoint and distinguishes between `exact-handle` and `provider-confirmed` based on the returned result.
+4. For high-assurance scenarios that require confirmation of a specific Handle, the verifier MUST require `exact-handle` and MUST NOT substitute `provider-confirmed`.
+5. Future versions may introduce mechanisms such as `providerDid` and `handleCommitment` to provide stronger Name Service provider identity verification and privacy protection.
 
 For path-type did:wba using the default path profile, the DID itself may also carry a binding fingerprint segment defined by Specification 03 (such as `e1_...` or `k1_...`). This belongs to the did:wba method layer and is not redefined by WNS.
 
@@ -601,12 +691,14 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 10. Implementations MUST NOT bypass the DID Document and infer service endpoints, binding keys, or other DID information directly from a Handle.
 11. Handle Providers MUST provide the resolution service over HTTPS.
 12. Handle Providers MUST implement the `/.well-known/handle/{local-part}` endpoint.
-13. Handle Providers MUST ensure Handle uniqueness within the same domain.
-14. In identity authentication, authorization decisions, instant messaging recipient resolution, and other security-sensitive scenarios, verifiers MUST perform bidirectional binding verification.
-15. In v1 of this specification, when performing bidirectional binding verification, verifiers MUST compare the domain of `ANPHandleService.serviceEndpoint` with the domain of the input Handle and MUST NOT require the path to match exactly.
-16. After a client follows a `301` / `308` redirect to a new Resolution Endpoint, it MUST re-run bidirectional binding verification and MUST NOT accept the new binding solely based on the redirect.
-17. For security-sensitive operations after underlying DID rotation, the client MUST re-run bidirectional binding verification.
-18. A Profile URL MUST NOT be treated as the authoritative source for Handle → DID binding or service discovery.
+13. In identity authentication, authorization decisions, instant messaging recipient resolution, and other security-sensitive scenarios, verifiers MUST perform bidirectional binding verification.
+14. `ANPHandleService.serviceEndpoint` MUST be an absolute HTTPS URI under the Handle Provider's domain. During verification, its hostname MUST match the domain of the input Handle.
+15. When performing bidirectional binding verification, the verifier MUST dereference `ANPHandleService.serviceEndpoint`.
+16. To treat a specific Handle as a verified binding, the verifier MUST obtain an `exact-handle` result.
+17. A `provider-confirmed` result MUST NOT by itself be treated as meaning that a specific Handle and DID have completed precise bidirectional binding verification.
+18. After a client follows a `301` / `308` redirect to a new Resolution Endpoint, it MUST re-run bidirectional binding verification and MUST NOT accept the new binding solely based on the redirect.
+19. For security-sensitive operations after underlying DID rotation, the client MUST re-run bidirectional binding verification.
+20. A Profile URL MUST NOT be treated as the authoritative source for Handle → DID binding or service discovery.
 
 ### SHOULD
 
@@ -617,10 +709,13 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 5. Clients SHOULD visually emphasize the domain portion when displaying a Handle.
 6. Handle Providers SHOULD NOT return sensitive information in the Resolution Endpoint.
 7. During Handle migration or an underlying DID rotation window, Handle Providers SHOULD reduce the cache TTL.
-8. When returning `429`, Handle Providers SHOULD include `Retry-After`.
+8. When returning `429 Too Many Requests`, Handle Providers SHOULD include `Retry-After`.
 9. Handle Providers SHOULD try to normalize error response structures to reduce unnecessary state leakage.
-10. After Handle Provider migration, the DID holder SHOULD update `ANPHandleService` in the DID Document.
-11. When the underlying path-type DID rotates, the Handle Provider SHOULD update the Handle mapping to the new DID as soon as possible.
+10. When the DID holder is willing to disclose a specific Handle, it SHOULD directly use the standard Resolution Endpoint of that Handle as `ANPHandleService.serviceEndpoint`.
+11. When a DID Confirmation Endpoint is used, the response document SHOULD NOT directly return a specific `handle`.
+12. Implementers SHOULD distinguish among `exact-handle`, `provider-confirmed`, and `unverified`.
+13. After Handle Provider migration, the DID holder SHOULD update `ANPHandleService` in the DID Document.
+14. When the underlying path-type DID rotates, the Handle Provider SHOULD update the Handle mapping to the new DID as soon as possible.
 
 ### MAY
 
@@ -629,7 +724,9 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 3. Agent Description documents MAY include a `handle` field.
 4. Entries in the agent discovery collection MAY include a `handle` field.
 5. For scenarios used only for UI display, search preview, or directory browsing, verifiers MAY delay bidirectional binding verification.
-6. A Handle MAY remain unchanged when the underlying path-type DID rotates.
+6. Handle Providers MAY implement the `/.well-known/handle/by-did` DID Confirmation Endpoint.
+7. When the DID holder does not want to disclose a specific Handle, it MAY use the DID Confirmation Endpoint as `ANPHandleService.serviceEndpoint`.
+8. A Handle MAY remain unchanged when the underlying path-type DID rotates to provide a stable human-readable name.
 
 ## Appendix A: Native `did:web` Compatibility
 

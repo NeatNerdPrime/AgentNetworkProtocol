@@ -272,7 +272,12 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
   - **id**：服务的唯一标识符。
   - **type**：服务类型。目前支持以下类型：
     - `AgentDescription`：智能体描述服务，`serviceEndpoint` 指向遵循[ANP-智能体描述协议规范](/chinese/07-ANP-智能体描述协议规范.md)的文档。
-    - `ANPHandleService`：Handle 绑定服务，用于 WNS（WBA Name Space）双向绑定验证。`serviceEndpoint` 指向该 DID 主体声明使用的 Handle Provider 域下的 HTTPS 端点（如 `https://example.com/.well-known/handle/alice`）。在本规范 v1 中，验证者执行反向绑定校验时，仅使用 `serviceEndpoint` 的 domain 部分与输入 Handle 的 domain 进行一致性比较，不要求 path 完全一致；后续版本可以引入 `providerDid` 等更强的 Name Service 提供者标识机制。通过在 DID Document 中声明 `ANPHandleService`，DID 持有者确认其关联 Handle 所属的 Name Service 域，验证者可据此完成双向验证。详见 [04-ANP-基于DID-WBA的命名空间规范](04-ANP-基于DID-WBA的命名空间规范.md)。
+    - `ANPHandleService`：Handle 绑定服务，用于 WNS（WBA Name Space）双向绑定验证。`serviceEndpoint` 必须（MUST）是位于 Handle Provider 域下、可解引用的 HTTPS 绝对 URI。详见 [04-ANP-基于DID-WBA的命名空间规范](04-anp-did-wba-name-space-specification.md)。
+      - 当 DID 持有者愿意公开其 Handle 时，`serviceEndpoint` 应（SHOULD）直接使用该 Handle 的标准 Resolution Endpoint（如 `https://example.com/.well-known/handle/alice`）；
+      - 当 DID 持有者不愿在 DID Document 中公开其 Handle 时，`serviceEndpoint` 可以（MAY）指向 DID Confirmation Endpoint（如 `https://example.com/.well-known/handle/by-did?did=...`），该端点至少返回 `did` 与 `confirmed = true`；
+      - 当返回文档包含 `handle` 且与输入 Handle 完全一致时，验证者可以完成具体 Handle 的精确反向验证；
+      - 当返回文档只包含确认信息时，验证者只能确认 provider 关系，不得将其单独视为“具体 Handle 已验证绑定”，尤其不能用于需要确认具体 Handle 的安全敏感场景。
+
     - `ANPMessageService`：ANP 即时消息统一服务入口。若 DID 主体参与 ANP 即时消息协议，`serviceEndpoint` **MAY** 指向其统一的 ANP 消息端点；私聊、群聊、密钥材料访问、附件控制等能力由该单一服务入口承载，具体方法与能力声明遵循 ANP Profile 2 及相关 Profile。若该服务需要参与跨域服务到服务调用，则服务条目 **SHOULD** 额外声明 `serviceDid`，表示该服务在外层 HTTP 请求签名中使用的 DID；对 did:wba 部署，通常应使用裸域名 DID（如 `did:wba:example.com` 或 `did:wba:example.com%3A8800`）。
   - **serviceEndpoint**：服务的端点URL。 
   - **serviceDid**：可选字段。当服务参与跨域服务到服务调用时，推荐声明该字段。其值应为 DID 字符串而非 DID URL，用于告诉对端“应当使用哪个 DID 的公钥来验证此外层 HTTP 请求签名”。
