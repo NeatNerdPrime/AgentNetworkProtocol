@@ -178,6 +178,31 @@ Refer to the conventions of the `did:wba` specification.
 - Mark the OPK as allocated, consumed or unavailable for reuse;
 - Returns the Bundle's revoked or invalidated status (if supported by the implementation).
 
+The first barrier to understanding P5 is not the algorithm, but rather which party signs, which party performs DH, and which party publishes Bundles / OPKs. The following diagram places the DID document's key roles and the externally exposed materials in one view for the subsequent session-establishment flow.
+
+```mermaid
+flowchart TB
+DID[Agent DID Document]
+
+DID --> AK[Assertion Key<br/>assertionMethod]
+DID --> KA[Static Key Agreement Key<br/>keyAgreement / X25519]
+
+AK --> PBP[prekey_bundle.proof]
+KA --> PB[prekey_bundle.static_key_agreement_id]
+
+SPK[Signed Prekey<br/>X25519] --> PB
+PBP --> PB
+
+OPK[One-Time Prekey pool] --> SVC[ANPMessageService]
+PB --> SVC
+SVC --> GET[direct.e2ee.get_prekey_bundle]
+GET --> RET[Return prekey_bundle + optional OPK]
+```
+
+*Figure P5-1: Relationship between key roles and public materials (non-normative).*
+
+This diagram emphasizes separation of responsibilities: the Assertion Key is responsible for identity binding, while long-term `keyAgreement` and SPK / OPK keys are responsible for DH computation. Implementations should not let the same key carry both semantics.
+
 ---
 
 ## 5. Mandatory-to-Implement Suite (MTI)
@@ -657,6 +682,29 @@ In v1 MTI, `direct_init.ciphertext_b64u` **MUST** carry a complete inner `Applic
 
 That is, the v1 MTI does not define an "empty init" object; after the sender successfully derives `SK`, it MUST encrypt the first `Application Plaintext` using `MK0` / `NONCE0` derived from `CK0` via `kdf_ck` and write it to `ciphertext_b64u`.
 
+The following sequence diagram connects Bundle retrieval, optional OPK selection, sending `direct_init`, receiver bootstrap, and the first reply into one complete path. Readers can then see how messages and state advance together while reading the formulas below.
+
+```mermaid
+sequenceDiagram
+participant A as Initiator A
+participant BS as Receiver B's ANPMessageService
+participant B as Receiver B
+
+A->>BS: direct.e2ee.get_prekey_bundle
+BS-->>A: prekey_bundle + optional OPK
+A->>A: Verify Bundle / generate EK_A / compute DH1~DH4 / derive SK
+A->>BS: direct.send (direct_init)
+BS-->>B: Deliver direct_init
+B->>B: Recompute shared secret / verify session_id / decrypt init
+B->>BS: direct.send (first direct-cipher reply)
+BS-->>A: First reply
+A->>A: Session enters established
+```
+
+*Figure P5-2: X3DH-like initial session-establishment sequence (non-normative).*
+
+Here, "establishment succeeds" does not mean Bundle retrieval succeeded. It means both parties have completed bootstrap based on the same derived results, and the initiator has received the first valid reply under the same `session_id`.
+
 
 ---
 
@@ -883,6 +931,26 @@ If decryption fails in step 11, the implementation **MUST** discard this tentati
 
 After the definition of this section is completed, subsequent messages enter the steady-state Double Ratchet processing in Chapter 10.
 
+With text alone, implementers can easily misunderstand the boundary between `pending-confirmation` and `established`. The following state diagram compresses the v1 bootstrap state into one view and highlights the constraint that the initiator must not send independent subsequent ciphertext before receiving the first valid reply.
+
+```mermaid
+stateDiagram-v2
+[*] --> NoSession
+NoSession --> Pending: Send direct_init
+
+state "Pending Confirmation / independent direct-cipher forbidden" as Pending
+
+Pending --> Pending: Idempotent retry of the same init
+Pending --> Established: Receive first valid reply
+Pending --> NoSession: Timeout / abandon / rebuild
+
+Established --> NoSession: reset / rebuild with new init
+```
+
+*Figure P5-3: Session bootstrap state (non-normative).*
+
+When handling the initiator's local buffering, retransmission, and error recovery, implementations should follow this state diagram instead of treating a session as fully usable for steady-state traffic immediately after `direct_init` is sent.
+
 
 ### 9.5 Init messages are not signed by default
 
@@ -1061,6 +1129,37 @@ When the receiver processes a subsequent message **MUST**:
    - `Nr = Nr + 1`
 
 Implement **SHOULD** to execute steps 5-8 in tentative state or equivalent rollback mechanism; if decryption fails, **MUST NOT** consume `CKr` or increase `Nr`, and **MUST** return `anp.direct.e2ee.decrypt_failed`.
+
+After entering steady state, the hard part of P5 becomes distinguishing ordinary chain advancement from a new DH ratchet. The following diagram summarizes the core advancement path for `RK / DHs / DHr / CKs / CKr / Ns / Nr / PN`.
+
+```mermaid
+flowchart TD
+Start[Current session state<br/>RK / DHs / DHr / CKs / CKr / Ns / Nr / PN]
+
+Start --> Send[Send subsequent message]
+Send --> K1[kdf_ck(CKs)]
+K1 --> MK1[Obtain MK / NONCE / CKs']
+MK1 --> SMsg[Encrypt Application Plaintext]
+SMsg --> SUpd[Update CKs = CKs' ; Ns++]
+
+Start --> RecvSame[Receive message<br/>dh_pub equals current DHr]
+RecvSame --> K2[kdf_ck(CKr)]
+K2 --> MK2[Obtain MK / NONCE / CKr']
+MK2 --> RMsg[Decrypt and verify AD_msg]
+RMsg --> RUpd[Update CKr = CKr' ; Nr++]
+
+Start --> RecvNew[Receive message<br/>dh_pub differs from current DHr]
+RecvNew --> RK1[kdf_rk(RK, DH(DHs, DHr_new))]
+RK1 --> NewCKr[Obtain new CKr]
+NewCKr --> Rotate[Generate new DHs]
+Rotate --> RK2[kdf_rk(RK, DH(DHs_new, DHr_new))]
+RK2 --> NewCKs[Obtain new CKs]
+NewCKs --> ResetCtr[PN = Ns ; Ns = 0 ; Nr = 0]
+```
+
+*Figure P5-4: Double Ratchet state advancement (non-normative).*
+
+When reading the following `RatchetEncrypt()`, `RatchetDecrypt()`, and skipped-message-key processing logic, treat them as concrete expansions of this state-advancement diagram for sending, receiving, and out-of-order recovery.
 
 ### 10.3 `application/anp-direct-cipher+json` object
 

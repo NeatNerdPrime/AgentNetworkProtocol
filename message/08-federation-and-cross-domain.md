@@ -94,6 +94,34 @@ In other words:
 - `meta.sender_did` and `auth.origin_proof` answer "**Which business entity initiated this action**";
 - Two levels of identity can be related, but semantically **MUST NOT** be confused.
 
+P8 does not redefine business protocols. Instead, it explains how existing business objects flow between services across domains. The following overview places business subjects, outer service identities, the Group Host, and the Object Service into one view.
+
+```mermaid
+flowchart LR
+subgraph SenderDomain[Sender domain]
+    SA[Sender Agent]
+    SS[Sender ANPMessageService]
+end
+
+subgraph TargetDomain[Target domain]
+    TS[Target ANPMessageService]
+    GH[Group Host]
+    OS[Object Service]
+    TA[Target Agent]
+end
+
+SA -->|Business object<br/>meta.sender_did / auth.origin_proof| SS
+SS -->|Cross-domain HTTP call<br/>outer serviceDid authentication| TS
+
+TS --> TA
+TS --> GH
+TS --> OS
+```
+
+*Figure P8-1: Federation and cross-domain overview (non-normative).*
+
+When reading the subsequent sections, treat this diagram as P8's premise: business objects are carried across domains through existing methods, while outer HTTP authentication only proves which public service entry is performing the current one-hop call.
+
 ---
 
 ## 4. Profile identification and dependencies
@@ -136,6 +164,29 @@ The cross-domain caller **MUST NOT** change `meta.security_profile` in the origi
 ---
 
 ## 5. Cross-Domain Connection Methods
+
+The first task of a cross-domain implementation is not signing, but deciding which target service category the request should reach. The following diagram consolidates routing decisions for the `agent`, `group`, and `service` target modeling modes.
+
+```mermaid
+flowchart TD
+Req[Receive cross-domain business request]
+Req --> K{meta.target.kind}
+
+K -->|agent| A[Resolve target.did as Agent DID]
+K -->|group| G[Resolve target.did as Group DID]
+K -->|service| S[Use target.did directly as serviceDid to discover target service]
+
+A --> X[Select target ANPMessageService]
+G --> H[Locate the Group Host's ANPMessageService]
+S --> X
+
+X --> CALL[Send the original business method directly]
+H --> CALL
+```
+
+*Figure P8-2: Cross-domain routing decision (non-normative).*
+
+The key point is to "send the original business method directly": P8 discourages wrapping it in an additional relay method. Instead, the sender discovers the final public service first and then sends the original request to the correct business-responsible endpoint.
 
 ### 5.1 Agent to Agent
 
@@ -213,6 +264,30 @@ When the Group Host actively distributes ordered group events to member domains,
 
 `group.e2ee.notice` can deliver `welcome-delivery` to target Agents that have not yet completed MLS bootstrap, or deliver `commit-delivery` to existing members; this belongs to P6's cryptographic result distribution, rather than P4's group member broadcast. out-of-band Invitation credentials or other non-member governance messages, if present, are deployment extensions and do not constitute a v1 standard cross-domain path.
 
+P8 does not require the Group Host to design a new protocol for group events. Instead, it encourages direct reuse of existing notification methods. The following diagram shows the three paths for message distribution, business-state changes, and cryptographic result delivery side by side so that readers can distinguish their semantic boundaries.
+
+```mermaid
+sequenceDiagram
+participant GH as Group Host
+participant MS as Member-domain service
+participant MA as Member Agent
+
+alt Group message distribution
+    GH->>MS: group.incoming
+    MS-->>MA: Deliver group message
+else Business-state change
+    GH->>MS: group.state_changed
+    MS-->>MA: Deliver state event
+else Cryptographic result distribution
+    GH->>MS: group.e2ee.notice
+    MS-->>MA: welcome-delivery / commit-delivery
+end
+```
+
+*Figure P8-3: Cross-domain distribution of group events (non-normative).*
+
+If an implementation uses an equivalent mechanism, it should still preserve the semantic separation among these three paths and should not mix business events, group messages, and cryptographic notices into the same notification object.
+
 ---
 
 ## 6. Service-to-service security requirements
@@ -288,6 +363,35 @@ Subsequently, the receiver **MUST** verify the identity of the sender's service 
 If the `ANPMessageService` selected in step 3 does not declare `serviceDid`, or the comparison in step 6 is inconsistent, the receiver **MUST** treat the cross-domain service identity authentication as failed.
 
 The receiver **MUST NOT** always derive the caller's `serviceDid` from `meta.sender_did`; for group notifications, doing so would incorrectly treat the original business sender as the current cross-domain caller.
+
+Determining the caller anchor by method type is one of the easiest parts of P8 to implement incorrectly. The following sequence diagram makes the verification order among the caller anchor, `ANPMessageService.serviceDid`, and the outer HTTP `keyid` explicit.
+
+```mermaid
+sequenceDiagram
+participant C as Caller service
+participant R as Receiver service
+participant D as DID resolver / document
+
+C->>R: Cross-domain HTTP request + Signature-Input(keyid=...)
+R->>R: Determine caller anchor by method
+Note over R: Normal requests use meta.sender_did
+Note over R: Group notifications use body.group_did
+
+R->>D: Resolve caller anchor DID document
+D-->>R: DID document
+
+R->>R: Select its public ANPMessageService
+R->>R: Read serviceDid
+R->>R: Compare DID owning keyid == serviceDid
+
+R->>D: Resolve serviceDid document and obtain authentication key
+D-->>R: Verification material
+R->>R: Verify HTTP Message Signatures
+```
+
+*Figure P8-4: caller anchor and `serviceDid` verification (non-normative).*
+
+The receiver should not always derive the caller `serviceDid` from `meta.sender_did`. For group notifications such as `group.incoming`, `group.state_changed`, and `group.e2ee.notice`, the business anchor should switch to `body.group_did`.
 
 
 #### 6.2.3 Usage Conventions for Bare-Domain DIDs
@@ -447,6 +551,36 @@ This mode **is not part of v1 MTI**; if enabled by deployment, you must resolve 
 - How the Agent obtains and verifies the target `serviceDid` based on the original attachment message sender DID
 - How the client performs outer service authentication
 - How the client handles rate limiting, retrying and auditing strategies in a unified manner
+
+The cross-domain endpoint for attachment download tickets is easily misidentified as the domain of `object_uri`, or as `group_did`. The following diagram shows the standard path and emphasizes that the control-plane discovery anchor must be the original sender DID of the attachment message.
+
+```mermaid
+sequenceDiagram
+participant B as Receiver Agent
+participant BS as B-domain service
+participant RES as DID resolver
+participant AS as Original sender ANPMessageService
+participant O as Internal Object Service in A domain
+
+B->>BS: Request attachment download
+BS->>RES: Resolve original attachment message sender_did
+RES-->>BS: Target ANPMessageService.serviceDid
+
+Note over BS: Anchor MUST be original message sender_did
+Note over BS: Do not infer it from group_did or object_uri domain
+
+BS->>AS: attachment.get_download_ticket
+AS->>O: Internal Access Grant validation
+O-->>AS: Allow issuance
+AS-->>BS: download_ticket
+BS-->>B: download_ticket
+
+B->>O: GET object_uri + Authorization
+```
+
+*Figure P8-5: Cross-domain `attachment.get_download_ticket` flow (non-normative).*
+
+This diagram also illustrates the boundary between protocol and implementation: the externally interoperable protocol endpoint is the public `ANPMessageService`; whether it internally routes to a separate Object Service is an implementation detail.
 
 
 ### 9.3 Download action

@@ -117,6 +117,36 @@ owner is responsible for:
 - Generate `welcome` for new members;
 - Advance `epoch` after member change.
 
+The core idea of P6 is not to put MLS objects into P4 method bodies, but to let cryptographic state advance together with business state. The following diagram summarizes this state coupling so that readers can understand the causal relationships among methods before reading the detailed constraints below.
+
+```mermaid
+flowchart TB
+P4[P4 business-state changes<br/>group.create / member active / member left or removed]
+OBS[owner observes business state]
+
+CREATE[group.e2ee.create]
+ADD[group.e2ee.add]
+REMOVE[group.e2ee.remove]
+
+HOST[Group Host]
+NOTICE[group.e2ee.notice]
+
+P4 --> OBS
+OBS -->|group created and has no crypto_group_id yet| CREATE
+OBS -->|member active and not yet in MLS| ADD
+OBS -->|member left or removed and still in MLS| REMOVE
+
+CREATE --> HOST
+ADD --> HOST
+REMOVE --> HOST
+
+HOST --> NOTICE
+```
+
+*Figure P6-1: Overview of P4 / P6 state coupling (non-normative).*
+
+This diagram emphasizes trigger relationships rather than a new business state machine: P4 remains the authority for the business layer, and P6 only observes those business results and materializes them as MLS create / add / remove operations.
+
 ### 3.6 Group Host is responsible for ordering and is not responsible for MLS control
 
 The responsibilities of Group Host Service are:
@@ -355,6 +385,27 @@ The recipient MUST complete the following verifications before accepting KeyPack
 9. `credential.identity` in the MLS certificate is consistent with `agent_did`;
 10. If `issued_at` / `expires_at` exists, implement **MUST** to verify its time window according to the local time validity policy.
 
+P6 defines `did_wba_binding` because the MLS leaf signature key should not be directly equated with the DID long-term identity signing key. The following diagram connects `agent_did`, the DID document, the binding object, and KeyPackage / `credential.identity` so that readers can understand the verification order.
+
+```mermaid
+flowchart LR
+DID[agent_did]
+DOC[DID Document]
+VM[assertionMethod verificationMethod]
+BIND[did_wba_binding.proof]
+LEAF[leaf_signature_key_b64u]
+KP[MLS KeyPackage]
+CID[credential.identity = agent_did]
+
+DID --> DOC --> VM --> BIND --> LEAF --> KP
+DID --> CID
+CID --> KP
+```
+
+*Figure P6-2: did:wba and MLS binding chain (non-normative).*
+
+During verification, the recipient should not only check that the internal MLS signature is valid. It should also follow this chain to confirm that `credential.identity`, the leaf signature key, and `agent_did` are fully bound.
+
 ### 6.5 `e1_` is compatible with `k1_`
 
 - For the default `e1_` DID, `did_wba_binding.proof` **MUST** reuse the shared Object Proof Profile of P1 Appendix B;
@@ -382,6 +433,38 @@ This Profile reuses the `group_state_ref` concept of P4 and requires that the E2
 - `group_did`
 - `group_state_version`
 - `policy_hash` (if the group policy has been hashed)
+
+In group E2EE, readers can easily connect the wrong mental model among four identifiers / versions at different layers: Group DID, business-state version, cryptographic internal group ID, and MLS epoch. The following diagram puts their sources and advancement relationships in one view.
+
+```mermaid
+flowchart TD
+GD[group_did<br/>application-layer group identifier]
+SV[group_state_version<br/>P4 business-state version]
+CG[crypto_group_id<br/>MLS group_id]
+EP[epoch<br/>MLS generation]
+
+CREATE[group.e2ee.create]
+ADDRM[group.e2ee.add / remove]
+MSG[group.e2ee.send]
+
+GD --> CREATE
+SV --> CREATE
+CREATE --> CG
+CREATE --> EP
+
+SV --> ADDRM
+CG --> ADDRM
+ADDRM --> EP
+
+GD --> MSG
+SV --> MSG
+CG --> MSG
+EP --> MSG
+```
+
+*Figure P6-3: Relationship among `group_did`, `crypto_group_id`, `group_state_version`, and `epoch` (non-normative).*
+
+When reading the subsequent object structures and verification rules, treat these four values as coordinates from different layers: they need to be bound, but they cannot replace each other and should not be mechanically treated as the same value.
 
 ### 7.3 `group_key_package`
 

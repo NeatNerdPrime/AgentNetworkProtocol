@@ -59,6 +59,23 @@ ANP uses the following layering:
 4. **Security Overlay layer**: Direct E2EE, Group E2EE and other security semantics;
 5. **Media/Object layer**: Large object extensions such as Attachment.
 
+To help readers quickly build an overall mental model of ANP layering boundaries, the following diagram gives an overview from the transport layer to the media/object layer. Subsequent Profiles further constrain their own objects, flows, and requirements on top of this layering framework.
+
+```mermaid
+flowchart TB
+T[Transport Layer<br/>HTTPS / WSS / secure channel]
+B[Binding Layer<br/>anp.core.binding.v1<br/>JSON-RPC 2.0 / meta / auth / body]
+D[Business Layer<br/>Direct Base / Group Base]
+S[Security Overlay Layer<br/>Direct E2EE / Group E2EE]
+M[Media / Object Layer<br/>Attachment / object transfer]
+
+T --> B --> D --> S --> M
+```
+
+*Figure P1-1: ANP layering overview (non-normative).*
+
+This diagram emphasizes responsibility boundaries rather than deployment topology: an implementation may merge multiple layers into the same service, but implementations should still preserve the semantic separation of these layers for cross-implementation interoperability.
+
 ### 3.2 Minimum interoperability principle
 
 Different implementations can share the same as long as they meet this Profile constraint:
@@ -203,6 +220,31 @@ Among them:
 If `auth` is not defined for a specific Profile, the caller **MAY** omit it.
 If a specific Profile explicitly requires `auth`, the caller **MUST** provide it and the recipient **MUST** validate it.
 Top-level `params` members other than `meta`, `auth`, and `body` are only allowed to appear if the corresponding Profile is explicitly defined.
+
+The following diagram consolidates the outer envelope that appears repeatedly in this Profile into a single view. It helps readers understand which structures are shared by Request, Notification, and Response, and what responsibilities are carried by `meta`, `auth`, and `body`.
+
+```mermaid
+flowchart TB
+A[ANP JSON-RPC Object]
+
+A --> Req[Request<br/>with id]
+A --> Noti[Notification<br/>without id]
+A --> Resp[Response]
+
+Req --> Params[params]
+Noti --> Params
+
+Params --> Meta[meta<br/>profile / security_profile / sender_did / target / operation_id / message_id / content_type]
+Params --> Auth[auth<br/>present only as required by the specific Profile]
+Params --> Body[body<br/>method-specific parameters]
+
+Resp --> Ok[Successful Response<br/>result]
+Resp --> Err[Failure Response<br/>error]
+```
+
+*Figure P1-2: ANP JSON-RPC envelope structure (non-normative).*
+
+Subsequent business Profiles and security overlays should extend only `body` and the necessary `auth` constraints, rather than inventing another top-level binding structure that conflicts with this diagram.
 
 ### 6.2 `meta` object
 
@@ -504,6 +546,26 @@ Notes:
 - The caller **SHOULD** obtain the target service capabilities before the first interaction or after the cache expires;
 - If `profile` or `security_profile` in the request is not supported, the server **MUST** return an explicit error;
 - The caller **MUST NOT** assume that support for a base profile implies support for an E2EE overlay.
+
+Static hints in DID documents and runtime capability results are easy for implementers to confuse. The following diagram fixes the recommended negotiation order and highlights the principle that static information is used for discovery, while runtime results are used for final decisions.
+
+```mermaid
+sequenceDiagram
+participant C as Caller
+participant D as DID Document
+participant S as ANPMessageService
+
+C->>D: Resolve target DID
+D-->>C: serviceEndpoint + static hints
+C->>S: anp.get_capabilities
+S-->>C: service_did + supported_profiles + supported_security_profiles + limits
+Note over C,S: Runtime results take precedence over static hints
+C->>C: Refresh cache and select the actual profile / security_profile
+```
+
+*Figure P1-3: Capability negotiation and runtime authority (non-normative).*
+
+When static hints conflict with runtime capabilities, implementations should follow the runtime result shown in this diagram and treat the conflict as a signal to refresh the local cache.
 
 ---
 
@@ -915,6 +977,40 @@ Among them:
 Rationale:
 
 `meta.target.kind` has entered `contentDigest` through the Signed Request Object; `@target-uri` continues to explicitly carry `kind` in order to allow the target category to maintain stable semantics that is readable, auditable, and independently checkable in the signature base, rather than relying on the verifier to first expand the entire summary object before knowing the target type.
+
+Appendix A of P1 is the originator-proof foundation shared by multiple business Profiles. The following diagram compresses the relationship among the `Signed Request Object`, `contentDigest`, and the `@method` / `@target-uri` / `content-digest` components into one view for reuse by subsequent documents.
+
+```mermaid
+flowchart LR
+M1[method]
+M2[meta]
+M3[body]
+
+M1 --> SRO[Signed Request Object]
+M2 --> SRO
+M3 --> SRO
+
+SRO --> JCS[RFC 8785 JCS]
+JCS --> CD[contentDigest]
+
+M1 --> HM[@method]
+M2 --> TU[@target-uri<br/>anp://kind/pct-encoded-did]
+
+HM --> SB[Signature Base]
+TU --> SB
+CD --> SB
+
+SB --> SI[signatureInput]
+SB --> SG[signature]
+
+CD --> OP[auth.origin_proof]
+SI --> OP
+SG --> OP
+```
+
+*Figure P1-4: Binding of the Signed Request Object and Origin Proof (non-normative).*
+
+For any subsequent business method that requires `auth.origin_proof`, this shared binding diagram should be used to understand the sources of digest input and signature components, instead of defining a new generic signature envelope in each document.
 
 ## A.5 Relationship with the standard signature model
 

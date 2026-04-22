@@ -222,6 +222,30 @@ The requirements are as follows:
 - **MUST** be represented by a decimal string;
 - **MUST NOT** directly serves as the only basis for security semantics.
 
+The point most easily confused in P4 is which actions advance the group-state version, which actions only advance the group event sequence, and what exactly `group_receipt` anchors. The following diagram puts these three relationships into one view.
+
+```mermaid
+flowchart TD
+COps[Group state-changing operations<br/>create / join / add / remove / leave / update_*]
+Msg[group.send]
+
+COps --> SV[Advance group_state_version]
+COps --> SEQ[Advance group_event_seq]
+
+Msg --> SEQ
+Msg --> SNAP[Reference current group_state_version snapshot]
+
+SV --> RC[group_receipt]
+SEQ --> RC
+SNAP --> RC
+
+RC --> OUT[Anchored result in response / notification]
+```
+
+*Figure P4-1: Relationship among `group_state_version`, `group_event_seq`, and `group_receipt` (non-normative).*
+
+When reading the subsequent semantics of `group.send`, `group.state_changed`, and `group_receipt`, always return to this diagram: group messages participate in event ordering, but a message itself does not advance a new `group_state_version`.
+
 ### 6.4 Role model
 
 This Profile minimum interoperability **MUST** support the following roles:

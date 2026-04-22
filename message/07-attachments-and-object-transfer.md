@@ -87,6 +87,30 @@ The standard mainline path **MUST** for v1 is:
 7. The receiver downloads the object through independent HTTPS `GET object_uri` and carries ticket in the `Authorization` header;
 8. The receiver verifies the digest; if the object has `object-e2ee` enabled, then perform decryption and post-decryption verification.
 
+Before entering the concrete control-plane methods, the following overview connects the message plane, control plane, and data plane. It helps readers distinguish the three stages of "object exists", "message has been sent", and "download has been authorized" when reading the scenarios in Section 5.
+
+```mermaid
+flowchart TD
+C[Sender client]
+SLOT[attachment.create_slot]
+PUT[HTTPS PUT object bytes]
+COMMIT[attachment.commit_object]
+SEND[Send attachment manifest<br/>direct.send / group.send]
+GRANT[Create Access Grant after message accepted]
+
+R[Receiver]
+TICKET[attachment.get_download_ticket]
+GET[HTTPS GET object_uri]
+
+C --> SLOT --> PUT --> COMMIT --> SEND --> GRANT
+R --> TICKET --> GET
+GRANT --> TICKET
+```
+
+*Figure P7-1: Overview of attachment three-plane flow and authorization chain (non-normative).*
+
+This diagram emphasizes that `create_slot` / `commit_object` only create the object. What actually makes it downloadable to the receiver is the Access Grant established after the attachment message is accepted, followed by the download-ticket flow.
+
 ### 3.3 Only keep two object modes
 
 In v1, `encryption_info.mode` **MUST** only allows the following two values:
@@ -680,6 +704,33 @@ This means:
 - The Object Service **SHOULD** refuse to issue a new Download Ticket to a removed member based on the current group state
 - However, if the object bytes, object key, or downloaded content has previously reached a legitimate member, this specification **does not promise** to subsequently revoke its acquired access capabilities
 
+Another critical boundary in P7 is that object existence does not imply object downloadability. The following diagram connects object commitment, message acceptance, Access Grant creation, ticket issuance, and final download into one authorization chain so that implementers can correctly apply access control.
+
+```mermaid
+sequenceDiagram
+participant S as Sender service
+participant O as Object Service
+participant M as Message plane
+participant R as Receiver
+
+S->>O: create_slot / commit_object
+Note over S,O: Only creates the object; does not create download authorization
+
+S->>M: direct.send / group.send attachment manifest
+M-->>S: message accepted
+S->>S: Create Access Grant for each attachment
+
+R->>S: attachment.get_download_ticket
+S->>S: Validate requester_did + message_id + attachment_id + object_uri
+S-->>R: download_ticket
+
+R->>O: GET object_uri + Authorization
+```
+
+*Figure P7-2: Authorization chain for Access Grant and Download Ticket (non-normative).*
+
+Therefore, authorization for `attachment.get_download_ticket` should depend on message context and Access Grants, rather than only on `object_uri` or only on `intended_target` left during the upload stage.
+
 ---
 
 ## 10. Control-Plane Methods
@@ -708,6 +759,28 @@ Therefore:
 - `meta.target.did` **MUST** equal target public `ANPMessageService.serviceDid`
 - Cross-domain outer-layer authentication is provided by P8 through `serviceDid + HTTP Message Signatures`
 - v1 does **not** require the Object Service to re-verify the end recipient's `origin_proof`
+
+A control-plane detail that implementers easily overlook is that Upload Slot and Committed Object are not the same state. The following diagram places creation, upload, commit, abort, and expiration on one lifecycle.
+
+```mermaid
+stateDiagram-v2
+[*] --> SlotCreated
+SlotCreated --> Uploading: Start PUT
+Uploading --> Uploaded: PUT completed
+Uploaded --> Committed: attachment.commit_object
+
+SlotCreated --> Aborted: attachment.abort_object
+Uploading --> Aborted: attachment.abort_object
+Uploaded --> Aborted: attachment.abort_object
+
+SlotCreated --> Expired: timeout
+Uploading --> Expired: timeout
+Uploaded --> Expired: timeout
+```
+
+*Figure P7-3: Upload Slot / Object lifecycle (non-normative).*
+
+Implementations should not interpret "obtaining an `object_uri`" as "the object can already be referenced by a message". Only after the object enters the `Committed` state does it become eligible for legal reference by an attachment manifest.
 
 ### 10.2 `attachment.create_slot`
 

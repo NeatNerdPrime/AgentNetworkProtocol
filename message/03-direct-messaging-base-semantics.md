@@ -79,6 +79,28 @@ In this Profile, a successful `direct.send` only means:
 
 It does not mean that the target Agent has processed application payload, has been presented to the user, or has completed internal persistence.
 
+The "minimum success semantics" of P3 can easily be misunderstood as "the peer has already read the message". The following sequence diagram places the sender, the outbound-domain service, the target ingress service, and the target Agent on the same path, making the success boundary explicit.
+
+```mermaid
+sequenceDiagram
+participant A as Sender Agent
+participant AS as Sender-domain service
+participant BS as Target-domain ingress service
+participant B as Receiver Agent
+
+A->>AS: direct.send
+AS->>BS: Forward original direct.send cross-domain
+BS->>BS: Validate target / idempotence / origin_proof
+BS-->>AS: accepted = true
+AS-->>A: Return success
+Note over BS: Success only means ingress accepted
+BS-->>B: direct.incoming
+```
+
+*Figure P3-1: End-to-end sequence of `direct.send` (non-normative).*
+
+Therefore, success in this Profile only answers whether the target Agent's ingress service accepted the message. It does not answer whether the user has read it, whether it has been displayed, or whether persistence has completed inside the peer.
+
 ### 3.4 Non-Goals
 
 This Profile does not attempt to provide:
@@ -433,6 +455,27 @@ For `direct.incoming`, if the service chooses to push the same accepted message 
 For `direct.send` and `direct.incoming`, whether to resend automatically after a transmission failure **MAY** be determined by the service according to local policy; this profile **MUST NOT** require resending, a fixed retry count, or a fixed backoff algorithm.
 
 ---
+
+For implementers, the fields of `direct.send` are often not the real source of mistakes; the hard part is deciding whether to check `operation_id` or `message_id` first during retries. The following diagram makes the minimum-interoperability decision order explicit.
+
+```mermaid
+flowchart TD
+R1[Receive direct.send]
+R1 --> K1{Does (sender_did,target.did,method,operation_id)<br/>already exist?}
+
+K1 -->|No| P[Process normally]
+P --> M1{Is message_id duplicated?}
+M1 -->|No| S[Write idempotence record and return accepted]
+M1 -->|Yes| D[Apply duplicate-message policy]
+
+K1 -->|Yes| K2{Is the request semantically equivalent?}
+K2 -->|Yes| E[Return the same or equivalent result]
+K2 -->|No| C[anp.idempotency_conflict]
+```
+
+*Figure P3-2: Direct-message idempotence and retry decision (non-normative).*
+
+Implementations should first hit operation-level idempotence and then handle message-level duplicate detection; otherwise, semantically equivalent requests may be incorrectly treated as conflicts during network retries or cross-domain replay-protection scenarios.
 
 ## 9. Security and Policy
 

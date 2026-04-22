@@ -108,6 +108,28 @@ The above three categories of identities:
 
 ---
 
+One of the easiest mistakes in ANP is to conflate the business sender, the object issuer, and the one-hop service identity. The following diagram puts these three DID layers into one view so that subsequent Profiles can refer to them separately.
+
+```mermaid
+flowchart LR
+BO[Business Origin DID<br/>meta.sender_did]
+LI[Logical Issuer DID<br/>group_did / receipt or governance object issuer]
+SD[Service DID<br/>ANPMessageService.serviceDid]
+
+BO --> U1[Business initiation / application semantics]
+LI --> U2[Object issuance / result witnessing]
+SD --> U3[Cross-domain one-hop service identity]
+
+W[The three MUST NOT be automatically equated]
+BO -.-> W
+LI -.-> W
+SD -.-> W
+```
+
+*Figure P2-1: ANP identity layering relationship (non-normative).*
+
+When subsequent documents require signatures, authorization, or routing, they should explicitly state which DID layer they use instead of assuming that readers will treat the three subjects as the same entity.
+
 ## 4. ANP interpretation rules for DID documents
 
 ### 4.1 General rules
@@ -299,6 +321,25 @@ Externally exposed attachment Control-Plane Methods **MUST** be still entered th
 - If there are multiple components within the implementation, the DID document **MUST** only exposes a unified entry and returns finer-grained capability boundaries through runtime capability negotiation.
 - Externally exposed service-scoped methods, including key material methods and attachments Control-Plane Methods, **MUST** use the `serviceDid` of the unified entrance as the target service identity anchor, unless the corresponding Profile is explicitly declared as endpoint-local
 
+To reduce cross-domain service-selection ambiguity, v1 encourages exposing only one unified `ANPMessageService` to the outside. The following diagram places that unified entry together with common internal logical roles, helping readers distinguish between a public service type and implementation-internal division of labor.
+
+```mermaid
+flowchart TB
+DID[DID Document]
+DID --> S[Single public ANPMessageService]
+
+S --> Home[Home Role<br/>direct messaging entry]
+S --> Group[Group Role<br/>Group Host / group entry]
+S --> Key[Key Role<br/>E2EE materials]
+S --> Cap[Capability Role<br/>anp.get_capabilities]
+S --> Obj[Object Role<br/>attachment control / download tickets]
+S --> Join[Join Role<br/>joining / onboarding]
+```
+
+*Figure P2-2: Relationship between unified ANPMessageService and internal roles (non-normative).*
+
+The roles in this diagram are only an illustration of internal capability boundaries. They do not define new DID `service type` values and should not replace standardized service-discovery fields.
+
 
 ### 7.3 Logical role of `ANPMessageService`
 
@@ -421,6 +462,30 @@ Rules:
 ---
 
 ## 9. Discovery process
+
+The following sections describe the discovery details for Agent, Group, and `serviceDid`. The diagram below first gives a unified overview, showing that all three paths ultimately converge on the public `ANPMessageService` and runtime capability negotiation.
+
+```mermaid
+flowchart TD
+Start[Caller holds a target DID]
+Start --> K{Target type}
+
+K -->|Agent DID| A[Resolve Agent DID document]
+K -->|Group DID| G[Resolve Group DID document]
+K -->|Service DID| SV[Resolve Service DID document]
+
+A --> S1[Select the single public ANPMessageService]
+G --> S1
+SV --> S1
+
+S1 --> H[Read static hints<br/>profiles / securityProfiles / serviceDid]
+H --> C[Optionally call anp.get_capabilities]
+C --> R[Use the runtime result as authoritative capabilities]
+```
+
+*Figure P2-3: Unified discovery flow for Agent / Group / Service (non-normative).*
+
+When reading Sections 9.1, 9.2, and 9.3 below, treat them as concrete applications of this unified discovery diagram to three target types, not as three independent discovery philosophies.
 
 ### 9.1 Agent discovery
 
