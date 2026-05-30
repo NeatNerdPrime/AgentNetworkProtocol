@@ -544,6 +544,25 @@ Rules:
 - The message semantic fields `thread_id`, `reply_to_message_id`, and `annotations` in P4 **MUST** be located in the inner object under group E2EE;
 - The sender **MUST** serialize the entire `Group Application Plaintext` object into a byte string using UTF-8 + RFC 8785 JCS before encryption; the receiver **MUST** interpret the object according to the same rules after decryption.
 
+When `application_content_type = "application/json"`, `payload` **MUST**
+directly carry the JSON object. This Profile does not define the business meaning
+of fields inside that object.
+
+Ordinary JSON group application plaintext example:
+
+```json
+{
+  "application_content_type": "application/json",
+  "thread_id": "thr-001",
+  "payload": {
+    "type": "example",
+    "data": {
+      "hello": "group"
+    }
+  }
+}
+```
+
 ### 7.6 `e2ee_notice_object`
 
 P6 defines an independent cryptographic notification object used to deliver cryptographic results.

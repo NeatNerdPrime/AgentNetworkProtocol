@@ -414,6 +414,9 @@ For `payload_b64u`:
 - **MUST** use no padding base64url;
 - **SHOULD** be used only for binary extensions or private extension objects.
 
+When `meta.content_type = "application/json"`, `body.payload` **MUST** carry
+the JSON object directly. This Profile does not define the business meaning of
+fields inside that object; group applications or hosts decide how to interpret it.
 
 ### 7.7 `auth` object
 
@@ -1214,6 +1217,42 @@ If an implementation provides a push capability, its `group.incoming` and `group
   }
 }
 ```
+
+Ordinary JSON payload example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-30005",
+  "method": "group.send",
+  "params": {
+    "meta": {
+      "profile": "anp.group.base.v1",
+      "security_profile": "transport-protected",
+      "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
+      "target": {
+        "kind": "group",
+        "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
+      },
+      "operation_id": "msg-30005",
+      "message_id": "msg-30005",
+      "created_at": "2026-03-29T12:51:00Z",
+      "content_type": "application/json"
+    },
+    "body": {
+      "thread_id": "thr-001",
+      "payload": {
+        "type": "example",
+        "data": {
+          "hello": "group"
+        }
+      }
+    }
+  }
+}
+```
+
+The fields inside `payload` are application-defined and are not specified by ANP.
 
 Successful Response example:
 

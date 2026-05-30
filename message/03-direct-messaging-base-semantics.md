@@ -249,8 +249,8 @@ Implementers **MAY** support more content types, but **MUST** return `anp.unsupp
 #### 6.2.5 `payload`
 
 - Type: JSON object
-- Requirement: **MUST** when `content_type` is of type JSON
-- Rules: `payload` **SHOULD** directly represents the application object; **MUST NOT** use dual serialization of "JSON string embedded in JSON".
+- Requirement: **MUST** when `content_type = "application/json"`
+- Rules: `payload` **MUST** directly represent the application object; **MUST NOT** use dual serialization of "JSON string embedded in JSON". This Profile does not define the business meaning of fields inside the JSON object.
 
 #### 6.2.6 `payload_b64u`
 
@@ -706,7 +706,44 @@ An implementation conforming to this Profile MUST support at least:
 
 > Note: This attachment list example is consistent with P7 and no longer explicitly carries the control plane service DID in `access_info`. The receiver should parse its public `ANPMessageService` based on the original message sender's DID before downloading, and then call `attachment.get_download_ticket`.
 
-### 13.3 `direct.send` example with did:wba origin proof
+### 13.3 Example of ordinary JSON payload
+
+The following example only demonstrates the `application/json` carrier. The fields
+inside `payload` are application-defined and are not specified by ANP.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-20003",
+  "method": "direct.send",
+  "params": {
+    "meta": {
+      "profile": "anp.direct.base.v1",
+      "security_profile": "transport-protected",
+      "sender_did": "did:example:agent-a",
+      "target": {
+        "kind": "agent",
+        "did": "did:example:agent-b"
+      },
+      "operation_id": "msg-20003",
+      "message_id": "msg-20003",
+      "created_at": "2026-03-29T12:10:00Z",
+      "content_type": "application/json"
+    },
+    "body": {
+      "conversation_id": "conv-01",
+      "payload": {
+        "type": "example",
+        "data": {
+          "hello": "world"
+        }
+      }
+    }
+  }
+}
+```
+
+### 13.4 `direct.send` example with did:wba origin proof
 
 ```json
 {

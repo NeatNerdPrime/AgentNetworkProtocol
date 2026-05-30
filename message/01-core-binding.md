@@ -406,6 +406,13 @@ Example:
 - Direct E2EE text message: outer `meta.content_type = "application/anp-direct-cipher+json"`, inner `application_content_type = "text/plain"`
 - Group E2EE Attachment Message: Outer `meta.content_type = "application/anp-group-cipher+json"`
 
+When the business payload is ordinary structured JSON, the content type **MUST** be
+`application/json` and the JSON object **MUST** be carried directly in `body.payload`
+or in the security overlay's inner `payload`. Profiles and applications **MUST NOT**
+define additional content types solely to distinguish business meanings such as
+commands, status updates, tasks, or results. Those meanings are application-level
+semantics inside the JSON object and are outside this core binding layer.
+
 Among them, if the inner original business type of Group E2EE is an attachment list, it should be written in the inner plain text:
 
 ```json
@@ -742,6 +749,11 @@ Anti-replay should be defined by subsequent Profiles in session state, message s
 ### 13.4 Payload Mutual Exclusion
 
 If a Profile defines `body.payload` and `body.payload_b64u` as mutually exclusive fields, the sender **MUST NOT** provide both at the same time; the receiver **MUST** reject when receiving conflicting input.
+
+When `meta.content_type` is `application/json`, the corresponding payload carrier
+**MUST** be a JSON object. The sender **MUST NOT** put a serialized JSON string in
+`body.text`, and **MUST NOT** double-serialize the object as a JSON string inside
+`body.payload`.
 
 ---
 

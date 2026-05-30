@@ -1215,6 +1215,9 @@ Field usage instructions:
 - `reply_to_message_id`: Optional reply reference, indicating which business message this inner application message is replying to.
 - `annotations`: Extended application metadata under encryption protection; it remains synonymous with the `annotations` field of P3 and should not be used for outer routing or idempotent determination.
 - `text` / `payload` / `payload_b64u`: respectively correspond to three mutually exclusive bearer modes: plain text, structured JSON object and binary extension payload. The semantics are consistent with Direct Base, but the position is moved inside the ciphertext.
+  When `application_content_type = "application/json"`, `payload` **MUST**
+  directly carry the JSON object. This Profile does not define the business
+  meaning of fields inside that object.
 
 and satisfy:
 
@@ -1222,6 +1225,21 @@ and satisfy:
 - Exactly one of `text`, `payload`, or `payload_b64u` **MUST** be present.
 
 The sender **MUST** serialize the entire `Application Plaintext` object into a byte string using UTF-8 + RFC 8785 JCS before encryption; the receiver **MUST** interpret the object according to the same rules after decryption.
+
+Ordinary JSON application plaintext example:
+
+```json
+{
+  "application_content_type": "application/json",
+  "conversation_id": "conv-001",
+  "payload": {
+    "type": "example",
+    "data": {
+      "hello": "world"
+    }
+  }
+}
+```
 
 The default optional fields **MUST** be omitted directly; `conversation_id` and `reply_to_message_id` are used by default **MUST NOT** to use `null` or empty string placeholders. `annotations` If default **MUST** be omitted; if present, **MAY** be `{}`. Unless field semantics dictate otherwise, the sender MUST NOT use an empty object, empty array, or other placeholder value in place of "Field does not exist".
 
