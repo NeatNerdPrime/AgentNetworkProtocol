@@ -1,4 +1,11 @@
-# ANP End-to-End Instant Messaging Protocol Overview (Draft 1.0)
+# ANP End-to-End Instant Messaging Protocol Overview
+
+- Document ID: ANP-09
+- Title: ANP End-to-End Instant Messaging Protocol Overview
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This document applies to the overview, layering, and Profile index of the ANP end-to-end instant messaging specification suite.
 
 > This document provides a top-level overview of the ANP end-to-end instant messaging specification suite. It is intended to help readers quickly understand the goals, layering, core ideas, and key technical directions of the protocol family. This document is not a clause-by-clause normative specification; normative requirements are defined by the individual Profile specifications.
 

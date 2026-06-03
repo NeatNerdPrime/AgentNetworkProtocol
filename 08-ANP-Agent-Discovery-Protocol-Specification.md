@@ -1,4 +1,11 @@
-# ANP-Agent Discovery Protocol Specification (Draft)
+# ANP-Agent Discovery Protocol Specification
+
+- Document ID: ANP-08
+- Title: ANP-Agent Discovery Protocol Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to active and passive discovery of agents and Agent Description documents in ANP.
 
 ## Abstract
 

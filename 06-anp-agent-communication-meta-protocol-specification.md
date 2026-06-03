@@ -1,7 +1,13 @@
-# ANP-Agent Communication Meta-Protocol Specification(Draft)
+# ANP-Agent Communication Meta-Protocol Specification
+
+- Document ID: ANP-06
+- Title: ANP-Agent Communication Meta-Protocol Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to protocol negotiation, protocol selection, and communication setup between ANP agents.
 
 Note:
-- This chapter is in the draft stage and may undergo significant adjustments based on actual conditions.
 - The current protocol implementation focuses on end-to-end message encryption and will later be modified to a solution based on did:wba and HTTP.
 
 ## Background

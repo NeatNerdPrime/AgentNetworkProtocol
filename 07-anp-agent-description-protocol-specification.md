@@ -1,5 +1,12 @@
 # ANP Agent Description Protocol Specification
 
+- Document ID: ANP-07
+- Title: ANP Agent Description Protocol Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to Agent Description documents, interface descriptions, and capability publication in ANP.
+
 ## Abstract
 
 This specification defines the Agent Description Protocol (ADP), a standardized protocol for describing agents. It defines how an agent publishes its public information, supported interfaces, and other details. Once other agents obtain this agent's description, they can exchange information and collaborate with this agent.

@@ -16,8 +16,8 @@
 - [ANP Profile 7：附件与对象传输](/chinese/message/07-附件与对象传输.md)
 - [ANP Profile 8：联邦与跨域](/chinese/message/08-联邦与跨域.md)
 - [元协议设计规范](/chinese/06-ANP-智能体通信元协议规范.md)
-- [智能体描述协议规范（Draft）](/chinese/07-ANP-智能体描述协议规范.md)
-- [智能体发现协议规范（Draft）](/chinese/08-ANP-智能体发现协议规范.md)
+- [智能体描述协议规范](/chinese/07-ANP-智能体描述协议规范.md)
+- [智能体发现协议规范](/chinese/08-ANP-智能体发现协议规范.md)
 
 ## 白皮书 (Whitepaper)
 

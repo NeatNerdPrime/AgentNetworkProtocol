@@ -1,8 +1,13 @@
-# ANP-DID:WBA Name Space Specification (Draft)
+# ANP-DID:WBA Name Space Specification
+
+- Document ID: ANP-04
+- Title: ANP-DID:WBA Name Space Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to human-readable Handle naming, WNS resolution, and did:wba name mapping in ANP.
 
 Abbreviation: WNS (WBA Name Space)
-
-Note: This specification is still in draft status and will undergo further optimization and iteration.
 
 ## Abstract
 

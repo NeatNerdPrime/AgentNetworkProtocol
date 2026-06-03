@@ -179,5 +179,5 @@
     </g>
     
     <!-- Bottom copyright notice -->
-    <text x="800" y="870" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#757575">Based on ANP-Agent Discovery Protocol Specification (Draft)</text>
+    <text x="800" y="870" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#757575">Based on ANP-Agent Discovery Protocol Specification (Version 1.1)</text>
 </svg>

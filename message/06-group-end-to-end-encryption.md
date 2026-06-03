@@ -1,9 +1,9 @@
-# ANP Profile 6: Group End-to-End Encryption (MLS Usage Profile Revised Draft)
+# ANP Profile 6: Group End-to-End Encryption
 
 - Document ID: ANP-P6
 - Title: Group End-to-End Encryption
-- Status: Draft
-- Version: 0.3.2 (MLS Usage Profile Revised Draft)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile is suitable for the Group End-to-End Encryption control layer based on Group DID and works closely with `anp.group.base.v1`.
 

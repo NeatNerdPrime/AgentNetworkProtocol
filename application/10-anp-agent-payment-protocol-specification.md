@@ -1,5 +1,12 @@
 # ANP Agent Payment Protocol Specification (AP2)
 
+- Document ID: ANP-10
+- Title: ANP Agent Payment Protocol Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to payment and transaction interactions between agents in the ANP application layer.
+
 ## Abstract
 
 This specification defines the Agent Payment Protocol (AP2), a standardized protocol for payment and transaction interactions between intelligent agents. AP2 is an application layer protocol based on ANP (Agent Network Protocol) that enables secure, efficient peer-to-peer payment transactions between agents.
