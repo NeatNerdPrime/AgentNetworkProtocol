@@ -185,7 +185,21 @@ The JSON document returned by the Handle Resolution Endpoint has the following f
   "status": "active",
   "updated": "2025-01-01T00:00:00Z",
   "versionId": "42",
-  "ttl": 300
+  "ttl": 300,
+  "profile": {
+    "type": "DIDSubjectProfile",
+    "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+    "subject_type": "person",
+    "handle": "alice.example.com",
+    "display_name": "Alice",
+    "description": "Researcher and AI agent user",
+    "avatar_uri": "https://example.com/avatars/alice.png",
+    "profile_uri": "https://example.com/alice/",
+    "discoverability": "listed",
+    "updated": "2025-01-01T00:00:00Z",
+    "versionId": "profile-7",
+    "ttl": 300
+  }
 }
 ```
 
@@ -199,6 +213,7 @@ The JSON document returned by the Handle Resolution Endpoint has the following f
 | `updated` | Optional | Last update time in ISO 8601 format |
 | `versionId` | Optional | Mapping version identifier used for caching and troubleshooting |
 | `ttl` | Optional | Suggested cache lifetime in seconds |
+| `profile` | Optional | Public presentational metadata of the DID subject currently bound to this Handle. It is intended for UI display, contact preview, search results, and IM recipient confirmation. It MUST NOT be used for authentication, authorization, routing, service discovery, E2EE binding, or security-profile negotiation. |
 
 ### 4.3.1 DID Confirmation Endpoint
 
@@ -236,6 +251,114 @@ https://{domain}/.well-known/handle/by-did?did={urlencoded-did}
 | `ttl` | Optional | Suggested cache lifetime in seconds |
 
 When a DID Confirmation Endpoint is used, the response document SHOULD NOT directly return a specific `handle`, so as to avoid indirectly disclosing the Handle via the DID Document.
+
+### 4.3.2 Profile Object
+
+The Handle Resolution Document MAY include a `profile` object.
+
+The `profile` object represents public presentational metadata of the DID subject currently bound to the resolved Handle. This specification calls that object a **DID Subject Profile**. The JSON field name remains `profile`, and the object `type` SHOULD be `DIDSubjectProfile`.
+
+`profile` is generic DID-subject metadata. It MUST NOT be interpreted as Agent-only metadata. The resolved DID subject MAY be a person, agent, group, organization, service, application, or another DID subject type.
+
+The presence or absence of `profile` MUST NOT change the authoritative Handle-to-DID binding semantics. The authoritative resolution result remains the top-level `handle` and `did` fields. Routing, authentication, authorization, E2EE session binding, and service discovery MUST continue to use the resolved DID, DID Document, `ANPMessageService`, and the corresponding ANP Profiles.
+
+**Recommended Profile Object:**
+
+```json
+{
+  "type": "DIDSubjectProfile",
+  "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "subject_type": "person",
+  "handle": "alice.example.com",
+  "display_name": "Alice",
+  "description": "Researcher and AI agent user",
+  "avatar_uri": "https://example.com/avatars/alice.png",
+  "profile_uri": "https://example.com/alice/",
+  "discoverability": "listed",
+  "labels": {
+    "locale": "en-US"
+  },
+  "updated": "2025-01-01T00:00:00Z",
+  "versionId": "profile-7",
+  "ttl": 300,
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "created": "2025-01-01T00:00:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+    "proofValue": "z..."
+  }
+}
+```
+
+**Field Descriptions:**
+
+| Field | Required/Optional | Description |
+|-------|-------------------|-------------|
+| `type` | Recommended | SHOULD be `DIDSubjectProfile` to distinguish this object from other profile-like objects |
+| `subject_did` | Required | DID subject described by this profile |
+| `subject_type` | Recommended | DID subject type. Recommended values are `person`, `agent`, `group`, `organization`, `service`, `application`, and `unknown` |
+| `handle` | Optional | Handle corresponding to this profile. If present, it MUST equal the top-level `handle` field |
+| `display_name` | Recommended | Display name for UI use |
+| `description` | Optional | Human-readable description, such as a person bio, agent description, or group introduction |
+| `avatar_uri` | Optional | Avatar, icon, or group image URI |
+| `profile_uri` | Optional | Richer public profile page or profile-document URI |
+| `discoverability` | Optional | Discoverability hint. Recommended values are `private`, `listed`, and `public` |
+| `labels` | Optional | Non-security extension labels for display, classification, or search assistance |
+| `updated` | Optional | Profile update time |
+| `versionId` | Optional | Profile version identifier |
+| `ttl` | Optional | Suggested profile cache lifetime in seconds |
+| `proof` | Optional | Object-level assertion proof over the profile object with `proof` removed |
+
+If `subject_type` is absent or not recognized, clients MUST treat it as `unknown`. Clients and servers MUST NOT use `subject_type` as an authorization input. Private subject-type extensions SHOULD be represented in `labels` instead of extending the recommended enum.
+
+`display_name` is a display field, not an identity name, route name, or authorization name. It MAY be duplicated by different DID subjects and MAY change over time. It MUST NOT participate in message signatures, authorization checks, E2EE session binding, or service endpoint selection. New protocol output SHOULD use `display_name`; servers MAY accept legacy input named `name` for compatibility, but standard output SHOULD NOT use `name`.
+
+**Consistency Rules:**
+
+If `profile` is present, `profile.subject_did` MUST equal the top-level `did` field of the Handle Resolution Document. If `profile.handle` is present, it MUST equal the top-level `handle` field. A client that receives a mismatched `profile.subject_did` or `profile.handle` MUST ignore the `profile` object and MAY mark the resolution result as suspicious.
+
+If `avatar_uri` or `profile_uri` is present, it SHOULD be an absolute HTTPS URI. Clients MUST NOT infer DID bindings, service endpoints, or authorization capabilities from `profile_uri`. Clients should treat remote profile and avatar content as ordinary external content and must not execute it as local instructions.
+
+`labels` are only for non-security presentation, categorization, and search assistance. They MUST NOT be used for authorization, routing, security-level decisions, group membership decisions, or E2EE capability decisions.
+
+**Caching Semantics:**
+
+The top-level `ttl` constrains the Handle Resolution Document cache, especially the `handle` → `did` mapping. `profile.ttl` constrains the profile cache. If `profile.ttl` is absent, clients MAY use the top-level `ttl` as the maximum profile cache lifetime. Clients SHOULD NOT cache `profile` longer than the Handle Resolution Document unless local policy explicitly allows that. If the top-level `did` changes, clients MUST invalidate profile cache entries associated with the old DID.
+
+Top-level `updated` and `versionId` describe the Handle mapping version. `profile.updated` and `profile.versionId` describe the profile version. These versions MAY change independently.
+
+**Proof Semantics:**
+
+In the first deployment phase, `profile.proof` is optional. If no `proof` is present, clients MUST treat the profile as provider-supplied UI metadata. It MAY be used for display, search results, contact cards, and IM recipient confirmation, but MUST NOT be used for authentication, authorization, routing, service endpoint selection, E2EE binding, or security policy decisions.
+
+If `profile.proof` is present, it SHOULD be treated as an object-level assertion. The protected object is the whole `profile` object with `proof` removed. Verification rules are:
+
+1. `profile.subject_did` MUST equal the top-level `did`.
+2. The DID that owns `proof.verificationMethod` MUST equal `profile.subject_did`.
+3. `proof.verificationMethod` SHOULD be authorized by the `assertionMethod` relationship in the DID Document for `profile.subject_did`.
+4. If proof verification succeeds, the client MAY treat the profile as public presentational metadata asserted by the DID subject.
+5. Even if proof verification succeeds, `profile` still MUST NOT replace routing, authorization, service discovery, or E2EE binding rules.
+
+**Group Profile Projection:**
+
+Group Base continues to use `group_profile` as the authoritative group-state presentation object. If a Handle points to a Group DID, the WNS `profile` MAY project group presentation fields for quick display:
+
+| Group Base field | WNS `profile` field |
+|------------------|---------------------|
+| `group_did` | `profile.subject_did` |
+| `group_profile.display_name` | `profile.display_name` |
+| `group_profile.description` | `profile.description` |
+| `group_profile.avatar_uri` | `profile.avatar_uri` |
+| `group_profile.discoverability` | `profile.discoverability` |
+| `group_profile.labels` | `profile.labels` |
+
+If WNS `profile` and Group Base `group_profile` conflict, group management, group permissions, group messaging semantics, and current group state are determined by the Group Host's `group_profile`, `group_policy`, and `group_state_version`. WNS `profile` is only a fast display projection after Handle resolution.
+
+**Client Behavior:**
+
+Clients MAY display `profile.display_name`, `profile.avatar_uri`, and `profile.subject_type` immediately after Handle resolution. Clients MUST continue to work when `profile` is absent, for example by displaying the Handle or a shortened DID. For anti-confusion UI, clients SHOULD keep the Handle or DID available next to the display name, especially before high-risk operations.
 
 ### 4.4 Handle-to-DID Mapping Rules
 
@@ -320,6 +443,8 @@ Handle Providers MAY provide a Profile entry point for each Handle. The followin
 
 - Subdomain style: `https://{local-part}.{domain}/`
 - Path style: `https://{domain}/{local-part}/`
+
+This Profile URL is distinct from the `profile` object defined in Section 4.3.2. If a Handle Resolution Document includes `profile.profile_uri`, it MAY point to such a Profile URL, but that URL remains an external presentation or business entry point.
 
 ### 5.2 Profile Format
 
@@ -531,8 +656,9 @@ Handles can be used for recipient display and input in instant messaging scenari
 - Users can specify message recipients by entering a Handle such as `alice.example.com`.
 - The client resolves the Handle to a DID and then performs message routing.
 - The messaging UI may display the Handle instead of the DID to improve readability.
+- If the Handle Resolution Document contains a valid `profile`, the messaging UI may display `profile.display_name`, `profile.avatar_uri`, and `profile.subject_type` for contact preview and recipient confirmation.
 
-Message routing and transport remain DID-based. Handles are used only for display and input at the human-computer interaction layer.
+Message routing and transport remain DID-based. Handles and WNS `profile` are used only for display and input at the human-computer interaction layer.
 
 ## 8. Handle Provider Requirements
 
@@ -604,6 +730,7 @@ Specific policies are defined by each Handle Provider.
 
 - The Handle Resolution Endpoint exposes the existence of a Handle (for example, through differences among `200`, `404`, and `410`). Handle Providers SHOULD implement rate limiting to mitigate enumeration attacks.
 - Handle Providers SHOULD NOT return sensitive information beyond the mapping relationship in the Resolution Endpoint.
+- If a Handle Provider returns `profile`, it SHOULD avoid sensitive personal, group, or organizational information unless that information is intentionally public.
 - Handle Providers SHOULD try to normalize error response structures to avoid leaking unnecessary state through excessive differences.
 - If the DID holder does not want to disclose a specific Handle in the DID Document, it MAY use the DID Confirmation Endpoint mode and return only provider-level confirmation information.
 - For display-only scenarios, clients MAY delay bidirectional binding verification to reduce unnecessary cross-site resolution requests.
@@ -648,9 +775,10 @@ Agent A needs to communicate with Agent B whose Handle is `bob.example.com`:
 A user enters the recipient Handle `carol.example.com` in an instant messaging application:
 
 1. The client resolves the Handle to obtain the DID.
-2. The client obtains the messaging service endpoint through the DID Document.
-3. The client sends a message using the instant messaging protocol defined in Specification 09.
-4. The messaging interface displays the recipient's Handle rather than the DID.
+2. If the resolution document contains a valid `profile`, the client may display `profile.display_name` and `profile.avatar_uri` for recipient confirmation.
+3. The client obtains the messaging service endpoint through the DID Document.
+4. The client sends a message using the instant messaging protocol defined in Specification 09.
+5. The messaging interface displays the recipient's display name and Handle rather than only the DID.
 
 ### 10.4 Stable Handle and DID Rotation
 
@@ -699,6 +827,12 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 18. After a client follows a `301` / `308` redirect to a new Resolution Endpoint, it MUST re-run bidirectional binding verification and MUST NOT accept the new binding solely based on the redirect.
 19. For security-sensitive operations after underlying DID rotation, the client MUST re-run bidirectional binding verification.
 20. A Profile URL MUST NOT be treated as the authoritative source for Handle → DID binding or service discovery.
+21. If `profile` is present, `profile.subject_did` MUST equal the top-level `did` field.
+22. If `profile.handle` is present, it MUST equal the top-level `handle` field.
+23. Clients MUST NOT use `profile` fields for routing, authentication, authorization, E2EE binding, service endpoint selection, or security-profile negotiation.
+24. If `subject_type` is absent or unknown, clients MUST treat it as `unknown`.
+25. If `profile.proof` is absent, clients MUST treat the profile as provider-supplied UI metadata.
+26. When the top-level `did` changes, clients MUST invalidate profile cache entries associated with the old DID.
 
 ### SHOULD
 
@@ -716,6 +850,11 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 12. Implementers SHOULD distinguish among `exact-handle`, `provider-confirmed`, and `unverified`.
 13. After Handle Provider migration, the DID holder SHOULD update `ANPHandleService` in the DID Document.
 14. When the underlying path-type DID rotates, the Handle Provider SHOULD update the Handle mapping to the new DID as soon as possible.
+15. `profile.type` SHOULD be `DIDSubjectProfile`.
+16. New protocol output SHOULD use `profile.display_name` rather than legacy `name`.
+17. `avatar_uri` and `profile_uri`, when present, SHOULD be absolute HTTPS URIs.
+18. Clients SHOULD keep the Handle or DID available next to `profile.display_name` in anti-confusion UI.
+19. Handle Providers returning `profile` SHOULD avoid sensitive information unless it is intentionally public.
 
 ### MAY
 
@@ -727,6 +866,10 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 6. Handle Providers MAY implement the `/.well-known/handle/by-did` DID Confirmation Endpoint.
 7. When the DID holder does not want to disclose a specific Handle, it MAY use the DID Confirmation Endpoint as `ANPHandleService.serviceEndpoint`.
 8. A Handle MAY remain unchanged when the underlying path-type DID rotates to provide a stable human-readable name.
+9. Handle Resolution Documents MAY include a `profile` object.
+10. Clients MAY display `profile.display_name`, `profile.avatar_uri`, and `profile.subject_type` immediately after Handle resolution.
+11. Servers MAY accept legacy input named `name` for compatibility, but standard output should use `display_name`.
+12. `profile.proof` MAY be included as an object-level assertion proof.
 
 ## Appendix A: Native `did:web` Compatibility
 

@@ -184,7 +184,21 @@ Handle Resolution Endpoint 返回的 JSON 文档格式如下：
   "status": "active",
   "updated": "2025-01-01T00:00:00Z",
   "versionId": "42",
-  "ttl": 300
+  "ttl": 300,
+  "profile": {
+    "type": "DIDSubjectProfile",
+    "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+    "subject_type": "person",
+    "handle": "alice.example.com",
+    "display_name": "Alice",
+    "description": "Researcher and AI agent user",
+    "avatar_uri": "https://example.com/avatars/alice.png",
+    "profile_uri": "https://example.com/alice/",
+    "discoverability": "listed",
+    "updated": "2025-01-01T00:00:00Z",
+    "versionId": "profile-7",
+    "ttl": 300
+  }
 }
 ```
 
@@ -198,6 +212,7 @@ Handle Resolution Endpoint 返回的 JSON 文档格式如下：
 | `updated` | 可选 | 最后更新时间，ISO 8601 格式 |
 | `versionId` | 可选 | 映射版本标识，用于缓存和排障 |
 | `ttl` | 可选 | 建议缓存秒数 |
+| `profile` | 可选 | 当前 Handle 绑定 DID 主体的公开展示资料，供 UI 展示、联系人预览、搜索结果和 IM 收件人确认使用。不得用于身份认证、授权、消息路由、服务发现、E2EE 绑定或安全 Profile 协商。 |
 
 ### 4.3.1 DID Confirmation Endpoint
 
@@ -235,6 +250,114 @@ https://{domain}/.well-known/handle/by-did?did={urlencoded-did}
 | `ttl` | 可选 | 建议缓存秒数 |
 
 使用 DID Confirmation Endpoint 时，响应文档应当（SHOULD）不直接返回具体 `handle`，以避免在 DID Document 中间接公开 Handle。
+
+### 4.3.2 Profile Object
+
+Handle Resolution Document 可以（MAY）包含 `profile` 对象。
+
+`profile` 表示当前解析得到的 Handle 所绑定 DID 主体的公开展示资料。本规范将该对象称为 **DID Subject Profile**。JSON 字段名仍为 `profile`，对象内部的 `type` 应当（SHOULD）为 `DIDSubjectProfile`。
+
+`profile` 是通用 DID 主体资料，不得（MUST NOT）被解释为仅适用于 Agent 的资料。解析得到的 DID 主体可以（MAY）是人、Agent、群组、组织、服务、应用或其他 DID 主体类型。
+
+`profile` 的存在与否不得（MUST NOT）改变 Handle 到 DID 的权威绑定语义。权威解析结果仍然是外层 `handle` 与 `did` 字段。消息路由、身份认证、授权决策、端到端加密会话绑定和服务发现仍必须（MUST）以解析得到的 DID、DID Document、`ANPMessageService` 以及对应 ANP Profile 的规则为准。
+
+**推荐 Profile 对象：**
+
+```json
+{
+  "type": "DIDSubjectProfile",
+  "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "subject_type": "person",
+  "handle": "alice.example.com",
+  "display_name": "Alice",
+  "description": "Researcher and AI agent user",
+  "avatar_uri": "https://example.com/avatars/alice.png",
+  "profile_uri": "https://example.com/alice/",
+  "discoverability": "listed",
+  "labels": {
+    "locale": "en-US"
+  },
+  "updated": "2025-01-01T00:00:00Z",
+  "versionId": "profile-7",
+  "ttl": 300,
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "created": "2025-01-01T00:00:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+    "proofValue": "z..."
+  }
+}
+```
+
+**字段说明：**
+
+| 字段 | 必须/可选 | 说明 |
+|------|----------|------|
+| `type` | 推荐 | 应当为 `DIDSubjectProfile`，用于和其他 profile-like 对象区分 |
+| `subject_did` | 必须 | 该 profile 所描述的 DID 主体 |
+| `subject_type` | 推荐 | 主体类型，推荐值为 `person`、`agent`、`group`、`organization`、`service`、`application`、`unknown` |
+| `handle` | 可选 | 对应 Handle；若存在，必须等于外层 `handle` 字段 |
+| `display_name` | 推荐 | 展示名，供 UI 使用 |
+| `description` | 可选 | 简介；对人是 bio，对 agent 是描述，对 group 是群介绍 |
+| `avatar_uri` | 可选 | 头像、图标或群头像 URI |
+| `profile_uri` | 可选 | 更完整的公开资料页或资料文档入口 |
+| `discoverability` | 可选 | 可发现性提示，推荐值为 `private`、`listed`、`public` |
+| `labels` | 可选 | 用于展示、分类或搜索辅助的非安全扩展标签 |
+| `updated` | 可选 | profile 最后更新时间 |
+| `versionId` | 可选 | profile 版本号 |
+| `ttl` | 可选 | profile 建议缓存秒数 |
+| `proof` | 可选 | 对移除 `proof` 后的 profile 对象进行的对象级断言 proof |
+
+如果 `subject_type` 缺失或客户端无法识别，客户端必须（MUST）按 `unknown` 处理。客户端和服务端不得（MUST NOT）仅依据 `subject_type` 做授权决策。私有主体类型不建议直接扩展推荐枚举，应优先放入 `labels`。
+
+`display_name` 是展示名，不是身份名、路由名或授权名。它可以（MAY）重复，也可以（MAY）变更。`display_name` 不得（MUST NOT）参与消息签名、授权判断、E2EE 会话绑定或服务端点选择。新协议输出应当（SHOULD）使用 `display_name`；服务端可以接受 legacy 输入字段 `name` 以兼容旧实现，但标准输出不应（SHOULD NOT）使用 `name`。
+
+**一致性规则：**
+
+如果 `profile` 存在，则 `profile.subject_did` 必须（MUST）等于 Handle Resolution Document 外层的 `did` 字段。如果 `profile.handle` 存在，则必须（MUST）等于外层的 `handle` 字段。客户端收到 `profile.subject_did` 或 `profile.handle` 不一致的结果时，必须（MUST）忽略 `profile` 对象，并且可以（MAY）将该解析结果标记为可疑。
+
+如果 `avatar_uri` 或 `profile_uri` 存在，应当（SHOULD）使用 HTTPS 绝对 URI。客户端不得（MUST NOT）仅凭 `profile_uri` 推断 DID 绑定、服务端点或授权能力。客户端应把远程 profile 和头像内容视为普通外部内容，不得把其内容当成本地指令执行。
+
+`labels` 只用于非安全语义的展示、分类或搜索辅助。`labels` 不得（MUST NOT）用于授权、路由、安全等级判断、群成员身份判断或 E2EE 能力判断。
+
+**缓存语义：**
+
+外层 `ttl` 约束 Handle Resolution Document 的缓存，尤其是 `handle` → `did` 映射。`profile.ttl` 约束 profile 缓存。如果 `profile.ttl` 缺失，客户端可以（MAY）使用外层 `ttl` 作为 profile 缓存上限。除非本地策略明确允许，客户端不应（SHOULD NOT）把 `profile` 缓存得比 Handle Resolution Document 更久。当外层 `did` 发生变化时，客户端必须（MUST）失效旧 DID 关联的 profile 缓存。
+
+外层 `updated` 与 `versionId` 表示 Handle 映射版本；`profile.updated` 与 `profile.versionId` 表示 profile 版本。两者可以（MAY）独立变化。
+
+**Proof 语义：**
+
+第一阶段中，`profile.proof` 是可选字段。如果没有 `proof`，客户端必须（MUST）把该 profile 视为 Handle Provider 提供的 UI metadata。它可以（MAY）用于展示、搜索结果、联系人卡片和 IM 收件人确认，但不得（MUST NOT）用于身份认证、授权、消息路由、服务端点选择、E2EE 绑定或安全策略选择。
+
+如果 `profile.proof` 存在，建议按对象级断言处理。被保护对象是移除 `proof` 后的整个 `profile` 对象。验证规则如下：
+
+1. `profile.subject_did` 必须等于外层 `did`；
+2. `proof.verificationMethod` 所属 DID 必须等于 `profile.subject_did`；
+3. `proof.verificationMethod` 应当被 `profile.subject_did` 的 DID Document 中的 `assertionMethod` 授权；
+4. proof 验证通过后，客户端可以（MAY）把该 profile 视为 DID 主体声明的公开展示资料；
+5. 即使 proof 验证通过，`profile` 仍不得（MUST NOT）替代消息路由、授权、服务发现或 E2EE 绑定规则。
+
+**Group Profile 投影：**
+
+Group Base 仍使用 `group_profile` 作为群组状态中的权威展示资料对象。如果某个 Handle 指向 Group DID，WNS `profile` 可以（MAY）投影群组展示字段，用于快速展示：
+
+| Group Base 字段 | WNS `profile` 字段 |
+|---|---|
+| `group_did` | `profile.subject_did` |
+| `group_profile.display_name` | `profile.display_name` |
+| `group_profile.description` | `profile.description` |
+| `group_profile.avatar_uri` | `profile.avatar_uri` |
+| `group_profile.discoverability` | `profile.discoverability` |
+| `group_profile.labels` | `profile.labels` |
+
+如果 WNS `profile` 与 Group Base `group_profile` 冲突，群组管理、群组权限、群组消息语义和当前群状态以 Group Host 返回的 `group_profile`、`group_policy` 和 `group_state_version` 为准。WNS `profile` 只是 Handle 解析后的快速展示投影。
+
+**客户端行为：**
+
+客户端可以（MAY）在完成 Handle 解析后立即展示 `profile.display_name`、`profile.avatar_uri` 和 `profile.subject_type`。当 `profile` 缺失时，客户端必须继续正常工作，例如显示 Handle 或缩略 DID。为防混淆，客户端应当（SHOULD）在展示名旁保留 Handle 或 DID 的可查看入口，尤其是在高风险操作前。
 
 ### 4.4 Handle 到 DID 映射规则
 
@@ -319,6 +442,8 @@ Handle Provider 可以（MAY）为每个 Handle 提供 Profile 访问入口。�
 
 - 子域名方式：`https://{local-part}.{domain}/`
 - 路径方式：`https://{domain}/{local-part}/`
+
+本节的 Profile URL 与第 4.3.2 节定义的 `profile` 对象不同。如果 Handle Resolution Document 包含 `profile.profile_uri`，它可以（MAY）指向这样的 Profile URL，但该 URL 仍只是外部展示或业务入口。
 
 ### 5.2 Profile 格式
 
@@ -530,8 +655,9 @@ Handle 可用于即时消息场景中收件人的展示和输入：
 - 用户可以通过输入 Handle（如 `alice.example.com`）来指定消息接收者
 - 客户端将 Handle 解析为 DID 后进行消息路由
 - 消息界面中可以将 DID 替换为 Handle 展示，提升可读性
+- 如果 Handle Resolution Document 包含合法的 `profile`，消息界面可以展示 `profile.display_name`、`profile.avatar_uri` 和 `profile.subject_type`，用于联系人预览和收件人确认
 
-消息路由和传输仍基于 DID，Handle 仅用于人机交互层面的展示和输入。
+消息路由和传输仍基于 DID，Handle 与 WNS `profile` 仅用于人机交互层面的展示和输入。
 
 ## 8. Handle Provider 要求
 
@@ -603,6 +729,7 @@ Handle Provider 应当（SHOULD）采取措施防止恶意抢注，包括但不�
 
 - Handle Resolution Endpoint 会暴露 Handle 的存在性（例如通过 200 / 404 / 410 的差异），Handle Provider 应当（SHOULD）实施速率限制以减缓枚举攻击
 - Handle Provider 不应当（SHOULD NOT）在 Resolution Endpoint 中返回除映射关系之外的敏感信息
+- 如果 Handle Provider 返回 `profile`，应当（SHOULD）避免返回敏感的个人、群组或组织信息，除非这些信息本来就是有意公开的展示资料
 - Handle Provider 应当（SHOULD）尽量统一错误响应结构，避免通过过多差异化字段泄露不必要的状态信息
 - DID 持有者如果不希望在 DID Document 中公开具体 Handle，可以（MAY）使用 DID Confirmation Endpoint 模式，仅返回 provider 级确认信息
 - 对于仅用于展示的场景，客户端可以（MAY）延迟执行双向绑定，以减少无必要的跨站解析请求
@@ -647,9 +774,10 @@ WNS 不再单独定义“由 Handle Provider 自行决定算法和编码方式�
 用户在即时消息应用中输入收件人 Handle `carol.example.com`：
 
 1. 客户端解析 Handle 获得 DID
-2. 通过 DID Document 获取消息服务端点
-3. 使用 09 规范定义的即时消息协议发送消息
-4. 消息界面中显示收件人的 Handle 而非 DID
+2. 如果解析文档包含合法的 `profile`，客户端可以展示 `profile.display_name` 和 `profile.avatar_uri` 供收件人确认
+3. 通过 DID Document 获取消息服务端点
+4. 使用 09 规范定义的即时消息协议发送消息
+5. 消息界面中显示收件人的展示名和 Handle，而不是只显示 DID
 
 ### 10.4 稳定 Handle 与 DID 轮换
 
@@ -698,6 +826,12 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 18. 当客户端跟随 `301` / `308` 迁移到新 Resolution Endpoint 后，必须重新执行双向绑定验证，不得仅依据重定向接受新的绑定关系
 19. 对于底层 DID 轮换后的安全敏感操作，客户端必须重新执行双向绑定验证
 20. Profile URL 不得作为 Handle→DID 绑定或服务发现的权威来源
+21. 如果 `profile` 存在，则 `profile.subject_did` 必须等于外层 `did` 字段
+22. 如果 `profile.handle` 存在，则必须等于外层 `handle` 字段
+23. 客户端不得将 `profile` 字段用于路由、身份认证、授权、E2EE 绑定、服务端点选择或安全 Profile 协商
+24. 如果 `subject_type` 缺失或未知，客户端必须按 `unknown` 处理
+25. 如果 `profile.proof` 不存在，客户端必须把 profile 视为 provider-supplied UI metadata
+26. 当外层 `did` 发生变化时，客户端必须失效旧 DID 关联的 profile 缓存
 
 ### SHOULD（应当）
 
@@ -715,6 +849,11 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 12. 实现者应区分 `exact-handle`、`provider-confirmed` 与 `unverified` 三种结果
 13. DID 持有者在 Handle Provider 迁移后应更新 DID Document 中的 `ANPHandleService`
 14. 当底层路径型 DID 轮换时，Handle Provider 应尽快将 Handle 映射更新到新的 DID
+15. `profile.type` 应为 `DIDSubjectProfile`
+16. 新协议输出应使用 `profile.display_name`，而不是 legacy `name`
+17. `avatar_uri` 和 `profile_uri` 存在时，应使用 HTTPS 绝对 URI
+18. 客户端在防混淆 UI 中应在 `profile.display_name` 旁保留 Handle 或 DID 的可查看入口
+19. Handle Provider 返回 `profile` 时，应避免返回敏感信息，除非该信息本来就是有意公开的展示资料
 
 ### MAY（可以）
 
@@ -726,6 +865,10 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 6. Handle Provider 可以实现 `/.well-known/handle/by-did` DID Confirmation Endpoint
 7. DID 持有者在不希望公开具体 Handle 时，可以使用 DID Confirmation Endpoint 作为 `ANPHandleService.serviceEndpoint`
 8. Handle 可以在底层路径型 DID 轮换时保持不变，以提供稳定的人类可读名称
+9. Handle Resolution Document 可以包含 `profile` 对象
+10. 客户端可以在完成 Handle 解析后立即展示 `profile.display_name`、`profile.avatar_uri` 和 `profile.subject_type`
+11. 服务端可以接受 legacy 输入字段 `name` 以兼容旧实现，但标准输出应使用 `display_name`
+12. `profile.proof` 可以作为对象级断言 proof 包含在 profile 中
 
 ## 附录 A：原生`did:web` 兼容方案
 
