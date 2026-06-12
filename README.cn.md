@@ -4,118 +4,146 @@
 
 </div>
 
-## AgentNetworkProtocol(ANP)
+# Agent Network Protocol (ANP)
 
-> TL;DR: ANP 致力于成为智能体互联网时代的 HTTP。
+> ANP 致力于成为智能体互联网时代的 HTTP：为智能体提供身份、命名、发现、协商、安全消息和应用层协作协议。
 
-<!-- TOC -->
-### 目录
+**当前规范集：** 核心协议文档已经围绕 ANP 1.1 版本线整理，覆盖 `did:wba` 身份、WNS Handle、元协议协商、智能体描述、智能体发现、端到端即时消息，以及 AP2 智能体支付协议。
 
-- [愿景定位](#愿景定位)
-- [为什么需要 ANP](#为什么需要-anp)
-- [协议三层架构](#协议三层架构)
-- [快速上手](#快速上手)
-- [协议SDK](#协议-sdk)
-- [深入阅读](#深入阅读)
-- [里程碑](#里程碑)
-- [联系我们](#联系我们)
-- [贡献](#贡献)
-  - [贡献者](#贡献者)
-- [许可证](#许可证)
-- [版权声明](#版权声明)
+**备注：** 本项目未在任何平台、任何区块链发布数字货币。
 
 ## 愿景定位
 
-AgentNetworkProtocol(ANP)是一个开源的智能体通信协议。
-
-AgentNetworkProtocol(ANP)的目标是成为**智能体互联网时代的HTTP**。
-
-我们的愿景是**定义智能体之间的连接方式，为数十亿智能体构建一个开放、安全、高效的协作网络**。
+Agent Network Protocol（ANP）是一个开源的智能体通信协议，目标是定义智能体之间的连接方式，为数十亿智能体构建开放、安全、高效的协作网络。
 
 <p align="center">
-  <img src="/images/agentic-web3.png" width="50%" alt="Agentic Web"/>
+  <img src="images/agentic-web3.png" width="50%" alt="Agentic Web"/>
 </p>
 
-我们相信，智能体互联网是继人类互联网之后的新一代信息基础设施，将彻底改变数字世界的连接方式与协作模式。在这个愿景中：
+我们相信，智能体互联网是继人类互联网之后的新一代信息基础设施。在这个愿景中：
 
-- **从平台中心到协议中心**：当前互联网生态系统是以平台为中心的模式，数据和服务被锁在"数字孤岛"中。智能体互联网将重塑这种不平衡格局，让互联网从封闭、碎片化的状态，回归开放、自由连接的本源。
-
-- **连接即力量**：在真正开放、互联的网络中，节点间的自由交互能最大限度激发创新潜力并创造巨大价值。未来每个智能体都将同时是信息消费者和服务提供者，每个节点都能无障碍地发现、连接并与网络中任何其他节点交互。
-
-- **AI原生网络**：不同于为人类设计的网页与界面，智能体互联网将构建一个面向AI友好的原生数据网络，所有节点都是可描述、可发现、可调用的智能体或数据单元，每个链接都是语义明确、结构统一的协议连接。
-
-这个愿景需要一个类似HTTP之于人类互联网的基础协议——这正是ANP诞生的原因。
-
-**备注**：本项目未在任何平台、任何区块链发布数字货币。
+- **从平台中心到协议中心：** 数据和服务不应继续被锁在封闭平台里，智能体需要开放协议实现直接连接。
+- **连接即力量：** 每个智能体既可以是信息消费者，也可以是服务提供者，并能发现、连接和协作。
+- **AI 原生网络：** 智能体应通过语义明确、机器可读、可调用的协议交互，而不是只能模仿人类浏览网页。
 
 ## 为什么需要 ANP
 
-当前互联网基础设施虽已相当完善，但针对智能体网络的特殊需求，当下仍缺乏最适合的通信和连接方案。我们致力于解决智能体网络面临的三大挑战：
+当前互联网基础设施已经成熟，但仍缺少面向大规模智能体网络的通信和连接层。ANP 重点解决三类问题：
 
-- 🌐 **互联互通**：让所有的智能体相互之间都能够进行通信，打破数据孤岛，让AI能够获得完整的上下文信息。
-- 🖥️ **原生接口**：AI无需模仿人类访问互联网，AI应该用它最擅长的方式（API或通信协议）与数字世界交互。
-- 🤝 **高效协作**：利用AI，智能体之间可以自组织、自协商，构建比现有互联网更低成本、更高效率的协作网络。
+- 🌐 **互联互通：** 让不同平台、不同域名下的智能体能够相互认证、发现和通信。
+- 🖥️ **原生接口：** 让 AI 使用 API、协议文档、结构化描述和协商接口，而不是模拟人类访问网页。
+- 🤝 **高效协作：** 让智能体能够自组织、自协商，构建更低成本的协作网络。
 
 ## 协议三层架构
 
 <p align="center">
-  <img src="/images/anp-architecture.png" width="50%" alt="协议分层图"/>
+  <img src="images/anp-architecture.png" width="50%" alt="协议分层图"/>
 </p>
 
-- 🔒 **身份与加密通信层**：基于W3C DID（Decentralized Identifiers，去中心化标识符）规范，在现有成熟的Web基础设施上，构建一个去中心化的身份认证方案和端到端加密通信方案。它可以让任意平台之间的智能体进行身份认证，而不依赖于任何中心化系统。
-- 🌍 **元协议层**：元协议即协商智能体之间通信协议的协议。是智能体网络演进为自组织、自协商的高效协作网络的关键。
-- 📡 **应用协议层**：基于语义网相关规范，让智能体能够描述其他能力与支持的应用协议，并且高效的管理这些协议。
+- 🔒 **身份、命名与安全通信层：** 基于 W3C DID 和现有 Web 基础设施，包含 `did:wba`、HTTP Message Signatures、WNS 人类可读 Handle，以及端到端加密基础能力。
+- 🌍 **元协议层：** 定义智能体之间如何协商通信协议、选择交互格式并动态建立协作。
+- 📡 **应用协议层：** 定义智能体如何发布能力、发现其他智能体、交换即时消息、传输对象，并运行智能体支付等领域协议。
+
+## 协议规范索引
+
+| 领域 | 文档 | 状态 | 定义内容 |
+| --- | --- | --- | --- |
+| 总览 | [ANP 技术白皮书](chinese/01-AgentNetworkProtocol技术白皮书.md) | 白皮书 | 愿景、设计原则和三层协议架构 |
+| 身份 | [ANP-03：did:wba 方法规范](chinese/03-did-wba方法规范.md) | 已发布 v1.1 | Web DID 方法、跨平台认证、`e1_` Ed25519 绑定、`k1_` 兼容扩展 |
+| 命名 | [ANP-04：基于 DID:WBA 的命名空间规范](chinese/04-ANP-基于DID-WBA的命名空间规范.md) | 已发布 v1.1 | WNS Handle（如 `alice.example.com`）、Handle 到 DID 的解析、DID 轮换支持 |
+| 元协议 | [ANP-06：智能体通信元协议规范](chinese/06-ANP-智能体通信元协议规范.md) | 已发布 v1.1 | 智能体之间的协议协商、协议选择和通信建立 |
+| 描述 | [ANP-07：智能体描述协议规范](chinese/07-ANP-智能体描述协议规范.md) | 已发布 v1.1 | 智能体描述文档、接口描述和能力发布 |
+| 发现 | [ANP-08：智能体发现协议规范](chinese/08-ANP-智能体发现协议规范.md) | 已发布 v1.1 | 基于 `.well-known` 的主动发现，以及向搜索智能体注册的被动发现 |
+| 消息 | [ANP-09：端到端即时消息协议规范总纲](chinese/09-ANP-端到端即时消息协议规范.md) | 已发布 v1.1 | 私聊、群聊、端到端加密、附件和联邦场景的 Profile 索引 |
+| 支付 | [ANP-10：智能体支付协议规范（AP2）](chinese/application/10-ANP-智能体支付协议规范.md) | 中文草案 v0.1；英文 v1.1 | 智能体支付、授权凭证、收据、基于 DID 的签名和交易流程 |
+
+### 即时消息 Profile
+
+ANP 端到端即时消息规范集拆分为多个独立 Profile：
+
+1. [P1 核心绑定](chinese/message/01-核心绑定.md)：JSON-RPC 2.0 绑定、请求/响应/错误约定。
+2. [P2 身份与发现](chinese/message/02-身份与发现.md)：基于 DID 的服务发现和端点能力发现。
+3. [P3 私聊基础语义](chinese/message/03-私聊基础语义.md)：私聊发送和回执。
+4. [P4 群组基础语义](chinese/message/04-群组基础语义.md)：群生命周期、成员关系和群消息语义。
+5. [P5 私聊端到端加密](chinese/message/05-私聊端到端加密.md)：私聊消息的 E2EE Overlay。
+6. [P6 群组端到端加密](chinese/message/06-群组端到端加密.md)：群消息的 E2EE Overlay。
+7. [P7 附件与对象传输](chinese/message/07-附件与对象传输.md)：Manifest、对象服务和大对象传输。
+8. [P8 联邦与跨域](chinese/message/08-联邦与跨域.md)：跨域路由、转发和结果见证。
+
+### DID 兼容性附录
+
+- [附录 A：did:wba `k1_` 兼容扩展](chinese/附录A：did-wba-k1_兼容扩展.md)
+- [附录 B：与原生 `did:web` 的兼容](chinese/附录B：与原生did-web-的兼容.md)
 
 ## 快速上手
 
-如果你想快速了解ANP的基本概念和使用方法，可以查看我们的入门指南：[ANP入门指南](docs/chinese/ANP入门指南.md)
+- 如果想快速了解 ANP 概念和使用方式，请阅读 [ANP 入门指南](docs/chinese/ANP入门指南.md)。
+- 如果要实现智能体身份与认证，请从 [ANP-03：did:wba 方法规范](chinese/03-did-wba方法规范.md) 和两个 DID 兼容性附录开始。
+- 如果要发布智能体，请阅读 [ANP-07：智能体描述协议规范](chinese/07-ANP-智能体描述协议规范.md) 和 [ANP-08：智能体发现协议规范](chinese/08-ANP-智能体发现协议规范.md)。
+- 如果要构建即时消息，请从 [ANP-09](chinese/09-ANP-端到端即时消息协议规范.md) 开始，再按需选择具体 Profile。
+- 如果想运行 ANP 相关 Demo，请查看 [ANP 示例程序](docs/chinese/ANP示例程序.md)。
 
-如果你想快速的运行ANP相关demo，可以查看我们的示例程序说明文档：[ANP示例程序](docs/chinese/ANP示例程序.md)
+## 协议 SDK
 
-## 协议SDK
+ANP 的开源实现维护在 AgentConnect 仓库：
 
-我们正在开发一个开源的 AgentNetworkProtocol 实现，仓库地址：[https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+- [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+
+AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协商、安全通信和应用层协议的 SDK 支持。
+
+## 仓库结构
+
+- `01-*.md`、`03-*.md`、`04-*.md`、`06-*.md`、`07-*.md`、`08-*.md`、`09-*.md`：英文核心协议文档。
+- `application/`：AP2 等应用层协议。
+- `message/`：ANP 端到端即时消息 Profile 规范集。
+- `chinese/`：核心规范中文版及相关研究笔记。
+- `docs/`：指南、扩展阅读和社区运营文档。
+- `blogs/`：技术文章和协议分析。
+- `examples/`：ADP 示例资产和 API 接口示例。
+- `images/`、`standard/`：共享图和标准化参考资料。
 
 ## 深入阅读
 
-- 完整资料见 [拓展阅读](docs/links.md)  
-- 查看详细设计请阅读 [ANP 技术白皮书](chinese/01-AgentNetworkProtocol技术白皮书.md)  
-- 协议开源实现 [AgentConnect 示例](https://github.com/agent-network-protocol/AgentConnect)
+- [扩展阅读](docs/chinese/links.md)
+- [ANP 技术白皮书](chinese/01-AgentNetworkProtocol技术白皮书.md)
+- [AgentConnect 示例](https://github.com/agent-network-protocol/AgentConnect)
+
 ## 里程碑
 
-无论是协议还是开源代码实现，我们整体式是按照以下的顺序逐步的推进：
-
-- [x] 构建身份认证与端到端加密通信协议与实现。这是我们整个项目的基础与核心，当前协议设计和代码基本完成。
-- [x] 元协议设计与元协议代码实现。当前协议设计和代码开发基本完成。
-- [x] 应用层协议设计与开发。
-  - [x] 支持智能体描述。
-  - [x] 支持智能体发现。
-  - [ ] 特定领域使用的应用协议设计
+- [x] 定义并实现身份认证与安全通信基础。
+- [x] 发布 `did:wba` v1.1，默认支持 `e1_` Ed25519 路径绑定，并提供 `k1_` 与原生 `did:web` 兼容说明。
+- [x] 定义 WNS Handle，作为 DID 智能体的人类可读命名层。
+- [x] 发布元协议、智能体描述协议和智能体发现协议。
+- [x] 将端到端即时消息拆分为总纲和八个可互操作 Profile。
+- [x] 在应用层加入 AP2 智能体支付协议。
+- [ ] 持续推进 SDK 实现与示例对齐 ANP 1.1 规范集。
+- [ ] 持续推进标准化工作，并扩展更多领域应用协议。
 
 ## 联系我们
 
-我们已经成立了一个ANP开源技术社区，以开源社区的方式推进ANP的建设。诚挚的邀请您加入我们的开源技术社区，我们的创始委员会、社区顾问、技术委员会、发展委员会、企业观察员等团队持续招募中。
+我们已经成立 ANP 开源技术社区，以开源社区方式推进 ANP 建设。诚挚邀请你加入社区。
 
-邮箱：chgaowei@gmail.com  
-- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
-- 官网：[https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
+- 邮箱：chgaowei@gmail.com
+- Discord：[https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)
+- 官网：[https://agent-network-protocol.com/](https://agent-network-protocol.com/)
 - GitHub：[https://github.com/agent-network-protocol/AgentNetworkProtocol](https://github.com/agent-network-protocol/AgentNetworkProtocol)
 - 微信：flow10240
 
 ## 贡献
 
-我们欢迎任何形式的贡献，请参考 [CONTRIBUTING.cn.md](CONTRIBUTING.cn.md) 文件。
+我们欢迎任何形式的贡献，请参考 [CONTRIBUTING.cn.md](CONTRIBUTING.cn.md)。
 
 ### 贡献者
 
-我们向所有为 Agent Network Protocol 项目做出贡献的人表示衷心的感谢。您可以在这里查看完整的贡献者列表：
+感谢所有为 Agent Network Protocol 项目做出贡献的人。
 
-- [贡献者名单 (Chinese)](CONTRIBUTORS.cn.md)
+- [贡献者名单](CONTRIBUTORS.cn.md)
 
 ## 许可证
 
-本项目基于 MIT 许可证开源，详情请参考 [LICENSE](LICENSE) 文件。但版权归属于常高伟（GaoWei Chang）。任何使用本项目的用户必须保留原始版权声明和许可证文件。
+本项目基于 MIT 许可证开源，详情请参考 [LICENSE](LICENSE)。版权归属于常高伟（GaoWei Chang）。任何使用本项目的用户必须保留原始版权声明和许可证文件。
 
-## 版权声明  
+## 版权声明
+
 Copyright (c) 2024 GaoWei Chang
 本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。
