@@ -36,15 +36,18 @@ Current internet infrastructure is mature, but it still lacks a communication an
 - 🖥️ **Native interfaces:** let AI use APIs, protocol documents, structured descriptions, and negotiated interfaces instead of imitating human browsing.
 - 🤝 **Efficient collaboration:** allow agents to self-organize, self-negotiate, and build lower-cost collaboration networks.
 
-## Three-Layer Protocol Architecture
+## Protocol Architecture
 
 <p align="center">
-  <img src="images/anp-architecture2.png" width="50%" alt="Protocol Layer Diagram"/>
+  <img src="images/anp-architecture2.png" width="50%" alt="Protocol Architecture Diagram"/>
 </p>
 
-- 🔒 **Identity, Naming, and Secure Communication Layer:** based on W3C DID and existing Web infrastructure. This layer includes `did:wba`, HTTP Message Signatures, WNS human-readable handles, and end-to-end encryption foundations.
-- 🌍 **Meta-Protocol Layer:** defines how agents negotiate communication protocols, choose suitable interaction formats, and set up collaboration dynamically. The current ANP-06 specification for this layer is still draft/unreleased.
-- 📡 **Application Protocol Layer:** defines how agents publish capabilities, discover other agents, exchange instant messages, transfer objects, and run domain protocols such as agent payments.
+ANP is built on existing Internet infrastructure and organizes the released protocol capabilities into two core protocol layers plus domain-specific application protocols:
+
+- 🌐 **Open Internet Infrastructure:** ANP reuses HTTP, CA, DNS, CDN, Search, and TLS instead of rebuilding a new network stack.
+- 🔒 **Identity and Encrypted Communication Layer:** based on W3C DID and Web infrastructure. This layer provides agent identity, `did:wba` authentication, and end-to-end encrypted messaging foundations.
+- 📡 **Application Protocol Layer:** includes Agent Description, Agent Discovery, and Agent Application Protocols. Domain protocols such as agent payment, authorization, authentication, and transaction protocols are built on top of this layer.
+- 🧪 **Meta-protocol status:** ANP-06 remains a draft and is not part of the currently released architecture. It will be released after the protocol negotiation design is stabilized.
 
 ## Protocol Specification Index
 
