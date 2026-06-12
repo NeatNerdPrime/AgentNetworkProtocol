@@ -10,6 +10,8 @@
 
 **Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The suite now covers `did:wba` identity, WNS handles, meta-protocol negotiation, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol.
 
+**Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
+
 **Note:** This project has not issued any digital currency on any platform or blockchain.
 
 ## Vision and Positioning
