@@ -8,7 +8,7 @@
 
 > ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
 
-**Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The suite now covers `did:wba` identity, WNS handles, meta-protocol negotiation, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol.
+**Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
 
 **Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
@@ -43,7 +43,7 @@ Current internet infrastructure is mature, but it still lacks a communication an
 </p>
 
 - 🔒 **Identity, Naming, and Secure Communication Layer:** based on W3C DID and existing Web infrastructure. This layer includes `did:wba`, HTTP Message Signatures, WNS human-readable handles, and end-to-end encryption foundations.
-- 🌍 **Meta-Protocol Layer:** defines how agents negotiate communication protocols, choose suitable interaction formats, and set up collaboration dynamically.
+- 🌍 **Meta-Protocol Layer:** defines how agents negotiate communication protocols, choose suitable interaction formats, and set up collaboration dynamically. The current ANP-06 specification for this layer is still draft/unreleased.
 - 📡 **Application Protocol Layer:** defines how agents publish capabilities, discover other agents, exchange instant messages, transfer objects, and run domain protocols such as agent payments.
 
 ## Protocol Specification Index
@@ -53,7 +53,7 @@ Current internet infrastructure is mature, but it still lacks a communication an
 | Overview | [ANP Technical White Paper](01-agentnetworkprotocol-technical-white-paper.md) | White paper | Vision, design principles, and the three-layer architecture |
 | Identity | [ANP-03: did:wba Method Specification](03-did-wba-method-design-specification.md) | Released v1.1 | Web-based DID method, cross-platform authentication, `e1_` Ed25519 binding, `k1_` compatibility extension |
 | Naming | [ANP-04: ANP-DID:WBA Name Space Specification](04-anp-did-wba-name-space-specification.md) | Released v1.1 | WNS handles such as `alice.example.com`, Handle-to-DID resolution, DID rotation support |
-| Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Released v1.1 | Protocol negotiation, selection, and communication setup between agents |
+| Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Protocol negotiation, selection, and communication setup between agents |
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
 | Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
 | Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, and federation |
@@ -115,7 +115,8 @@ AgentConnect focuses on practical SDK support for `did:wba`, authentication, age
 - [x] Define and implement the identity authentication and secure communication foundation.
 - [x] Release `did:wba` v1.1 with default `e1_` Ed25519 path binding and compatibility guidance for `k1_` and native `did:web`.
 - [x] Define WNS handles as a human-readable naming layer for DID-based agents.
-- [x] Release the meta-protocol, Agent Description Protocol, and Agent Discovery Protocol.
+- [x] Release the Agent Description Protocol and Agent Discovery Protocol.
+- [ ] Release the meta-protocol after the draft is stabilized.
 - [x] Split end-to-end instant messaging into an overview plus eight interoperable profiles.
 - [x] Add the AP2 agent payment protocol to the application layer.
 - [ ] Continue aligning SDK implementations and examples with the 1.1 specification set.
