@@ -39,7 +39,7 @@ Current internet infrastructure is mature, but it still lacks a communication an
 ## Three-Layer Protocol Architecture
 
 <p align="center">
-  <img src="images/anp-architecture.png" width="50%" alt="Protocol Layer Diagram"/>
+  <img src="images/anp-architecture2.png" width="50%" alt="Protocol Layer Diagram"/>
 </p>
 
 - 🔒 **Identity, Naming, and Secure Communication Layer:** based on W3C DID and existing Web infrastructure. This layer includes `did:wba`, HTTP Message Signatures, WNS human-readable handles, and end-to-end encryption foundations.

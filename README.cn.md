@@ -39,7 +39,7 @@ Agent Network Protocol（ANP）是一个开源的智能体通信协议，目标�
 ## 协议三层架构
 
 <p align="center">
-  <img src="images/anp-architecture.png" width="50%" alt="协议分层图"/>
+  <img src="images/anp-architecture2.png" width="50%" alt="协议分层图"/>
 </p>
 
 - 🔒 **身份、命名与安全通信层：** 基于 W3C DID 和现有 Web 基础设施，包含 `did:wba`、HTTP Message Signatures、WNS 人类可读 Handle，以及端到端加密基础能力。
