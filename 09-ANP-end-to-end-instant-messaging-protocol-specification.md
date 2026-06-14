@@ -2,7 +2,7 @@
 
 - Document ID: ANP-09
 - Title: ANP End-to-End Instant Messaging Protocol Overview
-- Status: Released
+- Status: draft
 - Version: 1.1
 - Language: English
 - Applicability: This document applies to the overview, layering, and Profile index of the ANP end-to-end instant messaging specification suite.
@@ -53,13 +53,14 @@ ANP discovers interactive service endpoints through DID documents, and uses this
 
 ### 2.3 Layered design instead of “one unified protocol”
 
-ANP does not cram all the issues into one document, but splits them into 8 Profiles:
+ANP does not cram all the issues into one document, but splits them into 9 Profiles:
 
 - P1/P2: Core Binding and Identity and Discovery
 - P3/P4: Basic business semantics of direct messaging and group messaging
 - P5/P6: E2EE Overlay of direct messaging and group messaging
 - P7: Attachments and large objects
 - P8: Federation, cross-domain service invocation and group event distribution
+- P9: Group-message mentions and selector semantics
 
 The benefits of this design are:
 
@@ -243,7 +244,7 @@ To ensure that even if the link is leaked, meaningful plaintext may not be obtai
 
 ## 6. Document structure
 
-The following 8 Profiles constitute the current specification set of ANP:
+The following 9 Profiles constitute the current specification set of ANP:
 
 
 |serial number|document|effect|Content overview|
@@ -256,6 +257,7 @@ The following 8 Profiles constitute the current specification set of ANP:
 | 6 | [06-Group End-to-End Encryption](message/06-group-end-to-end-encryption.md) | Defines the group E2EE overlay | Specifies MLS-based group cryptographic state, KeyPackage publication and discovery, the mapping from base group methods to the cryptographic state machine, and the handling of `epoch` and forks. |
 | 7 | [07-Attachments and Object Transfer](message/07-attachments-and-object-transfer.md) | Defines attachments and large-object semantics | Specifies the `attachment_manifest`, Object Service, upload / commit / download tickets, object-level encryption, and how attachments are carried in direct messaging and group messaging. |
 | 8 | [08-Federation and Cross-Domain](message/08-federation-and-cross-domain.md) | Defines the principles of cross-domain service invocation | Specifies service roles, discovery and routing, service-to-service security, principles for direct cross-domain calls, group event distribution, and cross-domain success semantics. |
+| 9 | [09-Message Mentions Extension](message/09-message-mentions.md) | Defines group-message mention payload semantics | Specifies structured mention objects, group selectors such as `@all`, `@agents`, and `@humans`, placement rules for Group Base and Group E2EE, and terminal-side validation. |
 
 
 The recommended reading order is:
@@ -263,7 +265,7 @@ The recommended reading order is:
 - Read P1 / P2 first
 - Then read P3 / P4
 - Then read P5 / P6
-- Finally read P7 / P8
+- Finally read P7 / P8 / P9 as needed
 
 ---
 

@@ -59,7 +59,7 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 | Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Protocol negotiation, selection, and communication setup between agents |
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
 | Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
-| Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, and federation |
+| Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, federation, and mentions |
 | Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | Released v1.1 (EN); CN draft available | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
 
 ### Instant Messaging Profiles
@@ -74,6 +74,7 @@ The ANP end-to-end instant messaging suite is split into focused profiles:
 6. [P6 Group End-to-End Encryption](message/06-group-end-to-end-encryption.md): E2EE overlay for group messaging.
 7. [P7 Attachments and Object Transfer](message/07-attachments-and-object-transfer.md): manifests, object services, and large-object transfer.
 8. [P8 Federation and Cross-Domain](message/08-federation-and-cross-domain.md): cross-domain routing, relaying, and result witnessing.
+9. [P9 Message Mentions Extension](message/09-message-mentions.md): group-message mention payloads and selector semantics.
 
 ### DID Compatibility Appendices
 
@@ -120,7 +121,7 @@ AgentConnect focuses on practical SDK support for `did:wba`, authentication, age
 - [x] Define WNS handles as a human-readable naming layer for DID-based agents.
 - [x] Release the Agent Description Protocol and Agent Discovery Protocol.
 - [ ] Release the meta-protocol after the draft is stabilized.
-- [x] Split end-to-end instant messaging into an overview plus eight interoperable profiles.
+- [x] Split end-to-end instant messaging into an overview plus nine interoperable profiles.
 - [x] Add the AP2 agent payment protocol to the application layer.
 - [ ] Continue aligning SDK implementations and examples with the 1.1 specification set.
 - [ ] Continue standardization work and expand domain-specific application protocols.
