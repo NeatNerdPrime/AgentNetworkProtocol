@@ -1,695 +1,925 @@
-# ANP-Agent Communication Meta-Protocol Specification (Draft)
+# ANP Agent Communication Meta-Protocol Specification (Draft)
 
 - Document ID: ANP-06
-- Title: ANP-Agent Communication Meta-Protocol Specification
+- Title: ANP Agent Communication Meta-Protocol Specification
 - Status: Draft
-- Version: 1.1-draft
+- Version: 2.0-draft
 - Language: English
-- Applicability: This specification applies to protocol negotiation, protocol selection, and communication setup between ANP agents.
+- Applicability: This specification applies to semantic meta-protocol negotiation, interface selection, Profile selection, security-profile selection, schema selection, and negotiation-result reuse between ANP agents.
 
-Note:
-- This specification is currently in draft status and has not been released. It may undergo significant adjustments based on implementation feedback and real-world use cases.
-- The current protocol implementation focuses on end-to-end message encryption and will later be modified to a solution based on did:wba and HTTP.
+Notes:
 
-## Background
+- The meta-protocol is not a mandatory protocol for agent collaboration; it is optional. In normal cases, agent identity, messaging, discovery, and description protocols are sufficient for most interoperability needs. The meta-protocol is primarily used when two agents need to dynamically negotiate a pair-specific interface, temporary protocol, or special execution constraints.
+- This specification is still a draft and has not been released. Its goal is to upgrade the early message-embedded meta-protocol negotiation model into an independent negotiation Profile compatible with the current ANP description, discovery, Core Binding, DID authentication, and messaging Profile architecture.
+- This specification does not modify the ANP Agent Description Protocol. The `MetaProtocolInterface` defined here is an ANP-06 extension interface type that can be declared in the `interfaces` array of an Agent Description document.
+- New implementations should use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification. The early encrypted-message-internal binary `PT=00` negotiation model is deprecated, and this specification does not require or recommend compatibility with old implementations.
 
-**Meta-Protocol**, a protocol for negotiating the use of communication protocols, specifically defines how protocols operate, parse, combine, and interact. It provides rules and patterns for protocols, helping to design a general, highly extensible communication mechanism. Meta-protocols typically do not handle specific data transmission but define the communication framework and basic constraints for protocol operation.
+## Abstract
 
-Meta-protocols can greatly improve communication efficiency between agents and reduce communication costs. If agents use natural language to transmit data, they need to use LLMs to process data in and out within the agents, resulting in low information processing efficiency and high costs. Using meta-protocols, combined with AI-generated code to handle protocol code, can:
-- Improve data transmission efficiency: By negotiating the protocol before data enters the LLM, the amount of data processed by the LLM can be reduced, thereby improving data transmission efficiency.
-- Improve data understanding accuracy: Structuring data from the source, rather than directly letting the LLM process unstructured data, can improve data understanding accuracy.
-- Reduce data processing complexity: In specific domains with high data complexity, there are already many protocol specifications in the industry that cannot be transmitted using natural language, such as audio and video data.
+A meta-protocol is a protocol for negotiating communication protocols. In an agent network, it lets a caller and a target agent select the protocol, interface, Profile, schema, content type, security profile, and execution mode that should be used for the subsequent business interaction, based on intent, capabilities, constraints, security requirements, and available interfaces.
 
-At the same time, with the support of artificial intelligence, meta-protocols can transform the agent network into a self-organizing, self-negotiating collaborative network. Self-organizing and self-negotiating mean that agents in the network can autonomously connect, negotiate protocols, and reach protocol consensus. Through natural language and meta-protocols, agents can communicate their capabilities, data formats, and protocols used, ultimately selecting the optimal communication protocol to ensure efficient collaboration and information transmission across the network.
+This specification redefines the ANP meta-protocol as an independent semantic negotiation Profile:
 
-At the meta-protocol layer, we refer to and draw on the ideas of the [Agora Protocol](https://arxiv.org/html/2410.11905v1), combining best practices and challenges in specific scenarios to design the meta-protocol specification of the AgentNetworkProtocol.
-
-## How Current Protocols Are Negotiated
-
-In current software systems, if an API is provided externally, the API call method is generally given, including API call parameters, return values, and the protocol used. This process is essentially a protocol negotiation process. It has the following disadvantages:
-- Requires manual design of protocols and writing protocol handling code. If there is no corresponding protocol, communication cannot proceed.
-- Protocol docking requires a lot of manual involvement, with multiple rounds of communication and confirmation needed.
-- If there are no industry standards, multiple systems use different definitions, and the caller needs to negotiate and dock separately.
-
-## Meta-Protocol Negotiation Process
-Intelligent agents empowered by LLMs combined with meta-protocols can effectively address the protocol negotiation issues in existing software systems. The main process is as follows:
-
-```plaintext
-  Agent (A)                                       Agent (B)
-    |                                                 |
-    | ------------- Protocol Negotiation -----------> |
-    |                                                 |
-    |         (Multiple negotiations may occur)       |
-    |                                                 |
-    | <------------- Protocol Negotiation ----------- |
-    |                                                 |
-    |---------------                                  |
-    |              |                                  |
-    |   Protocol Code Generated                       |
-    |              |                                  |
-    | <-------------                                  |
-    | --------------- Code Generation --------------> |
-    |                                                 |---------------  
-    |                                                 |              |
-    |                                                 |   Protocol Code Generated
-    |                                                 |              |
-    |                                                 | <-------------  
-    | <-------------- Code Generation --------------- |
-    |                                                 |
-    |                                                 |
-    | ------------ Test Cases Negotiation ----------> |
-    |                  (Optional)                     |
-    |         (Multiple negotiations may occur)       |
-    |                                                 |
-    | <----------- Test Cases Negotiation ----------- |
-    |                                                 |
-    |                                                 |
-    |    (Start Communication Using Final Protocol)   |
-    |                                                 |
-    | <------- Application Protocol Message --------> |
-    |                                                 |
-    |                                                 |
+```text
+Agent Discovery
+  -> Agent Description
+  -> MetaProtocolInterface
+  -> anp.get_capabilities
+  -> anp.negotiate
+  -> selected interface / profile / security profile / schema
+  -> business call or message exchange
 ```
 
-As shown in the figure, the protocol negotiation process initiated by Agent A to Agent B is as follows:
-- Agent A first uses natural language to initiate protocol negotiation with Agent B, carrying A's requirements, capabilities, and expected protocol specifications, with multiple options for B to choose from.
-- After receiving A's negotiation request, Agent B responds to A with B's capabilities and determined protocol specifications using natural language based on the information provided by A.
-- Multiple rounds of negotiation may occur between Agent A and Agent B, ultimately determining the protocol specifications for communication between the agents.
-- Based on the negotiation results, Agents A and B use AI to generate code for handling the protocol. For security considerations, it is recommended that the generated code be run in a sandbox.
-- The agents conduct protocol interoperability tests, using AI to determine whether the protocol messages conform to the negotiated specifications. If not, automatic resolution is performed through natural language interaction.
-- Finally, the final protocol is determined, and Agents A and B communicate using the final protocol.
-Through the above process, we can see that intelligent agents using meta-protocols combined with code generation technology can greatly improve the efficiency of protocol negotiation and reduce the cost of protocol negotiation. At the same time, it also transforms the intelligent agent network into a self-organizing, self-negotiating collaborative network.
+Unlike the early design that distinguished meta protocol, application protocol, natural-language protocol, and verification protocol by a binary Protocol Type inside a message payload, this specification does not define a new transport layer, a new encrypted-message format, or a replacement for ANP Core Binding. Meta-protocol negotiation messages should run as ordinary ANP JSON-RPC requests on existing ANP endpoints.
 
-## Message Format Definition
+## 1. Background and Problem Statement
 
-Negotiation messages are based on the encryptedData of [end-to-end encryption](04-End-to-End%20Encrypted%20Communication%20Technology%20Protocol%20Based%20on%20did.md) messages, which are upper-layer messages of encrypted messages.
+Agent interoperability usually starts from public descriptions: a target agent exposes capabilities, interfaces, and security requirements through its Agent Description, and the caller reads that description to select an appropriate interaction method. As the number of agents and interface types grows, static description alone has several limitations:
 
-The message format of the decrypted ciphertext of the encrypted message encryptedData is designed as follows:
+1. **Static description cannot cover runtime changes**: server throttling, available security profiles, temporarily disabled interfaces, user authorization state, and deployment policy can change at runtime.
+2. **The same intent may have multiple usable interfaces**: for example, hotel booking may be performed through a structured OpenRPC interface or through a natural-language messaging interface.
+3. **Caller capability also affects selection**: whether the caller supports a specific ANP Profile, security profile, content type, or asynchronous execution mode affects the final protocol choice.
+4. **Natural-language ad-hoc negotiation is expensive**: fully relying on natural-language multi-round negotiation increases latency, cost, and uncertainty.
+5. **The early message-embedded model is no longer aligned with the current protocol stack**: early ANP-06 directly extended encrypted message payloads and used a binary `PT` field to distinguish protocol types. Current ANP has converged on DID discovery, Agent Description, `ANPMessageService`, JSON-RPC 2.0 Core Binding, and runtime capability confirmation.
 
-```plaintext
-0               1               2               3
-0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 0 ...
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|PT |  Reserved |              Protocol data                    | ...
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+Therefore, the new ANP-06 positions the meta-protocol as a semantic negotiation control plane. It does not carry business data; it helps both parties determine which interoperability path should be used before business execution begins.
 
+## 2. Design Goals and Non-Goals
+
+### 2.1 Design Goals
+
+This specification aims to:
+
+- Define a standard Profile: `anp.meta.negotiation.v1`;
+- Define `MetaProtocolInterface` as an interface type that can be declared in the `interfaces` array of an Agent Description document;
+- Reuse ANP Core Binding's JSON-RPC 2.0, `params.meta/body/auth`, `profile`, `security_profile`, `target`, and error model;
+- Reuse `anp.get_capabilities` as the runtime capability confirmation method;
+- Define `anp.negotiate` for selecting the final execution interface based on caller intent, caller capabilities, and constraints;
+- Support structured-interface-first negotiation, natural-language fallback, cache reuse, and future protocol artifact publication;
+- Explicitly mark the early `PT=00` message negotiation model as deprecated and outside the compatibility scope of this specification.
+
+### 2.2 Non-Goals
+
+This specification does not define:
+
+- A new transport layer, session layer, or binary message header;
+- A new DID method or a new identity authentication mechanism;
+- A new end-to-end encryption algorithm;
+- The complete specification of `anp.get_capabilities`; that method is defined by Core Binding;
+- The request, response, or state machine of business interfaces themselves;
+- Mandatory AI code generation, remote code loading, or code exchange;
+- A global protocol registry, consensus-protocol election algorithm, or economic incentive mechanism.
+
+## 3. Relationship with Existing ANP Protocols
+
+### 3.1 Relationship with Agent Description
+
+Agent Description is the public entry point of an agent and describes the agent's DID, owner, information resources, interfaces, and security configuration. The `MetaProtocolInterface` defined in this document is an extension interface type that can be placed in the `interfaces` array of an Agent Description document. It declares:
+
+- That the agent supports ANP-06 meta-protocol negotiation;
+- Where the negotiation endpoint is;
+- Which binding the endpoint uses;
+- Which negotiation methods are supported;
+- Which objects can be negotiated, such as Profiles, Interfaces, Schemas, Security Profiles, Content Types, and Execution Modes.
+
+This specification does not require changes to ANP-07. Implementations can publish `MetaProtocolInterface` as an extension `Interface` object while preserving the existing Agent Description structure.
+
+### 3.2 Relationship with Agent Discovery
+
+Discovery remains defined by ANP-08. A caller can first obtain an Agent Description URL through active discovery or another trusted channel, for example:
+
+```text
+https://{domain}/.well-known/agent-descriptions
 ```
-- PT: Protocol Type, 2 bits, indicating the protocol type
-    - 00: meta protocol
-    - 01: application protocol
-    - 10: natural language protocol
-    - 11: verification protocol
-- Reserved: 6 bits, reserved field, not used yet
-- Protocol Data: variable length, indicating the specific content of the protocol
 
-All messages have a binary header of 1 byte, and the main information in the header is the protocol type of the protocol data:
-- If the protocol type value is 00, it indicates that this message is a meta-protocol used for protocol negotiation;
-- If the protocol type value is 01, it indicates that this message is an application protocol used for actual data transmission;
-- If the protocol type value is 10, it indicates that this message is a natural language protocol, which directly uses natural language for data transmission;
-- If the protocol type value is 11, it indicates that this message is a verification protocol used for verifying the negotiated protocol. After verification, this protocol is used for data transmission. The verification protocol is not real user data.
+The caller then reads the target Agent Description document and looks for `MetaProtocolInterface` in the `interfaces` array.
 
-The current binary header is one byte. If one byte cannot meet the requirements in the future, it can be extended to multiple bytes. By carrying the message format version information in the Hello message, forward and backward compatibility can be maintained.
-### Meta-Protocol Negotiation Message Definition
+### 3.3 Relationship with Core Binding
 
-When the protocol type (PT) is 00, the Protocol Data of the message carries the meta-protocol message, which is used to negotiate the protocol used for communication between two agents. The meta-protocol negotiation process is predefined and does not require negotiation. The predefined document is this document.
+ANP-06 runtime messages use ANP Core Binding conventions:
 
-We define the meta-protocol message as a semi-structured format. The core protocol negotiation part uses natural language to maintain the flexibility of negotiation, while the process control uses structured JSON to keep the protocol negotiation process controllable.
+- JSON-RPC 2.0;
+- The `params.meta`, `params.auth`, and `params.body` structure;
+- `meta.profile` indicates the interpretation Profile of the request;
+- `meta.security_profile` indicates the security profile used by the request;
+- `meta.target` indicates the target modeling;
+- JSON-RPC `error` objects carry errors.
 
-Meta-protocol negotiation messages are divided into several categories:
-- Protocol Negotiation Message: Used to negotiate protocol content
-- Code Generation Message: Used to generate code for handling the protocol
-- Debug Protocol Message: Used to negotiate the debugging protocol
-- Natural Language Message: Used to negotiate using natural language for communication
+For `anp.negotiate`, `params.meta.profile` MUST be exactly:
 
-The JSON format used in the following protocols complies with the JSON specification [RFC8259](https://tools.ietf.org/html/rfc8259).
+```text
+anp.meta.negotiation.v1
+```
 
-#### Protocol Negotiation Message Definition
+### 3.4 Relationship with DID Documents and ANPMessageService
 
-The JSON format of the protocol negotiation message is as follows:
+`MetaProtocolInterface.url` in an Agent Description is a static declaration and availability hint. The authority for identity and service discovery still comes from the `ANPMessageService` exposed in the DID Document, and the authority for runtime capabilities comes from the result of `anp.get_capabilities`.
+
+When Agent Description, DID Document, and runtime capability results conflict, the caller SHOULD process them in this order:
+
+1. Use the DID Document and DID resolution result to establish trust in identity and service endpoints;
+2. Call `anp.get_capabilities` to obtain runtime capabilities;
+3. Treat `MetaProtocolInterface` in Agent Description as discovery and semantic hints;
+4. If static hints conflict with runtime capabilities, the caller MUST use the runtime capability result and refresh its local cache.
+
+### 3.5 Relationship with DID:WBA and Security Mechanisms
+
+This specification does not redefine DID:WBA. When identity authentication, HTTP Message Signatures, `auth.origin_proof`, access tokens, or service-to-service identity verification are involved, implementations should follow the ANP-03 DID:WBA Method Specification and the security requirements of the relevant messaging Profiles.
+
+The negotiation result of `anp.negotiate` is not an identity credential, authorization credential, access token, Verifiable Credential, or human-authorization result.
+
+## 4. Profile Identification and Minimum Interoperability
+
+### 4.1 Profile Name
+
+The Profile name defined by this specification is:
+
+```text
+anp.meta.negotiation.v1
+```
+
+Agent Description, `anp.get_capabilities` results, `params.meta.profile`, and Profile references in negotiation results should use this name.
+
+### 4.2 Standard Method
+
+This specification defines one standard method:
+
+```text
+anp.negotiate
+```
+
+This method selects the capability, interface, protocol, Profile, security profile, content type, schema, and execution mode that should be used for the subsequent business interaction, based on caller intent, caller capabilities, candidate interfaces, and constraints.
+
+### 4.3 Minimum Interoperability Requirements
+
+An implementation that supports `anp.meta.negotiation.v1` MUST at least support:
+
+1. Declaring `anp.meta.negotiation.v1` in runtime capabilities;
+2. Handling `anp.negotiate` on endpoints that support meta-protocol negotiation;
+3. Recognizing the basic fields of `MetaProtocolInterface`: `type`, `profile`, `binding`, `url`, and `methods`;
+4. Negotiation under the `transport-protected` security profile;
+5. Returning a structured `NegotiationResult`;
+6. Returning explicit errors for unsupported Profiles, interfaces, security profiles, or content types;
+7. Not interpreting a negotiation result as authorization for business execution.
+
+## 5. `MetaProtocolInterface` Declaration
+
+### 5.1 Semantics
+
+`MetaProtocolInterface` represents a semantic meta-protocol negotiation interface publicly exposed by an agent. It is an extension interface type inside the Agent Description `interfaces` array.
+
+This interface declares:
+
+- Which URL callers should send negotiation requests to;
+- Which binding negotiation requests use;
+- Which negotiation methods are supported;
+- Which objects can be negotiated;
+- Which security configuration is required.
+
+### 5.2 Field Definitions
+
+| Field | Type | Requirement | Description |
+|---|---|---|---|
+| `id` | string | SHOULD | Stable identifier of the Interface, used for references in negotiation results. |
+| `type` | string | MUST | Fixed to `MetaProtocolInterface`. |
+| `protocol` | string | SHOULD | Recommended value: `ANP`, indicating that this is an ANP protocol interface. |
+| `version` | string | SHOULD | Version of the interface declaration. |
+| `profile` | string | MUST | Fixed to `anp.meta.negotiation.v1`. |
+| `binding` | string | MUST | In this version, it should be `jsonrpc-2.0`. |
+| `url` | string | MUST | Negotiation endpoint URL. This URL is a static hint; DID Document and `anp.get_capabilities` remain authoritative at runtime. |
+| `methods` | array | MUST | MUST include at least `anp.negotiate`; usually also includes `anp.get_capabilities`. |
+| `security` | array/string | MAY | References security definitions in the Agent Description. |
+| `securityProfiles` | array | SHOULD | Supported security profiles, such as `transport-protected` or `direct-e2ee`. |
+| `negotiates` | array | SHOULD | List of negotiable object types. |
+| `inputSchema` | string | MAY | URI of the negotiation request schema. |
+| `outputSchema` | string | MAY | URI of the negotiation result schema. |
+| `description` | string | SHOULD | Human-readable description. |
+
+### 5.3 Negotiable Objects
+
+Common values in `negotiates` include:
+
+| Value | Description |
+|---|---|
+| `profiles` | Negotiate the ANP Profile used for subsequent business calls. |
+| `interfaces` | Negotiate which Agent Description interface to use. |
+| `schemas` | Negotiate request and response schemas. |
+| `security_profiles` | Negotiate security profiles. |
+| `content_types` | Negotiate content types. |
+| `execution_modes` | Negotiate synchronous calls, messages, asynchronous tasks, streaming, or natural-language fallback. |
+| `protocol_artifacts` | Negotiate reusable protocol artifacts, digests, or URIs. |
+
+### 5.4 Declaration Example
+
 ```json
 {
-    "action": "protocolNegotiation",
-    "sequenceId": 0,
-    "candidateProtocols": "",
-    "modificationSummary": "",
-    "status": "negotiating"
+  "id": "interface.negotiation.default",
+  "type": "MetaProtocolInterface",
+  "protocol": "ANP",
+  "version": "1.0",
+  "profile": "anp.meta.negotiation.v1",
+  "binding": "jsonrpc-2.0",
+  "url": "https://grand-hotel.com/anp",
+  "methods": [
+    "anp.get_capabilities",
+    "anp.negotiate"
+  ],
+  "security": ["didwba_sc"],
+  "securityProfiles": [
+    "transport-protected"
+  ],
+  "negotiates": [
+    "profiles",
+    "interfaces",
+    "schemas",
+    "security_profiles",
+    "content_types",
+    "execution_modes"
+  ],
+  "description": "Semantic meta-protocol negotiation interface for selecting the best execution interface."
 }
 ```
 
-Field Description:
-- action: Fixed as protocolNegotiation
-- sequenceId: Negotiation sequence number, used to identify the negotiation round.
-  - Starts from 0, and each negotiation message's sequenceId needs to be incremented by 1 based on the previous one.
-  - To prevent the negotiation rounds from becoming too large, the code implementer can set an upper limit on the negotiation rounds based on the business scenario. It is recommended not to exceed 10 rounds.
-  - When processing the sequenceId, it is necessary to check whether the sequenceId returned by the other party is incremented according to the specification.
-- candidateProtocols: Candidate protocols
-  - It is a piece of natural language text used to describe the purpose, process, data format, error handling, etc., of the candidate protocols.
-  - This text is generally processed by AI and is recommended to be in markdown format to keep it clear and concise.
-  - The candidate protocol can describe the entire protocol content or modify an existing protocol, carrying the URI of the existing protocol and the modifications.
-  - The candidate protocol must carry the full protocol content each time.
-- modificationSummary: Protocol modification summary
-  - It is a piece of natural language text used to describe what content has been modified in the current candidate protocol compared to the previous candidate protocol during the negotiation process.
-  - This text is generally processed by AI and is recommended to be in markdown format to keep it clear and concise.
-  - This field can be omitted when initiating the negotiation for the first time.
-- status: Negotiation status, used to indicate the current negotiation status. The status values are as follows:
-  - negotiating: Negotiating
-  - rejected: Negotiation failed
-  - accepted: Negotiation successful
-  - timeout: Negotiation timeout
+### 5.5 Recommended Endpoint Deployment
 
-The negotiation parties can negotiate repeatedly before the negotiation rounds exceed the maximum limit until either party determines that the protocol provided by the other party meets their requirements, then the negotiation is successful. Otherwise, the negotiation fails, and human engineers can be involved in the negotiation process.
-##### candidateProtocols Example
+Implementations SHOULD prefer reusing a unified ANP endpoint, for example:
 
-- The following is an example of candidateProtocols carrying a full protocol description:
+```text
+https://example.com/anp
+```
 
-```plaintext
-# Requirements
-Retrieve product information
+The same endpoint can support:
 
-# Process Description
-The requester carries the product id or name and sends it to the product provider. The product provider returns detailed product information based on the product id or name.
-Exception Handling:
-- Error codes use HTTP error codes
-- Error messages are described in natural language
-- If there is no return within 15 seconds, it is considered a timeout
+```text
+anp.get_capabilities
+anp.negotiate
+direct.send
+group.send
+...
+```
 
-# Data Format Description
-Both request and response use JSON format, following the specification https://tools.ietf.org/html/rfc8259.
+Implementations MAY deploy a dedicated endpoint for meta-protocol negotiation, for example:
 
-## Request Message
-The request JSON schema is defined as follows:
+```text
+https://example.com/anp/negotiation
+```
+
+However, this is a deployment choice, not a protocol requirement. Regardless of URL organization, service identity and runtime capabilities should still be confirmed through the DID Document and `anp.get_capabilities`.
+
+## 6. Negotiation Flow
+
+### 6.1 Overall Flow
+
+```text
+Caller Agent
+  -> discover Agent Description
+  -> parse MetaProtocolInterface
+  -> resolve target DID and ANPMessageService
+  -> call anp.get_capabilities
+  -> call anp.negotiate
+  -> receive NegotiationResult
+  -> invoke selected interface or profile
+```
+
+### 6.2 Step 1: Discover Agent Description
+
+The caller obtains the target Agent Description URL through ANP-08 active discovery or another trusted channel.
+
+### 6.3 Step 2: Parse `MetaProtocolInterface`
+
+The caller reads the Agent Description and looks in the `interfaces` array for:
+
+```json
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ProductInfoRequest",
-  "type": "object",
-  "properties": {
-    "messageId": {
-      "type": "string",
-      "description": "A random string identifier for the message"
+  "type": "MetaProtocolInterface",
+  "profile": "anp.meta.negotiation.v1"
+}
+```
+
+If the target agent does not declare `MetaProtocolInterface`, the caller MAY:
+
+- Directly use existing structured interfaces in the Agent Description;
+- Use a natural-language interface;
+- Stop automatic negotiation and ask for human handling;
+- Use a protocol artifact cached by both parties.
+
+### 6.4 Step 3: Runtime Capability Confirmation
+
+The caller SHOULD call `anp.get_capabilities` before the first interaction. This method returns the endpoint's currently supported Profiles, security profiles, content types, and limits.
+
+`anp.get_capabilities` may be called anonymously. If the server returns different capability subsets based on caller identity, the caller MAY call it again after authentication.
+
+### 6.5 Step 4: Semantic Negotiation
+
+The caller sends an `anp.negotiate` request carrying:
+
+- Caller intent;
+- Required capabilities;
+- Profiles, security profiles, and content types supported by the caller;
+- Candidate interface references;
+- Constraints such as latency, authorization, and natural-language fallback.
+
+The target agent returns a `NegotiationResult` based on static description, runtime capabilities, local policy, authorization state, and caller capabilities.
+
+### 6.6 Step 5: Execute the Business Interaction
+
+After receiving `NegotiationResult`, the caller performs the actual business call or message interaction according to `result.selected` and `result.execution`.
+
+The response to `anp.negotiate` is not a business response. Whether the business interface succeeds, requires human authorization, or creates a transaction or state change is determined by the subsequently selected business protocol.
+
+## 7. `anp.negotiate` Method
+
+### 7.1 Method Semantics
+
+`anp.negotiate` is a JSON-RPC 2.0 Request method used for semantic meta-protocol negotiation.
+
+Method name:
+
+```text
+anp.negotiate
+```
+
+The request's `params.meta.profile` MUST be exactly:
+
+```text
+anp.meta.negotiation.v1
+```
+
+The target modeling mode is usually `agent-addressed`. When a deployment exposes meta-protocol negotiation as a service-scoped control-plane capability, the specific Profile or implementation document MUST explicitly define target-binding rules.
+
+### 7.2 Request Structure
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "method": "anp.negotiate",
+  "params": {
+    "meta": {
+      "profile": "anp.meta.negotiation.v1",
+      "security_profile": "transport-protected",
+      "sender_did": "did:wba:user.example.com:agents:personal-assistant:e1_example",
+      "target": {
+        "kind": "agent",
+        "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_example"
+      },
+      "operation_id": "op-neg-001",
+      "created_at": "2026-06-27T12:00:05Z",
+      "content_type": "application/json"
     },
-    "type": {
-      "type": "string",
-      "description": "Indicates whether the message is a REQUEST or RESPONSE"
+    "auth": {
+      "origin_proof": {
+        "type": "anp-rfc9421-origin-proof-v1",
+        "keyid": "did:wba:user.example.com:agents:personal-assistant:e1_example#key-1",
+        "contentDigest": "sha-256=:BASE64URL_DIGEST:",
+        "signature": "BASE64URL_SIGNATURE"
+      }
     },
-    "action": {
-      "type": "string",
-      "description": "The action to be performed"
+    "body": {
+      "negotiation_id": "neg-20260627-001",
+      "mode": "structured_selection",
+      "intent": {
+        "name": "book_hotel_room",
+        "description": "Book a hotel room for two people next Friday.",
+        "intentTags": [
+          "hotel.booking",
+          "reservation.create"
+        ]
+      },
+      "requiredCapabilities": [
+        "cap.hotel.booking"
+      ],
+      "callerCapabilities": {
+        "supportedProfiles": [
+          "anp.core.binding.v1",
+          "anp.direct.base.v1",
+          "anp.rpc.v1"
+        ],
+        "supportedSecurityProfiles": [
+          "transport-protected",
+          "direct-e2ee"
+        ],
+        "supportedContentTypes": [
+          "application/json",
+          "text/plain"
+        ]
+      },
+      "constraints": {
+        "preferredInterfaceTypes": [
+          "StructuredInterface",
+          "NaturalLanguageInterface"
+        ],
+        "requiresHumanAuthorization": true,
+        "maxLatencyMs": 3000,
+        "allowNaturalLanguageFallback": true
+      },
+      "candidateInterfaceRefs": [
+        "interface.booking.structured.v1",
+        "interface.conversation.nl.v1"
+      ]
+    }
+  }
+}
+```
+
+### 7.3 `body` Field Definitions
+
+| Field | Type | Requirement | Description |
+|---|---|---|---|
+| `negotiation_id` | string | SHOULD | Identifier of the negotiation process. |
+| `mode` | string | SHOULD | Negotiation mode. Default: `structured_selection`. |
+| `intent` | object | MUST | The goal the caller wants to accomplish. |
+| `requiredCapabilities` | array | MAY | Capability identifiers that the caller considers mandatory. |
+| `callerCapabilities` | object | SHOULD | Runtime capabilities of the caller. |
+| `constraints` | object | MAY | Constraints such as latency, authorization, interface preference, and security preference. |
+| `candidateInterfaceRefs` | array | MAY | Candidate interface IDs selected by the caller from Agent Description. |
+| `candidateProtocols` | array | MAY | Candidate protocol artifacts, Profiles, or URIs. A large natural-language text should not be the only machine-processable content. |
+
+### 7.4 `intent` Object
+
+`intent` expresses what the caller wants to accomplish. It SHOULD include structured tags and MAY include a natural-language description.
+
+```json
+{
+  "name": "book_hotel_room",
+  "description": "Book a hotel room for two people next Friday.",
+  "intentTags": [
+    "hotel.booking",
+    "reservation.create"
+  ],
+  "inputSummary": {
+    "city": "Hangzhou",
+    "guests": 2,
+    "date": "2026-07-03"
+  }
+}
+```
+
+The caller SHOULD follow the principle of minimal disclosure and should not provide sensitive data that is unnecessary for negotiation.
+
+### 7.5 `callerCapabilities` Object
+
+`callerCapabilities` describes the caller's current capabilities. Common fields include:
+
+| Field | Type | Description |
+|---|---|---|
+| `supportedProfiles` | array | ANP Profiles supported by the caller. |
+| `supportedSecurityProfiles` | array | Security profiles supported by the caller. |
+| `supportedContentTypes` | array | Content types that the caller can handle. |
+| `supportedExecutionModes` | array | Execution modes acceptable to the caller. |
+| `limits` | object | Caller-side limits such as maximum message size and timeout. |
+
+### 7.6 `constraints` Object
+
+`constraints` expresses caller preferences or hard requirements. Common fields include:
+
+| Field | Type | Description |
+|---|---|---|
+| `preferredInterfaceTypes` | array | Preferred interface types, such as `StructuredInterface`. |
+| `requiresHumanAuthorization` | boolean | Whether this intent is expected to require human authorization. This is only a negotiation constraint and does not mean authorization has been completed. |
+| `maxLatencyMs` | integer | Expected maximum latency. |
+| `allowNaturalLanguageFallback` | boolean | Whether fallback to natural-language protocol drafting or a natural-language interface is allowed. |
+| `requiredSecurityProfile` | string | Required security profile. |
+| `preferredContentTypes` | array | Preferred content types. |
+
+## 8. Negotiation Result Object
+
+### 8.1 Successful Response
+
+When `anp.negotiate` succeeds, it returns `result`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "result": {
+    "negotiationId": "neg-20260627-001",
+    "status": "accepted",
+    "selected": {
+      "capability": "cap.hotel.booking",
+      "interface": "interface.booking.structured.v1",
+      "protocol": "openrpc",
+      "profile": "anp.rpc.v1",
+      "securityProfile": "transport-protected",
+      "contentType": "application/json",
+      "url": "https://grand-hotel.com/api/booking.openrpc.json"
     },
-    "productId": {
-      "type": "string",
-      "description": "The unique identifier for a product"
+    "execution": {
+      "mode": "direct_structured_call",
+      "requiresHumanAuthorization": true,
+      "timeoutMs": 3000
     },
-    "productName": {
-      "type": "string",
-      "description": "The name of the product"
+    "schemas": {
+      "requestSchema": "https://grand-hotel.com/schemas/create-booking-request.schema.json",
+      "responseSchema": "https://grand-hotel.com/schemas/create-booking-response.schema.json"
+    },
+    "validUntil": "2026-06-27T12:10:05Z",
+    "negotiationDigest": "sha-256:BASE64URL_DIGEST"
+  }
+}
+```
+
+### 8.2 Field Definitions
+
+| Field | Type | Requirement | Description |
+|---|---|---|---|
+| `negotiationId` | string | MUST | Identifier of the negotiation result. |
+| `status` | string | MUST | `accepted`, `rejected`, or `needs_more_information`. |
+| `selected` | object | MUST when `accepted` | Selected capability, interface, protocol, Profile, security profile, content type, and URL. |
+| `execution` | object | SHOULD | Subsequent execution mode and execution constraints. |
+| `schemas` | object | MAY | Request and response schemas. |
+| `validUntil` | string | MAY | Expiration time of the negotiation result. |
+| `negotiationDigest` | string | SHOULD | Digest of the negotiation result, used for caching and reuse. |
+| `alternatives` | array | MAY | Candidate options that were not selected. |
+| `reason` | string | MAY | Human-readable explanation when rejected or when more information is required. |
+
+### 8.3 `selected` Object
+
+`selected` indicates the path that should be used for the subsequent business interaction. Common fields include:
+
+| Field | Description |
+|---|---|
+| `capability` | Selected capability ID. |
+| `interface` | Selected Agent Description interface ID. |
+| `protocol` | Protocol used by the selected interface, such as `openrpc`, `ANP`, or `MCP`. |
+| `profile` | ANP Profile used by the subsequent business call. |
+| `securityProfile` | Security profile used by the subsequent business call. |
+| `contentType` | Content type of the subsequent business payload. |
+| `url` | Business interface endpoint or interface description URL. |
+| `protocolArtifact` | Optional protocol artifact URI or digest. |
+
+### 8.4 `execution` Object
+
+Common values of `execution.mode` include:
+
+| Value | Description |
+|---|---|
+| `direct_structured_call` | Directly call a structured interface. |
+| `direct_message` | Use a direct messaging Profile. |
+| `group_message` | Use a group messaging Profile. |
+| `async_task` | Create an asynchronous task or collaboration flow. |
+| `stream` | Use streaming interaction. |
+| `natural_language` | Use a natural-language interface. |
+| `natural_language_protocol_drafting` | Use natural language to draft a temporary protocol. |
+
+## 9. Natural-Language Protocol Drafting Fallback
+
+Structured negotiation is the main path of this specification. Natural-language protocol drafting is a fallback for cases where:
+
+- The target agent does not have a structured interface that satisfies the intent;
+- The caller and target do not share a supported Profile or schema;
+- Both parties need to draft an experimental temporary protocol;
+- The task is low-frequency, one-off, or highly personalized.
+
+The caller can declare this in an `anp.negotiate` request:
+
+```json
+{
+  "mode": "natural_language_protocol_drafting",
+  "constraints": {
+    "allowNaturalLanguageFallback": true
+  }
+}
+```
+
+Natural-language fallback MAY produce a draft protocol artifact, but that artifact should not be treated as a stable protocol before both parties accept it. Implementations SHOULD convert natural-language drafts into structured fields, schemas, examples, and test cases whenever possible.
+
+## 10. Caching, Reuse, and Protocol Artifacts
+
+### 10.1 Negotiation Result Caching
+
+The caller MAY cache `NegotiationResult` and reuse it within its validity period. A cache key SHOULD include at least:
+
+- Target Agent DID;
+- Caller DID or caller capability digest;
+- Intent tags or normalized intent digest;
+- Selected interface ID;
+- `selected.profile`;
+- `selected.securityProfile`;
+- `negotiationDigest`.
+
+The caller SHOULD renegotiate when:
+
+- `validUntil` expires;
+- `anp.get_capabilities` returns a result inconsistent with the cache;
+- DID Document or `ANPMessageService` changes;
+- A subsequent business call returns an unsupported Profile, interface, security profile, or content type error;
+- Local policy, security requirements, or user authorization state changes.
+
+### 10.2 Protocol Artifacts
+
+A protocol artifact is a reusable protocol description object. It MAY include:
+
+- `protocol_id`;
+- `protocol_uri`;
+- `version`;
+- Method list;
+- Request and response schemas;
+- Supported security profiles;
+- Content types;
+- Examples;
+- Test cases;
+- Digest;
+- Signature or publisher information.
+
+Example:
+
+```json
+{
+  "protocol_id": "example.product-info.v1",
+  "protocol_uri": "https://example.com/protocols/product-info/1.0",
+  "version": "1.0",
+  "description": "Get product information by product ID.",
+  "depends_on_profiles": [
+    "anp.core.binding.v1"
+  ],
+  "methods": [
+    {
+      "name": "product.get_info",
+      "request_schema_uri": "https://example.com/schemas/product-info-request.json",
+      "response_schema_uri": "https://example.com/schemas/product-info-response.json"
+    }
+  ],
+  "content_types": [
+    "application/json"
+  ],
+  "security_profiles": [
+    "transport-protected"
+  ],
+  "digest": "sha-256:BASE64URL_DIGEST"
+}
+```
+
+This specification does not define a global artifact registry. Artifact publication, review, signing, version governance, and consensus mechanisms are left to future specifications.
+
+### 10.3 Relationship with the Early 0RTT Idea
+
+Early ANP-06 used `usedProtocolHash` in handshake messages to skip negotiation. This specification does not define new handshake messages. The equivalent capability should be implemented as follows:
+
+1. The caller caches `NegotiationResult` or a protocol artifact;
+2. Subsequent requests directly use the selected Profile / Interface / Schema;
+3. If the target endpoint does not support that selection, it returns an explicit error;
+4. The caller then calls `anp.get_capabilities` and `anp.negotiate` again.
+
+## 11. Error Model
+
+`anp.negotiate` uses JSON-RPC `error` objects to return errors. Implementations are recommended to use ANP custom error ranges and provide machine-readable codes in `error.data.anp_code`.
+
+| code | anp_code | Meaning |
+|---|---|---|
+| 1600 | `meta.negotiation_rejected` | The target rejects the negotiation request. |
+| 1601 | `meta.no_matching_interface` | No interface satisfies the intent and constraints. |
+| 1602 | `meta.unsupported_negotiation_mode` | The requested negotiation mode is not supported. |
+| 1603 | `meta.unsupported_candidate_profile` | A candidate Profile is not supported. |
+| 1604 | `meta.unsupported_security_profile` | A candidate security profile is not supported. |
+| 1605 | `meta.unsupported_content_type` | A candidate content type is not supported. |
+| 1606 | `meta.more_information_required` | More information is required before negotiation can complete. |
+| 1607 | `meta.authorization_required` | Authentication or authorization context is required first. |
+| 1608 | `meta.negotiation_expired` | The negotiation result or request has expired. |
+
+Error example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "error": {
+    "code": 1601,
+    "message": "No matching interface",
+    "data": {
+      "anp_code": "meta.no_matching_interface",
+      "retryable": false,
+      "details": {
+        "unsupportedConstraints": [
+          "requiredSecurityProfile"
+        ]
+      }
+    }
+  }
+}
+```
+
+## 12. Security and Privacy Considerations
+
+### 12.1 Identity Authentication
+
+`anp.get_capabilities` MAY be called as an anonymous public discovery capability.
+
+If `anp.negotiate` contains any of the following, the caller SHOULD provide `auth.origin_proof` or an equivalent DID authentication context:
+
+- `sender_did`;
+- Sensitive intent;
+- User context;
+- Restricted capabilities;
+- Payment, booking, transaction, authorization, identity, or privacy-related capabilities;
+- Non-public candidate interfaces;
+- Cases where the server returns different negotiation results based on identity.
+
+The server MAY return only a capability subset for anonymous `anp.negotiate`, reject the request, or require authentication.
+
+### 12.2 Negotiation Results Are Not Authorization
+
+`NegotiationResult` only describes how the subsequent interaction should happen. It does not mean:
+
+- The user has approved the business action;
+- The server has authorized access to restricted resources;
+- A payment, booking, or transaction has been created;
+- The caller has obtained a long-term access credential;
+- The subsequent business request can omit the proof required by the business Profile.
+
+If the selected interface requires `humanAuthorization`, the subsequent business flow MUST still complete authorization according to the corresponding business protocol.
+
+### 12.3 Minimal Disclosure
+
+The caller SHOULD minimize information disclosure in negotiation requests:
+
+- Intent should include only the summary required for negotiation;
+- Full payment information, identity documents, private messages, or large object contents should not be submitted during negotiation;
+- `callerCapabilities` should be trimmed to avoid exposing unrelated internal capabilities;
+- Negotiation logs should be redacted.
+
+### 12.4 Downgrade Attacks
+
+The caller and server MUST NOT silently downgrade from a stronger security profile to a weaker security profile without explicit agreement.
+
+If the caller requires `direct-e2ee`, the server must not silently return `transport-protected`. If the requirement cannot be satisfied, the server should return an explicit error.
+
+### 12.5 Protocol Artifact Security
+
+If a negotiation result references an external protocol artifact, implementations SHOULD verify:
+
+- Artifact digest;
+- Publisher or signature;
+- Schema integrity;
+- Version and dependencies;
+- Whether the artifact contains unsafe code, remote execution instructions, or excessive permission requirements.
+
+This specification does not require executing remote code. Any code generation or code loading is a local implementation detail and must be handled in a sandboxed, least-privilege environment.
+
+## 13. Deprecation of Legacy `PT=00` Message Negotiation
+
+Early ANP-06 drafts defined a one-byte binary header inside end-to-end encrypted message payloads and used the `PT` field to distinguish meta protocol, application protocol, natural-language protocol, and verification protocol. That model also defined flows such as `sourceHello`, `destinationHello`, `candidateProtocols`, `codeGeneration`, `testCasesNegotiation`, and `fixErrorNegotiation`.
+
+That early model is deprecated. New implementations MUST use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification, and MUST NOT implement or depend on the old binary `PT` message header, old Hello flow, or old code-generation flow as an ANP-06 interoperability path.
+
+This specification does not provide a compatibility mapping from the old model to the new model, and does not require compatibility gateways. If a deployment still has an early experimental implementation, it should be treated as a private historical implementation and upgraded to this specification through a separate migration task; that migration is outside the minimum interoperability requirements of ANP-06.
+
+## 14. Examples
+
+### 14.1 Agent Description Fragment
+
+```json
+{
+  "protocolType": "ANP",
+  "protocolVersion": "1.1",
+  "type": "AgentDescription",
+  "url": "https://grand-hotel.com/agents/hotel-assistant/ad.json",
+  "name": "Grand Hotel Assistant",
+  "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_example",
+  "securityDefinitions": {
+    "didwba_sc": {
+      "scheme": "didwba",
+      "in": "header",
+      "name": "Authorization"
     }
   },
-  "required": ["messageId", "type", "action", "productId"]
-}
-
-## Response Message
-The response JSON schema is defined as follows：
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ProductInfoResponse",
-  "type": "object",
-  "properties": {
-    "messageId": {
-      "type": "string",
-      "description": "The messageId from the request json"
-    },
-    "type": {
-      "type": "string",
-      "description": "Indicates whether the message is a REQUEST or RESPONSE"
-    },
-    "status": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "integer",
-          "description": "HTTP status code"
-        },
-        "message": {
-          "type": "string",
-          "description": "Status message"
-        }
-      },
-      "required": ["code", "message"]
-    },
-    "productInfo": {
-      "type": "object",
-      "properties": {
-        "productId": {
-          "type": "string",
-          "description": "The unique identifier for a product"
-        },
-        "productName": {
-          "type": "string",
-          "description": "The name of the product"
-        },
-        "productDescription": {
-          "type": "string",
-          "description": "A detailed description of the product"
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the product"
-        },
-        "currency": {
-          "type": "string",
-          "description": "The currency of the price"
-        }
-      },
-      "required": ["productId", "productName", "productDescription", "price", "currency"]
+  "security": "didwba_sc",
+  "capabilities": [
+    {
+      "id": "cap.hotel.booking",
+      "name": "Hotel room booking",
+      "description": "Book hotel rooms, modify reservations, and check room availability.",
+      "intentTags": [
+        "hotel.booking",
+        "reservation.create",
+        "reservation.modify"
+      ],
+      "requiresHumanAuthorization": true
     }
-  },
-  "required": ["messageId", "type", "status", "productInfo"]
-}
-
-```
-- Example of candidateProtocols modification based on existing protocols:
-
-```plaintext
-# Requirement
-Retrieve product information
-
-# Process Description
-This process is implemented based on the existing protocol (URI: https://agent-network-protocol.com/protocols/product-info-0-1-1).
-
-# Modifications
-- Add custom error codes in the response message
-  - 100001: Product out of stock
-  - 100002: Product discontinued
-  - 100003: Product price unknown
-
-```
-
-##### Example of modificationSummary
-
-modificationSummary is also natural text, as shown below:
-
-```plaintext
-
-Modifications:
-- Added fields in the response: productImageUrl, productVideoUrl, productTags
-- Set explicit response timeout: 15 seconds. If no response is received within 15 seconds, it is considered a timeout.
-
-```
-
-#### Protocol Code Generation Message Definition
-
-After the protocol negotiation is completed, the agents need to prepare the code to handle the protocol, which may be generated by AI or loaded from the network. If a user message is received before the code is ready, it may cause the protocol handling to fail.
-
-Therefore, after the negotiation is completed, both agents need to reply to each other with a code generation message, notifying the other party that the code has been generated and message processing can proceed.
-
-If the code generation message is not received for a long time, it is considered that the code generation has failed, and the communication is terminated. The recommended timeout duration is 15 seconds.
-
-```json
-{
-    "action": "codeGeneration",
-    "status": "generated"
-}
-```
-Field Description:
-- action: Fixed as codeGeneration
-- status: Status
-  - generated: Indicates that the code has been generated
-  - error: Indicates that code generation failed, and communication is terminated
-
-#### Test Cases Negotiation Message Definition
-
-After the protocol negotiation is completed and the code is ready, a test process may be required to ensure that the two agents can communicate normally based on this protocol. The test cases negotiation message is mainly designed for this purpose, allowing the two agents to negotiate test cases and notify each other to conduct tests.
-
-The test cases negotiation message is not a mandatory function in the process. If the agents or human engineers believe that the protocol does not need testing, this step can be skipped, and the subsequent communication process can proceed directly.
-
-The JSON format of the test cases negotiation message is as follows:
-
-```json
-{
-    "action": "testCasesNegotiation",
-    "testCases": "",
-    "modificationSummary": "",
-    "status": "negotiating"
+  ],
+  "interfaces": [
+    {
+      "id": "interface.negotiation.default",
+      "type": "MetaProtocolInterface",
+      "protocol": "ANP",
+      "version": "1.0",
+      "profile": "anp.meta.negotiation.v1",
+      "binding": "jsonrpc-2.0",
+      "url": "https://grand-hotel.com/anp",
+      "methods": [
+        "anp.get_capabilities",
+        "anp.negotiate"
+      ],
+      "security": ["didwba_sc"],
+      "securityProfiles": [
+        "transport-protected"
+      ],
+      "negotiates": [
+        "profiles",
+        "interfaces",
+        "schemas",
+        "security_profiles",
+        "content_types",
+        "execution_modes"
+      ],
+      "description": "Endpoint for runtime capability and semantic meta-protocol negotiation."
+    },
+    {
+      "id": "interface.booking.structured.v1",
+      "type": "StructuredInterface",
+      "protocol": "openrpc",
+      "version": "1.0",
+      "profile": "anp.rpc.v1",
+      "url": "https://grand-hotel.com/api/booking.openrpc.json",
+      "capabilityRefs": [
+        "cap.hotel.booking"
+      ],
+      "humanAuthorization": true,
+      "description": "Structured booking interface for room reservation."
+    },
+    {
+      "id": "interface.conversation.nl.v1",
+      "type": "NaturalLanguageInterface",
+      "protocol": "ANP",
+      "version": "1.0",
+      "profile": "anp.direct.base.v1",
+      "url": "https://grand-hotel.com/anp",
+      "capabilityRefs": [
+        "cap.hotel.booking"
+      ],
+      "description": "Natural language conversation interface."
+    }
+  ]
 }
 ```
 
-Field Description:
-- action: Fixed as testCasesNegotiation
-- testCases: A collection of test cases, a natural language text used to describe the content of the test case collection, including multiple test cases. Each test case includes test request data, test response data, and expected test results.
-- modificationSummary: A summary of test case modifications, a natural language text used to describe the changes made to the current test case collection compared to the previous one during the negotiation process.
-- status: Negotiation status, used to indicate the current status of the negotiation. The status values are as follows:
-  - negotiating: Negotiating
-  - rejected: Negotiation failed
-  - accepted: Negotiation successful
+Note: `capabilities` in the example above is an optional ANP-06 extension example. Implementations should not treat it as a required top-level field of ANP-07.
 
-Example of testCases:
+### 14.2 Capability Confirmation Request
 
-```plaintext
- # Test Case 1
-
- - **Test Request Data**:
- {
-   "messageId": "msg001",
-   "type": "REQUEST",
-   "action": "getProductInfo",
-   "productId": "P12345"
- }
-
- - **Test Response Data**:
- {
-   "messageId": "msg001",
-   "type": "RESPONSE",
-   "status": {
-     "code": 200,
-     "message": "Success"
-   },
-   "productInfo": {
-     "productId": "P12345",
-     "productName": "High-Performance Laptop",
-     "productDescription": "A high-performance laptop equipped with the latest processor and large memory capacity.",
-     "price": 1299.99,
-     "currency": "USD"
-   }
- }
-
- - **Expected Test Result**:
- Successfully retrieved product information, status code 200.
-
- # Test Case 2
-
- - **Test Request Data**:
- {
-   "messageId": "msg002",
-   "type": "REQUEST",
-   "action": "getProductInfo",
-   "productId": "P99999"
- }
-
- - **Test Response Data**:
- {
-   "messageId": "msg002",
-   "type": "RESPONSE",
-   "status": {
-     "code": 404,
-     "message": "Product Not Found"
-   },
-   "productInfo": null
- }
-
- - **Expected Test Result**:
- The requested product does not exist, returns status code 404, and product information is null.
-
-```
-
-#### Fix Error Negotiation Message Definition
-
-During the testing or actual operation of the protocol, if it is found that the other party's message does not conform to the protocol definition or contains errors, it is necessary to notify the other party of the error information and negotiate to fix the error together. This process may go through multiple rounds, as errors in the protocol docking process may be due to issues on both sides, requiring joint negotiation to resolve.
-
-For example, Agent A sends an error fix message, pointing out that the message sent by Agent B does not conform to the protocol definition or contains errors. After receiving the error fix message, Agent B analyzes whether there is an error based on the error information and protocol definition. If there is an error, it accepts the error, modifies the code, and enters the code generation process. If there is no error, it replies with an error fix message, refusing to modify and informing Agent A of the detailed reasons.
-
-The JSON format for the error fix negotiation message is as follows
 ```json
 {
-    "action": "fixErrorNegotiation",
-    "errorDescription": "",
-    "status": "negotiating"
+  "jsonrpc": "2.0",
+  "id": "req-cap-001",
+  "method": "anp.get_capabilities",
+  "params": {
+    "meta": {
+      "profile": "anp.core.binding.v1",
+      "security_profile": "transport-protected",
+      "operation_id": "op-cap-001",
+      "created_at": "2026-06-27T12:00:00Z"
+    },
+    "body": {}
+  }
 }
 ```
 
-Field Description:
-- action: Fixed value "fixErrorNegotiation"
-- errorDescription: Error description, a piece of natural language text used to describe the error information.
-- status: Negotiation status, used to indicate the current status of the negotiation. The status values are as follows:
-  - negotiating: In negotiation
-  - rejected: Negotiation failed
-  - accepted: Negotiation successful
-
-errorDescription Example:
-
-```plaintext
-# Error Description
-- The status field in the response message is missing the code field.
-
-```
-#### Natural Language Negotiation Message
-
-The previously defined protocol negotiation, code generation, and error fixing messages can satisfy most of the negotiation processes between agents. Unfortunately, experience tells us that the real world is often very complex and there are many aspects we cannot foresee. Previously, it was difficult to solve this problem, but now, based on generative AI and natural language, this problem can be well addressed.
-
-Therefore, we have designed a pure natural language interaction message to solve issues that cannot be negotiated using our predefined messages.
-
-Natural language negotiation messages are not mandatory, and agents can freely choose whether to support them. We recommend prioritizing the use of predefined messages for negotiation, as they are more efficient.
-
-Natural language interaction messages adopt a request-response model, with the JSON format as follows:
+### 14.3 Capability Confirmation Response Fragment
 
 ```json
 {
-    "action": "naturalLanguageNegotiation",
-    "type": "REQUEST",
-    "messageId": "",
-    "message": ""
-}
-```
-Field Description:
-- action: Fixed value "naturalLanguageNegotiation"
-- type: Message type, used to identify the type of message, values are REQUEST or RESPONSE.
-- messageId: Message ID, a 16-character random string used to identify the message. When the other party replies, the same messageId needs to be carried.
-- message: Natural language content, a piece of natural language text. The agent can carry its own special requirements regarding protocol negotiation, communication, etc., in the message.
-
-### Application Protocol Message Definition
-
-When the protocol type (PT) is 01, the Protocol Data of the message carries the application protocol message, which is used to transmit interaction data between two agents. The format of the message depends on the specific protocol negotiated in the protocol negotiation process. It can be binary data, or structured data such as JSON, XML, etc.
-
-### Natural Language Protocol Message Definition
-
-When the protocol type (PT) is 02, the Protocol Data of the message carries the natural language protocol message, which is used to transmit interaction data between two agents.
-
-In some special cases, agents only perform a small amount, low frequency, or even single interaction. To achieve the highest communication efficiency, the protocol negotiation process can be skipped, and natural language can be used directly for data interaction.
-
-The data in Protocol Data is UTF-8 encoded natural language text. To facilitate AI processing, it is recommended to use markdown format with clear and concise descriptions.
-
-This message is not a mandatory support message, and agents can freely choose whether to support it.
-
-Natural Language Protocol Message Example:
-
-Request Example:
-```plaintext
-# Requirement
-Get product information. Based on the product ID, return detailed information about the product, including product ID, product name, product description, product price, and product currency unit.
-
-# Input
-- Product ID: P12345
-```
-
-Response Example:
-```plaintext
-# Output
-- Product ID: P12345
-- Product Name: High-Performance Laptop
-- Product Description: A high-performance laptop equipped with the latest processor and large-capacity memory.
-- Product Price: 1299.99
-- Product Currency Unit: USD
-```
-### Verification Protocol Message
-
-When the protocol type (PT) is 03, the Protocol Data of the message carries the verification protocol message, which is used to transmit verification data between two agents. The format of the message depends on the specific protocol negotiated in the protocol negotiation process. The verification protocol message is not actual business data but is used to verify whether the protocol process is normal. The content of the verification protocol message is generally negotiated through the verificationProtocol message during the protocol negotiation process.
-
-This message is not a mandatory support message, and agents can freely choose whether to support it.
-
-## Meta-Protocol Capability Negotiation Mechanism and Extensibility Design
-
-The above protocol negotiation process shows how two agents negotiate a specific protocol. However, due to various reasons in reality, agents may not be able to support all meta-protocol capabilities. For example, some agents do not support natural language protocols, and some agents do not support verification protocols.
-
-To solve this problem, we designed a meta-protocol capability negotiation mechanism for agents to negotiate meta-protocol capabilities before connecting, informing the other party of the meta-protocol capabilities they support to avoid negotiation failure.
-
-This issue and the extensibility of the meta-protocol are essentially the same, so they are discussed together. When we need to upgrade the meta-protocol process, such as expanding the protocol type from one byte to two bytes, a new version of the meta-protocol will be generated, and compatibility issues between the new and old versions need to be considered.
-
-Our solution is to carry the version of the meta-protocol and the supported meta-protocol capabilities in the connection handshake messages, namely the sourceHello and destinationHello messages. If one agent supports version V1 and the other agent supports versions V1 and V2, they will use the V1 version meta-protocol for negotiation.
-
-Regarding the negotiation of meta-protocol capabilities, we require all agents to support basic meta-protocol capabilities, while optional meta-protocol capabilities, such as natural language protocols and verification protocols, can be freely chosen by agents.
-
-The modifications to the sourceHello and destinationHello messages are as follows:
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",  // destinationHello uses the same structure
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
-    ]
-  },
-  // Other fields omitted
-}
-```
-
-Field Description:
-- version: Meta-protocol version, the current version is 1.0
-- supportedCapabilities: Supported meta-protocol capabilities, array type, each element in the array is the name of the supported meta-protocol capability, corresponding to the following functions:
-  - naturalLanguageProtocol: Natural Language Protocol
-  - verificationProtocol: Verification Protocol
-  - naturalLanguageNegotiation: Natural Language Negotiation
-  - testCasesNegotiation: Test Cases Negotiation
-  - fixErrorNegotiation: Fix Error Negotiation
-
-## Meta-Protocol Negotiation Efficiency Optimization
-
-The meta-protocol negotiation mechanism used by agents can solve the problem of manual costs brought by protocol docking between heterogeneous systems, allowing agents to form a self-organizing and self-negotiating network, but it also brings some new problems.
-
-First, the protocol negotiation process significantly increases communication RTT, and using AI to process natural language also introduces new delays. From protocol negotiation, code generation, test case negotiation (optional), to error fix negotiation (optional), the entire process will add at least 2 RTTs, and if multiple rounds of negotiation occur, the RTT will be even more. Using LLM to process natural language will also generate new delays, the length of which depends on the input and output length, as well as the model processing speed, with a single delay possibly ranging from a few seconds to more than ten seconds.
-
-Secondly, the negotiation process relies on AI's ability to understand requirements, design protocols, and generate protocol processing code. These capabilities place high demands on AI, and due to inherent defects in current AI, such as the hallucination problem of LLM, AI cannot guarantee 100% success in processing, which will reduce the success rate of negotiation.
-
-In the actual business process of users, a function on the network involves many interactions between agents. If the delay and success rate issues cannot be well resolved, it will seriously affect the user experience.
-
-To address these issues, we have designed a 0RTT meta-protocol negotiation mechanism and a consensus-based meta-protocol negotiation mechanism.
-### 0RTT Meta-Protocol Negotiation Mechanism
-
-In modern communication protocol design, 0RTT communication mechanisms are generally designed to reduce the RTT of the connection process. For example, in TLS1.3, it generates and caches a session ticket during the initial connection, allowing the client to use the ticket and the previously negotiated key to directly send encrypted 0-RTT data in subsequent connections, thereby achieving fast reconnection and instant data transmission.
-
-The 0RTT meta-protocol negotiation mechanism of ANP involves a complete meta-protocol negotiation process during the first connection between two agents. Both parties cache the negotiated protocol, saving the protocol content and the corresponding hash value of the protocol content. The protocol content uses the candidateProtocols field of the protocolNegotiation message when the agreement is reached.
-
-During the second connection, the negotiation result of the first connection can be directly reused for communication. In the design of the handshake message, the connection initiator can carry the result of the previous negotiation in the sourceHello message, mainly using the protocol hash value. The connection receiver confirms the initiator's protocol in the destinationHello message, and both parties can directly skip the negotiation process and use the previously negotiated protocol for communication.
-
-Example of sourceHello message:
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",  
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+  "jsonrpc": "2.0",
+  "id": "req-cap-001",
+  "result": {
+    "service_did": "did:wba:grand-hotel.com:e1_service",
+    "supported_profiles": [
+      "anp.core.binding.v1",
+      "anp.meta.negotiation.v1",
+      "anp.direct.base.v1",
+      "anp.rpc.v1"
     ],
-    "usedProtocolHash": "1234567890abcdef..." 
-  },
-  // Other fields omitted
-}
-```
-
-Example of destinationHello message:
-
-```json
-{
-  "version": "1.0",
-  "type": "destinationHello",  
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+    "supported_security_profiles": [
+      "transport-protected"
     ],
-    "usedProtocolHash": "1234567890abcdef..."
-  },
-  // Other fields omitted
-}
-```
-Field Description:
-- usedProtocolHash: The hash value of the final agreed protocol content, used to identify the protocol in use. During the second connection, it is used to skip the negotiation process and directly use the protocol for communication. If the receiver does not support this protocol, the usedProtocolHash field is removed in the destinationHello message, indicating that protocol negotiation needs to be redone.
-
-The hash value of the protocol content is generated using the SHA-256 algorithm, resulting in a 64-character hexadecimal string. Example code for generating usedProtocolHash:
-
-```python
-import hashlib
-
-candidateProtocols = "..."  # Obtained from the candidateProtocols field in the protocolNegotiation message when the agreement is reached
-
-def generate_protocol_hash(protocol_content):
-    return hashlib.sha256(protocol_content.encode('utf-8')).hexdigest()
-
-usedProtocolHash = generate_protocol_hash(candidateProtocols)
-```
-### Meta-Protocol Negotiation Mechanism Based on Consensus Protocol
-
-Using the 0RTT meta-protocol negotiation mechanism can reduce RTT, but the first connection still requires negotiation. During the negotiation process, AI is still needed to process natural language, which still has issues with time consumption and success rate. In the agent network, there are many communication behaviors with the same or similar needs and functions. If agents can reuse protocols and protocol codes that have already been negotiated by other agents, communication efficiency can be greatly improved.
-
-To this end, we have designed a meta-protocol negotiation mechanism based on consensus protocols.
-
-Consensus protocols are divided into two categories:
-- Industry standard protocols formulated by humans: Protocols formulated by industry organizations or standardization bodies, such as protocols formulated by organizations like W3C, IETF, etc.
-- Consensus protocols reached by the agent network: Protocols jointly negotiated and elected by agents within the agent network.
-
-We can generate a unique identifier URI for each version of all consensus protocols, and generate corresponding protocol handling code for this version of the protocol. When agents negotiate protocols, they can select one or more consensus protocols as candidate protocols based on their needs and directly initiate a connection request to the other party. The other party selects a protocol it supports and returns it. Then both parties can use this protocol and the corresponding protocol code for communication.
-
-Furthermore, agents can publish the consensus protocols they support in an online document. Other agents can view this online document and negotiate communication protocols with the target agent based on the protocols listed in the document. This further accelerates the protocol negotiation process.
-
-How agents download protocols and corresponding codes based on the URI will be discussed in other specifications.
-
-Example of sourceHello message:
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",  
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+    "supported_content_types": [
+      "application/json",
+      "text/plain"
     ],
-    "candidateProtocols": [
-        "https://example.com/protocol/1.0",
-        "https://example.com/protocol/2.0"
-    ]
-  },
-  // Other fields omitted
+    "limits": {
+      "max_request_bytes": "1048576"
+    }
+  }
 }
 ```
 
-Example of destinationHello message:
+### 14.4 Negotiation Request and Result
 
-```json
-{
-  "version": "1.0",
-  "type": "destinationHello",  
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
-    ],
-    "selectedProtocol": "https://example.com/protocol/1.0"
-  },
-  // Other fields omitted
-}
-```
+See Section 7 and Section 8 for the negotiation request and result. Implementations SHOULD preserve `negotiationId` and `negotiationDigest` before making the actual business call, so that debugging, caching, and auditing are possible.
 
-Field Description:
-- selectedProtocol: The protocol selected from candidateProtocols, used to identify the protocol used by both parties.
-#### Reaching Consensus Protocols in Agent Networks
+## 15. Future Extensions
 
-How agent networks reach consensus protocols and publish these protocols to the network will be discussed in other specifications.
+Future versions may define:
 
-## Future
-
-This specification mainly discusses the design of the meta-protocol and the design of the meta-protocol negotiation mechanism. We have designed a more flexible and cost-effective agent protocol negotiation specification. Using this specification, agents can autonomously complete negotiation, code generation, debugging, and communication without human intervention, laying a solid foundation for self-organizing and self-negotiating agent networks.
-
-At the same time, we believe that with the support of the meta-protocol, numerous communication protocols achieving consensus among agents will emerge on the agent network, far exceeding the number of protocols formulated by humans.
-
-However, how to design a reasonable protocol election consensus algorithm, how to incentivize agents to report their negotiated consensus protocols, and how to enable agents to easily obtain consensus protocols negotiated by other agents still require further discussion.
-
-## Challenges
-
-If AI cannot effectively integrate protocol code with application business logic and data processing code, and instead only uses protocols to process formats, the role played by the meta-protocol will be much smaller.
+- Standard JSON Schema for protocol artifacts;
+- Protocol artifact registries and discovery mechanisms;
+- Signed and verifiable negotiation results;
+- Test-case negotiation methods;
+- Issue-report / fix-negotiation extensions;
+- Mappings to external protocol descriptions such as MCP, OpenAPI, OpenRPC, and A2A;
+- Multi-party negotiation and group negotiation;
+- Privacy-preserving and minimal-disclosure negotiation profiles;
+- Protocol consensus, voting, review, and governance mechanisms.
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

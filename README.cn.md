@@ -47,7 +47,7 @@ ANP 构建在现有互联网基础设施之上，将已发布的协议能力组�
 - 🌐 **开放互联网基础设施：** ANP 复用 HTTP、CA、DNS、CDN、Search、TLS 等成熟基础设施，而不是重新构建一套网络栈。
 - 🔒 **身份与加密通信层：** 基于 W3C DID 和 Web 基础设施，提供智能体身份、`did:wba` 认证和端到端加密消息基础能力。
 - 📡 **应用协议层：** 包含智能体描述、智能体发现和智能体应用协议。智能体支付、授权、认证、交易等领域协议构建在这一层之上。
-- 🧪 **元协议状态：** ANP-06 当前仍为草案，暂不属于已发布架构；待协议协商设计稳定后再发布。
+- 🧪 **元协议状态：** ANP-06 当前仍为草案，暂不属于已发布架构；更新后的草案将其定位为基于 Agent Description 的语义元协议协商层，通过 `MetaProtocolInterface`、`anp.get_capabilities` 和 `anp.negotiate` 选择后续接口、Profile、安全模式和 Schema。
 
 ## 协议规范索引
 
@@ -56,7 +56,7 @@ ANP 构建在现有互联网基础设施之上，将已发布的协议能力组�
 | 总览 | [ANP 技术白皮书](chinese/01-AgentNetworkProtocol技术白皮书.md) | 白皮书 | 愿景、设计原则和三层协议架构 |
 | 身份 | [ANP-03：did:wba 方法规范](chinese/03-did-wba方法规范.md) | 已发布 v1.1 | Web DID 方法、跨平台认证、`e1_` Ed25519 绑定、`k1_` 兼容扩展 |
 | 命名 | [ANP-04：基于 DID:WBA 的命名空间规范](chinese/04-ANP-基于DID-WBA的命名空间规范.md) | 已发布 v1.1 | WNS Handle（如 `alice.example.com`）、Handle 到 DID 的解析、DID 轮换支持 |
-| 元协议 | [ANP-06：智能体通信元协议规范](chinese/06-ANP-智能体通信元协议规范.md) | Draft / 未发布 | 智能体之间的协议协商、协议选择和通信建立 |
+| 元协议 | [ANP-06：智能体通信元协议规范](chinese/06-ANP-智能体通信元协议规范.md) | Draft / 未发布 | 可选的语义元协议协商、`MetaProtocolInterface` 声明、`anp.negotiate`，以及接口 / Profile / 安全模式 / Schema 选择 |
 | 描述 | [ANP-07：智能体描述协议规范](chinese/07-ANP-智能体描述协议规范.md) | 已发布 v1.1 | 智能体描述文档、接口描述和能力发布 |
 | 发现 | [ANP-08：智能体发现协议规范](chinese/08-ANP-智能体发现协议规范.md) | 已发布 v1.1 | 基于 `.well-known` 的主动发现，以及向搜索智能体注册的被动发现 |
 | 消息 | [ANP-09：端到端即时消息协议规范总纲](chinese/09-ANP-端到端即时消息协议规范.md) | 已发布 v1.1 | 私聊、群聊、端到端加密、附件、联邦和 mention 场景的 Profile 索引 |
