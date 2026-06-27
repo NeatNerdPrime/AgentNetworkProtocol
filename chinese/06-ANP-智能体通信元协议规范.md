@@ -11,7 +11,7 @@
 
 - 本规范当前仍处于草案状态，尚未发布；其目标是把早期消息内元协议协商模型升级为与当前 ANP 描述、发现、Core Binding、DID 身份认证和消息 Profile 体系兼容的独立协商 Profile。
 - 本规范不修改 ANP-07 智能体描述协议；本文定义的 `MetaProtocolInterface` 是 ANP-06 定义的扩展接口类型，可以声明在 Agent Description 的 `interfaces` 数组中。
-- 新实现应使用本规范定义的 `anp.meta.negotiation.v1` 与 `anp.negotiate`。早期基于加密消息内部二进制 `PT=00` 的协商方式仅作为历史兼容模型说明。
+- 新实现应使用本规范定义的 `anp.meta.negotiation.v1` 与 `anp.negotiate`。早期基于加密消息内部二进制 `PT=00` 的协商方式已经废弃，本规范不要求也不建议兼容旧实现。
 
 ## 摘要
 
@@ -55,7 +55,7 @@ Agent Discovery
 - 复用 `anp.get_capabilities` 作为运行时能力确认方法；
 - 定义 `anp.negotiate` 方法，用于基于调用方意图、能力和约束选择最终执行接口；
 - 支持结构化接口优先、自然语言 fallback、缓存复用和未来协议 artifact 发布；
-- 给出早期 `PT=00` 消息协商模型到新模型的兼容说明。
+- 明确早期 `PT=00` 消息协商模型已经废弃，且不属于本规范兼容范围。
 
 ### 2.2 非目标
 
@@ -755,33 +755,13 @@ anp.meta.negotiation.v1
 
 本规范不要求执行远程代码。任何代码生成或代码加载都属于本地实现细节，必须在沙盒和最小权限环境中处理。
 
-## 13. 旧版 PT=00 消息协商兼容说明
+## 13. 旧版 PT=00 消息协商废弃说明
 
-早期 ANP-06 草案曾定义在端到端加密消息负载内部增加 1 字节二进制头，用 `PT` 字段区分：
+早期 ANP-06 草案曾定义在端到端加密消息负载内部增加 1 字节二进制头，用 `PT` 字段区分元协议、应用协议、自然语言协议和验证协议。该模型还定义了 `sourceHello`、`destinationHello`、`candidateProtocols`、`codeGeneration`、`testCasesNegotiation` 和 `fixErrorNegotiation` 等流程。
 
-- `00`：meta protocol；
-- `01`：application protocol；
-- `10`：natural language protocol；
-- `11`：verification protocol。
+该早期模型已经废弃。新实现 MUST 使用本规范定义的 `anp.meta.negotiation.v1` 与 `anp.negotiate`，MUST NOT 实现或依赖旧的二进制 `PT` 消息头、旧 Hello 流程或旧代码生成流程作为 ANP-06 互操作路径。
 
-该模型还定义了 `sourceHello`、`destinationHello`、`candidateProtocols`、`codeGeneration`、`testCasesNegotiation` 和 `fixErrorNegotiation` 等流程。
-
-在当前 ANP 协议栈中，新实现 SHOULD 使用本规范定义的 `anp.meta.negotiation.v1`，不应再依赖旧的二进制 `PT` 消息头。旧模型可以按下表迁移：
-
-| 旧模型概念 | 新模型对应方式 |
-|---|---|
-| `PT=00 meta protocol` | `params.meta.profile = "anp.meta.negotiation.v1"` + `method = "anp.negotiate"` |
-| `PT=01 application protocol` | 具体业务 Profile 与 JSON-RPC method，例如 `direct.send`、`group.send` 或业务 RPC。 |
-| `PT=10 natural language protocol` | Agent Description 中的 `NaturalLanguageInterface`，或 `anp.negotiate` 的 `natural_language_protocol_drafting` fallback。 |
-| `PT=11 verification protocol` | 协议 artifact 中的测试用例、future test extension 或业务 Profile 自己的验证流程。 |
-| `sourceHello` / `destinationHello` | `anp.get_capabilities` 运行时能力确认。 |
-| `candidateProtocols` 自然语言文本 | 结构化 `candidateProtocols`、`candidateInterfaceRefs`、协议 artifact、Schema 和示例。 |
-| `codeGeneration` | 本地实现细节；不是 wire protocol 必需步骤。 |
-| `testCasesNegotiation` | 协议 artifact 的可选测试用例或未来扩展方法。 |
-| `fixErrorNegotiation` | JSON-RPC 错误模型、协商重试或未来 issue-report extension。 |
-| `usedProtocolHash` | `negotiationDigest`、artifact digest、缓存键或已选 Profile / Interface。 |
-
-兼容网关 MAY 将旧 PT=00 消息转换为 `anp.negotiate` 请求，但该转换不属于本规范最小互通要求。
+本规范不提供旧模型到新模型的兼容映射，也不要求实现兼容网关。若某部署仍存在早期实验性实现，应将其视为私有历史实现，并通过独立迁移任务升级到本规范；该迁移不属于 ANP-06 最小互通要求。
 
 ## 14. 示例
 

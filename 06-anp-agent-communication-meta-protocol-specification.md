@@ -11,7 +11,7 @@ Notes:
 
 - This specification is still a draft and has not been released. Its goal is to upgrade the early message-embedded meta-protocol negotiation model into an independent negotiation Profile compatible with the current ANP description, discovery, Core Binding, DID authentication, and messaging Profile architecture.
 - This specification does not modify the ANP Agent Description Protocol. The `MetaProtocolInterface` defined here is an ANP-06 extension interface type that can be declared in the `interfaces` array of an Agent Description document.
-- New implementations should use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification. The early encrypted-message-internal binary `PT=00` negotiation model is retained only as legacy compatibility guidance.
+- New implementations should use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification. The early encrypted-message-internal binary `PT=00` negotiation model is deprecated, and this specification does not require or recommend compatibility with old implementations.
 
 ## Abstract
 
@@ -55,7 +55,7 @@ This specification aims to:
 - Reuse `anp.get_capabilities` as the runtime capability confirmation method;
 - Define `anp.negotiate` for selecting the final execution interface based on caller intent, caller capabilities, and constraints;
 - Support structured-interface-first negotiation, natural-language fallback, cache reuse, and future protocol artifact publication;
-- Provide compatibility guidance from the early `PT=00` message negotiation model to the new model.
+- Explicitly mark the early `PT=00` message negotiation model as deprecated and outside the compatibility scope of this specification.
 
 ### 2.2 Non-Goals
 
@@ -755,33 +755,13 @@ If a negotiation result references an external protocol artifact, implementation
 
 This specification does not require executing remote code. Any code generation or code loading is a local implementation detail and must be handled in a sandboxed, least-privilege environment.
 
-## 13. Compatibility with Legacy `PT=00` Message Negotiation
+## 13. Deprecation of Legacy `PT=00` Message Negotiation
 
-Early ANP-06 drafts defined a one-byte binary header inside end-to-end encrypted message payloads and used the `PT` field to distinguish:
+Early ANP-06 drafts defined a one-byte binary header inside end-to-end encrypted message payloads and used the `PT` field to distinguish meta protocol, application protocol, natural-language protocol, and verification protocol. That model also defined flows such as `sourceHello`, `destinationHello`, `candidateProtocols`, `codeGeneration`, `testCasesNegotiation`, and `fixErrorNegotiation`.
 
-- `00`: meta protocol;
-- `01`: application protocol;
-- `10`: natural-language protocol;
-- `11`: verification protocol.
+That early model is deprecated. New implementations MUST use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification, and MUST NOT implement or depend on the old binary `PT` message header, old Hello flow, or old code-generation flow as an ANP-06 interoperability path.
 
-That model also defined flows such as `sourceHello`, `destinationHello`, `candidateProtocols`, `codeGeneration`, `testCasesNegotiation`, and `fixErrorNegotiation`.
-
-In the current ANP protocol stack, new implementations SHOULD use `anp.meta.negotiation.v1` as defined in this specification and should not depend on the old binary `PT` message header. The old model can be migrated as follows:
-
-| Legacy concept | New model |
-|---|---|
-| `PT=00 meta protocol` | `params.meta.profile = "anp.meta.negotiation.v1"` + `method = "anp.negotiate"` |
-| `PT=01 application protocol` | A concrete business Profile and JSON-RPC method, such as `direct.send`, `group.send`, or a business RPC method. |
-| `PT=10 natural language protocol` | `NaturalLanguageInterface` in Agent Description, or the `natural_language_protocol_drafting` fallback of `anp.negotiate`. |
-| `PT=11 verification protocol` | Test cases in protocol artifacts, future test extensions, or verification flows defined by the business Profile itself. |
-| `sourceHello` / `destinationHello` | Runtime capability confirmation through `anp.get_capabilities`. |
-| Natural-language `candidateProtocols` text | Structured `candidateProtocols`, `candidateInterfaceRefs`, protocol artifacts, schemas, and examples. |
-| `codeGeneration` | Local implementation detail; not a required wire-protocol step. |
-| `testCasesNegotiation` | Optional test cases in protocol artifacts or future extension methods. |
-| `fixErrorNegotiation` | JSON-RPC error model, negotiation retry, or future issue-report extensions. |
-| `usedProtocolHash` | `negotiationDigest`, artifact digest, cache key, or selected Profile / Interface. |
-
-Compatibility gateways MAY translate legacy PT=00 messages into `anp.negotiate` requests, but such translation is not part of the minimum interoperability requirements of this specification.
+This specification does not provide a compatibility mapping from the old model to the new model, and does not require compatibility gateways. If a deployment still has an early experimental implementation, it should be treated as a private historical implementation and upgraded to this specification through a separate migration task; that migration is outside the minimum interoperability requirements of ANP-06.
 
 ## 14. Examples
 
