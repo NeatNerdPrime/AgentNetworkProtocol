@@ -47,7 +47,7 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 - 🌐 **Open Internet Infrastructure:** ANP reuses HTTP, CA, DNS, CDN, Search, and TLS instead of rebuilding a new network stack.
 - 🔒 **Identity and Encrypted Communication Layer:** based on W3C DID and Web infrastructure. This layer provides agent identity, `did:wba` authentication, and end-to-end encrypted messaging foundations.
 - 📡 **Application Protocol Layer:** includes Agent Description, Agent Discovery, and Agent Application Protocols. Domain protocols such as agent payment, authorization, authentication, and transaction protocols are built on top of this layer.
-- 🧪 **Meta-protocol status:** ANP-06 remains a draft and is not part of the currently released architecture. It will be released after the protocol negotiation design is stabilized.
+- 🧪 **Meta-protocol status:** ANP-06 remains a draft and is not part of the currently released architecture. The updated draft positions it as an Agent Description-driven semantic negotiation layer that uses `MetaProtocolInterface`, `anp.get_capabilities`, and `anp.negotiate` to select the subsequent interface, Profile, security profile, and schema.
 
 ## Protocol Specification Index
 
@@ -56,7 +56,7 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 | Overview | [ANP Technical White Paper](01-agentnetworkprotocol-technical-white-paper.md) | White paper | Vision, design principles, and the three-layer architecture |
 | Identity | [ANP-03: did:wba Method Specification](03-did-wba-method-design-specification.md) | Released v1.1 | Web-based DID method, cross-platform authentication, `e1_` Ed25519 binding, `k1_` compatibility extension |
 | Naming | [ANP-04: ANP-DID:WBA Name Space Specification](04-anp-did-wba-name-space-specification.md) | Released v1.1 | WNS handles such as `alice.example.com`, Handle-to-DID resolution, DID rotation support |
-| Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Protocol negotiation, selection, and communication setup between agents |
+| Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Semantic meta-protocol negotiation, `MetaProtocolInterface` declaration, `anp.negotiate`, and interface / Profile / security profile / schema selection |
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
 | Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
 | Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, federation, and mentions |
