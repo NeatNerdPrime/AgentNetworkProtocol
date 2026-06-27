@@ -1,15 +1,15 @@
-# ANP Profile 4: Group Messaging Base Semantics (Final Revision)
+# ANP Profile 4: Group Messaging Base Semantics
 
 - Document ID: ANP-P4
 - Title: Group Messaging Base Semantics
-- Status: Draft
-- Version: 0.4.0 (Final Revision)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile applies to the group life cycle, group management and group message base semantics based on Group DID, and does not include the group end-to-end encryption algorithm itself.
 
 ---
 
-> Note: This revised draft converges the v1 core into two paths: "self-service joining and direct addition":
+> Note: This release converges the v1 core into two paths: "self-service joining and direct addition":
 >
 > 1. `group.invite`, `group.accept_invite` and standard `invitation` objects have been moved out of the v1 core;
 > 2. `membership_request`, `membership_request_digest`, `group.approve_membership`, and `group.reject_membership` have been moved out of the v1 core;

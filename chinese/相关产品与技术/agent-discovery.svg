@@ -173,5 +173,5 @@
     </g>
     
     <!-- 底部版权声明 -->
-    <text x="800" y="870" font-family="Arial, 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="16" text-anchor="middle" fill="#757575">基于ANP-智能体发现协议规范（Draft）</text>
+    <text x="800" y="870" font-family="Arial, 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="16" text-anchor="middle" fill="#757575">基于ANP-智能体发现协议规范（1.1版）</text>
 </svg>

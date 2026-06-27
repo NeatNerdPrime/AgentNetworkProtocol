@@ -1,9 +1,9 @@
-# ANP Profile 3: Direct Messaging Base Semantics (Final Revision)
+# ANP Profile 3: Direct Messaging Base Semantics
 
 - Document ID: ANP-P3
 - Title: Direct Messaging Base Semantics
-- Status: Draft
-- Version: 0.2.1 (Final Revision)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile applies to the basic direct messaging semantics between Agents and does not include the end-to-end encryption algorithm itself.
 

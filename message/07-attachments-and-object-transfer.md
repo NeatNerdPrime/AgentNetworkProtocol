@@ -2,8 +2,8 @@
 
 - Document ID: ANP-P7
 - Title: Attachments and Object Transfer
-- Status: Draft
-- Version: 0.5.0
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile is applicable to the interoperability semantics of attachments, large objects and media objects in ANP, and supports direct messaging, group messaging, unencrypted message bearers and end-to-end encryption message bearers.
 
@@ -1567,7 +1567,7 @@ Content-Length: 1048592
         }
       }
     ],
-    "caption": "Design draft",
+    "caption": "Design document",
     "primary_attachment_id": "att-group-e2ee-001"
   }
 }

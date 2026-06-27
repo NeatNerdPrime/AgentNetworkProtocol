@@ -1,9 +1,9 @@
-# ANP Profile 5: Direct End-to-End Encryption (Refined Draft)
+# ANP Profile 5: Direct End-to-End Encryption
 
 - Document ID: ANP-P5
 - Title: Direct End-to-End Encryption
-- Status: Draft
-- Version: 0.3.2 (Refined Draft)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile applies to Direct End-to-End Encryption Overlay based on `agent_did`.
 - Dependencies:

@@ -1,9 +1,9 @@
-# ANP Profile 2: Identity and Discovery (Final Revision)
+# ANP Profile 2: Identity and Discovery
 
 - Document ID: ANP-P2
 - Title: Identity and Discovery
-- Status: Draft
-- Version: 0.2.0 (Final Revision)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This Profile applies to Agent identity, Group identity, service discovery and service endpoint interpretation in ANP.
 

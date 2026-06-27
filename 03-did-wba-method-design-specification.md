@@ -1,4 +1,11 @@
-# did:wba Method Specification (V0.2)
+# did:wba Method Specification
+
+- Document ID: ANP-03
+- Title: did:wba Method Specification
+- Status: Released
+- Version: 1.1
+- Language: English
+- Applicability: This specification applies to web-based decentralized identity, cross-platform authentication, and agent communication scenarios in ANP.
 
 ## Abstract
 
@@ -24,7 +31,7 @@ The did:wba DID method specification complies with the requirements specified in
 
 Based on the did:web method specification, this specification adds specification descriptions such as DID document limitations, cross-platform identity authentication processes, and agent description services, and proposes a new method name did:wba (Web-Based Agent).
 
-Considering that the did:web method specification is still a draft, there may be changes in the future that are not suitable for agent communication scenarios. In addition, we have made some modifications to the specification, and reaching a consensus with the original author on the specification modification is also a long-term process, so we decided to use a new method name.
+Considering that the did:web method is designed for native web-based DID use cases and may evolve in ways that do not fully fit agent communication scenarios, and that this specification introduces targeted modifications, reaching consensus with the original author on those modifications would be a long-term process. Therefore, we decided to use a new method name.
 
 In the future, we do not rule out the possibility of merging the did:wba specification into the did:web specification, and we will promote the realization of this goal.
 
@@ -174,7 +181,7 @@ Due to the way most web servers render content, it is likely that a particular d
 
 ### 2.5 DID Document Description
 
-Apart from DID Core, most related specifications are still in the draft stage. This section shows a subset of DID Documents used for authentication. To improve interoperability between systems, all fields marked as required must be supported by all systems, while fields marked as optional may be supported selectively. Fields defined in other standards but not listed here may also be supported selectively.
+Apart from DID Core, related specifications may evolve over time. This section shows a subset of DID Documents used for authentication. To improve interoperability between systems, all fields marked as required must be supported by all systems, while fields marked as optional may be supported selectively. Fields defined in other standards but not listed here may also be supported selectively.
 
 **The recommended e1 path-type DID document example is as follows:**
 

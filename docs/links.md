@@ -15,9 +15,10 @@ For ease of reference, all ANP-related materials are organized by **Specificatio
 - [ANP Profile 6: Group End-to-End Encryption](/message/06-group-end-to-end-encryption.md)
 - [ANP Profile 7: Attachments and Object Transfer](/message/07-attachments-and-object-transfer.md)
 - [ANP Profile 8: Federation and Cross-Domain](/message/08-federation-and-cross-domain.md)
+- [ANP Profile 9: Message Mentions Extension](/message/09-message-mentions.md)
 - [Meta-Protocol Design Specification](/06-anp-agent-communication-meta-protocol-specification.md)
-- [Agent Description Protocol Specification (Draft)](/07-anp-agent-description-protocol-specification.md)
-- [Agent Discovery Protocol Specification (Draft)](/08-anp-agent-discovery-protocol-specification.md)
+- [Agent Description Protocol Specification](/07-anp-agent-description-protocol-specification.md)
+- [Agent Discovery Protocol Specification](/08-anp-agent-discovery-protocol-specification.md)
 
 ## Whitepaper
 

@@ -4,121 +4,151 @@
 
 </div>
 
-## Agent Network Protocol (ANP)
+# Agent Network Protocol (ANP)
 
-> TL;DR: ANP aims to become the HTTP of the Agentic Web era.
+> ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
 
-<!-- TOC -->
+**Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
 
-### Table of Contents
+**Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
-- [Agent Network Protocol (ANP)](#agent-network-protocol-anp)
-  - [Table of Contents](#table-of-contents)
-- [Vision and Positioning](#vision-and-positioning)
-- [Why We Need ANP](#why-we-need-anp)
-- [Three-Layer Protocol Architecture](#three-layer-protocol-architecture)
-- [Quick Start](#quick-start)
-- [Protocol SDK](#protocol-sdk)
-- [Further Reading](#further-reading)
-- [Milestones](#milestones)
-- [Contact Us](#contact-us)
-- [Contributing](#contributing)
-  - [Contributors](#contributors)
-- [License](#license)
-- [Copyright Notice](#copyright-notice)
+**Note:** This project has not issued any digital currency on any platform or blockchain.
 
 ## Vision and Positioning
 
-Agent Network Protocol (ANP) is an open-source communication protocol for intelligent agents.
-
-Agent Network Protocol (ANP) aims to become **the HTTP of the Agentic Web era**.
-
-Our vision is to **define how agents connect with each other, building an open, secure, and efficient collaboration network for billions of agents**.
+Agent Network Protocol (ANP) is an open-source communication protocol for intelligent agents. Its goal is to define how agents connect with each other and to build an open, secure, and efficient collaboration network for billions of agents.
 
 <p align="center">
-  <img src="/images/agentic-web3.png" width="50%" alt="Agentic Web"/>
+  <img src="images/agentic-web3.png" width="50%" alt="Agentic Web"/>
 </p>
 
-We believe that the agent internet represents the next generation of information infrastructure succeeding the human-centric internet, which will fundamentally transform how the digital world connects and collaborates. In this vision:
+We believe the agent internet is the next generation of information infrastructure after the human-centric internet. In this vision:
 
-- **From Platform-Centric to Protocol-Centric**: The current internet ecosystem is built around platforms, where data and services are locked in "digital silos." The agent internet will reshape this imbalance, returning the internet from a closed, fragmented state to its open, freely connected origins.
-
-- **Connection is Power**: In a truly open, interconnected network, free interaction between nodes maximizes innovation potential and creates tremendous value. In the future, each agent will be both an information consumer and a service provider, with every node able to discover, connect, and interact with any other node in the network without barriers.
-
-- **AI-Native Network**: Unlike webpages and interfaces designed for humans, the agent internet will build an AI-friendly native data network where all nodes are describable, discoverable, and callable agents or data units, and every link is a semantically clear, structurally unified protocol connection.
-
-This vision requires a foundational protocol similar to what HTTP is for the human internet—this is precisely why ANP was created.
-
-**Note**: This project has not issued any digital currency on any platform or blockchain.
+- **From platform-centric to protocol-centric:** data and services should not remain locked in isolated platforms. Agents need open protocols for direct connection.
+- **Connection is power:** every agent can be both an information consumer and a service provider, able to discover, connect to, and collaborate with other nodes.
+- **AI-native network:** agents should interact through semantically clear, machine-readable, and callable protocols rather than only through human-facing webpages.
 
 ## Why We Need ANP
 
-While current internet infrastructure is quite comprehensive, there remains a lack of optimal communication and connection solutions for the specific needs of agent networks. We are committed to addressing three major challenges facing agent networks:
+Current internet infrastructure is mature, but it still lacks a communication and connection layer designed for large-scale agent networks. ANP focuses on three challenges:
 
-- 🌐 **Interconnection**: Enabling all agents to communicate with each other, breaking down data silos, and allowing AI to access complete contextual information.
-- 🖥️ **Native Interfaces**: AI should not need to mimic human internet browsing; instead, AI should interact with the digital world using its most proficient methods (APIs or communication protocols).
-- 🤝 **Efficient Collaboration**: Using AI, agents can self-organize and self-negotiate to build a more cost-effective and efficient collaboration network than the existing internet.
+- 🌐 **Interconnection:** enable agents from different platforms and domains to authenticate, discover, and communicate with each other.
+- 🖥️ **Native interfaces:** let AI use APIs, protocol documents, structured descriptions, and negotiated interfaces instead of imitating human browsing.
+- 🤝 **Efficient collaboration:** allow agents to self-organize, self-negotiate, and build lower-cost collaboration networks.
 
-## Three-Layer Protocol Architecture
+## Protocol Architecture
 
 <p align="center">
-  <img src="/images/anp-architecture.png" width="50%" alt="Protocol Layer Diagram"/>
+  <img src="images/anp-architecture2.png" width="50%" alt="Protocol Architecture Diagram"/>
 </p>
 
-- 🔒 **Identity and Secure Communication Layer**: Based on the W3C DID (Decentralized Identifiers) specification, this layer leverages existing mature web infrastructure to create a decentralized identity authentication scheme and an end-to-end encrypted communication solution. It allows agents from any platform to authenticate each other without relying on any centralized system.
-- 🌍 **Meta-Protocol Layer**: A protocol for negotiating communication protocols between agents. It is key to evolving the agent network into a self-organizing, self-negotiating, efficient collaboration network.
-- 📡 **Application Protocol Layer**: Based on semantic web specifications, enabling agents to describe their capabilities and supported application protocols, and efficiently manage these protocols.
+ANP is built on existing Internet infrastructure and organizes the released protocol capabilities into two core protocol layers plus domain-specific application protocols:
+
+- 🌐 **Open Internet Infrastructure:** ANP reuses HTTP, CA, DNS, CDN, Search, and TLS instead of rebuilding a new network stack.
+- 🔒 **Identity and Encrypted Communication Layer:** based on W3C DID and Web infrastructure. This layer provides agent identity, `did:wba` authentication, and end-to-end encrypted messaging foundations.
+- 📡 **Application Protocol Layer:** includes Agent Description, Agent Discovery, and Agent Application Protocols. Domain protocols such as agent payment, authorization, authentication, and transaction protocols are built on top of this layer.
+- 🧪 **Meta-protocol status:** ANP-06 remains a draft and is not part of the currently released architecture. It will be released after the protocol negotiation design is stabilized.
+
+## Protocol Specification Index
+
+| Area | Document | Status | What it defines |
+| --- | --- | --- | --- |
+| Overview | [ANP Technical White Paper](01-agentnetworkprotocol-technical-white-paper.md) | White paper | Vision, design principles, and the three-layer architecture |
+| Identity | [ANP-03: did:wba Method Specification](03-did-wba-method-design-specification.md) | Released v1.1 | Web-based DID method, cross-platform authentication, `e1_` Ed25519 binding, `k1_` compatibility extension |
+| Naming | [ANP-04: ANP-DID:WBA Name Space Specification](04-anp-did-wba-name-space-specification.md) | Released v1.1 | WNS handles such as `alice.example.com`, Handle-to-DID resolution, DID rotation support |
+| Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Protocol negotiation, selection, and communication setup between agents |
+| Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
+| Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
+| Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, federation, and mentions |
+| Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | Released v1.1 (EN); CN draft available | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
+
+### Instant Messaging Profiles
+
+The ANP end-to-end instant messaging suite is split into focused profiles:
+
+1. [P1 Core Binding](message/01-core-binding.md): JSON-RPC 2.0 binding, request/response/error conventions.
+2. [P2 Identity and Discovery](message/02-identity-and-discovery.md): DID-based service discovery and endpoint capability discovery.
+3. [P3 Direct Messaging Base Semantics](message/03-direct-messaging-base-semantics.md): direct message sending and receipts.
+4. [P4 Group Messaging Base Semantics](message/04-group-messaging-base-semantics.md): group lifecycle, membership, and group message semantics.
+5. [P5 Direct End-to-End Encryption](message/05-direct-end-to-end-encryption.md): E2EE overlay for direct messaging.
+6. [P6 Group End-to-End Encryption](message/06-group-end-to-end-encryption.md): E2EE overlay for group messaging.
+7. [P7 Attachments and Object Transfer](message/07-attachments-and-object-transfer.md): manifests, object services, and large-object transfer.
+8. [P8 Federation and Cross-Domain](message/08-federation-and-cross-domain.md): cross-domain routing, relaying, and result witnessing.
+9. [P9 Message Mentions Extension](message/09-message-mentions.md): group-message mention payloads and selector semantics.
+
+### DID Compatibility Appendices
+
+- [Appendix A: did:wba `k1_` Compatibility Extension](appendix-a-did-wba-k1-compatibility-extension.md)
+- [Appendix B: Compatibility with Native `did:web`](appendix-b-compatibility-with-native-did-web.md)
 
 ## Quick Start
 
-If you want to quickly understand the basic concepts and usage of ANP, you can check our getting started guide: [ANP Getting Started Guide](docs/chinese/ANP入门指南.md)
-
-If you want to quickly run ANP-related demos, you can check our sample program documentation: [ANP Sample Programs](docs/chinese/ANP示例程序.md)
+- To understand ANP concepts and usage, read the [ANP Getting Started Guide](docs/anp-getting-started-guide.md) or the [Chinese guide](docs/chinese/ANP入门指南.md).
+- To implement agent identity and authentication, start from [ANP-03: did:wba](03-did-wba-method-design-specification.md) and the two DID compatibility appendices.
+- To publish an agent, read [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) and [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md).
+- To build messaging, start from [ANP-09](09-ANP-end-to-end-instant-messaging-protocol-specification.md) and then choose the required messaging profiles.
+- To run demos, see [ANP Sample Programs](docs/chinese/ANP示例程序.md).
 
 ## Protocol SDK
 
-We are developing an open-source implementation of AgentNetworkProtocol, and its repository can be found at: [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+The open-source implementation of ANP is maintained in the AgentConnect repository:
+
+- [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+
+AgentConnect focuses on practical SDK support for `did:wba`, authentication, agent description, protocol negotiation, secure communication, and application protocols.
+
+## Repository Layout
+
+- `01-*.md`, `03-*.md`, `04-*.md`, `06-*.md`, `07-*.md`, `08-*.md`, `09-*.md`: core English protocol documents.
+- `application/`: application-layer protocols such as AP2.
+- `message/`: the ANP end-to-end instant messaging profile suite.
+- `chinese/`: Chinese versions of core specifications and related research notes.
+- `docs/`: guides, extended reading, and community operations documents.
+- `blogs/`: articles and protocol analysis.
+- `examples/`: sample ADP assets and API interface examples.
+- `images/` and `standard/`: shared figures and standardization references.
 
 ## Further Reading
 
-- Complete materials are available at [Extended Reading](docs/links.md)  
-- For detailed design, please read the [ANP Technical White Paper](/01-agentnetworkprotocol-technical-white-paper.md)  
-- Refer to the open-source implementation [AgentConnect Examples](https://github.com/agent-network-protocol/AgentConnect)
+- [Extended Reading](docs/links.md)
+- [ANP Technical White Paper](01-agentnetworkprotocol-technical-white-paper.md)
+- [AgentConnect Examples](https://github.com/agent-network-protocol/AgentConnect)
 
 ## Milestones
 
-For both the protocol and open-source code implementation, we are gradually advancing in the following order:
-
-- [x] Build identity authentication and end-to-end encrypted communication protocol and implementation. This is the foundation and core of our entire project, with protocol design and foundational code are substantially complete.
-- [x] Meta-protocol design and meta-protocol code implementation. Current protocol design and code development are substantially complete.
-- [x] Application layer protocol design and development.
-  - [x] Support for agent description.
-  - [x] Support for agent discovery.
-  - [ ] Application protocol design for specific domains.
+- [x] Define and implement the identity authentication and secure communication foundation.
+- [x] Release `did:wba` v1.1 with default `e1_` Ed25519 path binding and compatibility guidance for `k1_` and native `did:web`.
+- [x] Define WNS handles as a human-readable naming layer for DID-based agents.
+- [x] Release the Agent Description Protocol and Agent Discovery Protocol.
+- [ ] Release the meta-protocol after the draft is stabilized.
+- [x] Split end-to-end instant messaging into an overview plus nine interoperable profiles.
+- [x] Add the AP2 agent payment protocol to the application layer.
+- [ ] Continue aligning SDK implementations and examples with the 1.1 specification set.
+- [ ] Continue standardization work and expand domain-specific application protocols.
 
 ## Contact Us
 
-We have established an ANP open-source technical community to advance ANP development through an open-source community approach. We sincerely invite you to join our open-source technical community. Our founding committee, community advisors, technical committee, development committee, enterprise observers, and other teams are continuously recruiting.
+We have established an ANP open-source technical community to advance ANP development through an open-source community approach. We sincerely invite you to join our community.
 
-Email: chgaowei@gmail.com  
-- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
-- Official website: [https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
+- Email: chgaowei@gmail.com
+- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)
+- Official website: [https://agent-network-protocol.com/](https://agent-network-protocol.com/)
 - GitHub: [https://github.com/agent-network-protocol/AgentNetworkProtocol](https://github.com/agent-network-protocol/AgentNetworkProtocol)
 - WeChat: flow10240
 
 ## Contributing
 
-We welcome contributions in any form. Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+We welcome contributions in any form. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Contributors
 
-We extend our sincere gratitude to all contributors for their outstanding work and dedication to the Agent Network Protocol project. You can view the complete list of contributors here:
+We extend our sincere gratitude to all contributors for their outstanding work and dedication to the Agent Network Protocol project.
 
-- [Contributors (English)](CONTRIBUTORS.md)
+- [Contributors](CONTRIBUTORS.md)
 
 ## License
 
-This project is open-sourced under the MIT License. For details, please refer to the [LICENSE](LICENSE) file. However, the copyright is held by GaoWei Chang. Any user of this project must retain the original copyright notice and license file.
+This project is open-sourced under the MIT License. For details, please refer to [LICENSE](LICENSE). The copyright is held by GaoWei Chang. Any user of this project must retain the original copyright notice and license file.
 
 ## Copyright Notice
 

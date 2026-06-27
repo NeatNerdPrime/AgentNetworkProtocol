@@ -1,4 +1,4 @@
-# ANP Open Source Community Operation Strategy (Draft)
+# ANP Open Source Community Operation Strategy
 
 **Overview:** ANP stands for "Agent Network Protocol". This document outlines a detailed global open-source community operation plan aimed at designing, refining, and promoting the ANP protocol, as well as developing related tools and reference implementations. The new community will draw on the practical experiences of mature open-source projects such as FFmpeg and Linux, maintaining a high degree of openness and sustained vitality, free from control by any individual or company, and avoiding internal conflicts and divisions. The following sections will elaborate on community governance, contributor management, platform usage, foundation operations, and conflict prevention.
 

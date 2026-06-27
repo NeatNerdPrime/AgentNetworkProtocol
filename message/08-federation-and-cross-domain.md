@@ -1,9 +1,9 @@
-# ANP Profile 8: Federation and Cross-Domain (Final Consolidated Draft)
+# ANP Profile 8: Federation and Cross-Domain
 
 - Document ID: ANP-P8
 - Title: Federation and Cross-Domain
-- Status: Draft
-- Version: 0.4.0 (Final Consolidated Draft)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This profile applies to ANP cross-domain service discovery, service-to-service invocation, group-event distribution, and cross-domain invocation of the object control plane.
 

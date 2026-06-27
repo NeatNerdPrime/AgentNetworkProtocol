@@ -1,9 +1,9 @@
-# ANP Profile 1: Core Binding (Final Revision)
+# ANP Profile 1: Core Binding
 
 - Document ID: ANP-P1
 - Title: Core Binding
-- Status: Draft
-- Version: 0.2.0 (Final Revision)
+- Status: Released
+- Version: 1.1
 - Language: English
 - Applicability: This profile applies to all ANP basic profiles and security overlay profiles.
 

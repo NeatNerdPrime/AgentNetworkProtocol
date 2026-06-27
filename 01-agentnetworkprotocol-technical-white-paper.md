@@ -154,7 +154,7 @@ sequenceDiagram
     Agent B Server->>Agent A Client: HTTP Response
 ```
 
-DID methods define how to create, resolve, update and deactivate DIDs and DID documents, as well as how to perform authentication and authorization. Among existing DID method drafts, the `did:web` method[^5] is built on mature Web technologies, allowing systems to create, update, and deactivate DIDs and DID documents using centralized technologies (such as cloud computing). Different systems achieve interoperability through the HTTP protocol, similar to email services on the internet, where each platform implements its own account system in a centralized way while enabling interconnection between platforms.
+DID methods define how to create, resolve, update and deactivate DIDs and DID documents, as well as how to perform authentication and authorization. Among existing DID methods, the `did:web` method[^5] is built on mature Web technologies, allowing systems to create, update, and deactivate DIDs and DID documents using centralized technologies (such as cloud computing). Different systems achieve interoperability through the HTTP protocol, similar to email services on the internet, where each platform implements its own account system in a centralized way while enabling interconnection between platforms.
 
 Based on the `did:web` method, we have proposed a new DID method—`did:wba` (Web-Based Agent)—specifically designed for agent communication scenarios, adding cross-platform identity authentication processes and agent description services. The `did:wba` method inherits the advantages of `did:web` while further optimizing identity authentication mechanisms between agents, enhancing its applicability in agent networks.
 
