@@ -9,6 +9,7 @@
 
 Notes:
 
+- The meta-protocol is not a mandatory protocol for agent collaboration; it is optional. In normal cases, agent identity, messaging, discovery, and description protocols are sufficient for most interoperability needs. The meta-protocol is primarily used when two agents need to dynamically negotiate a pair-specific interface, temporary protocol, or special execution constraints.
 - This specification is still a draft and has not been released. Its goal is to upgrade the early message-embedded meta-protocol negotiation model into an independent negotiation Profile compatible with the current ANP description, discovery, Core Binding, DID authentication, and messaging Profile architecture.
 - This specification does not modify the ANP Agent Description Protocol. The `MetaProtocolInterface` defined here is an ANP-06 extension interface type that can be declared in the `interfaces` array of an Agent Description document.
 - New implementations should use `anp.meta.negotiation.v1` and `anp.negotiate` as defined in this specification. The early encrypted-message-internal binary `PT=00` negotiation model is deprecated, and this specification does not require or recommend compatibility with old implementations.
