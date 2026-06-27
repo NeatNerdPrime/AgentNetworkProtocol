@@ -2,250 +2,356 @@
 
 ## 概述
 
-### 什么是ANP
+### 什么是 ANP
 
-ANP（Agent Network Protocol）是一个开源的智能体通信协议，旨在打造智能体互联网时代的HTTP协议。ANP使智能体能够在互联网上相互发现、连接和交互，建立一个开放、安全的智能体协作网络。
+ANP（Agent Network Protocol）是面向 Agentic Web 的开放协议栈。它的目标是让开放互联网上的智能体能够互相识别身份、发布能力、发现服务、协商可用接口、交换安全消息，并在应用层完成协作。
 
-ANP解决了智能体在互联网上无法高效、安全、标准化沟通协作的关键问题，为AI时代的互联网提供了基础通信协议。
+当前规范集围绕 ANP 1.1 版本线组织，覆盖：
 
-### ANP如何帮助解决实际问题
+- `did:wba` 身份与跨域认证
+- WNS（WBA Name Space）人类可读 Handle
+- 智能体描述文档
+- 智能体发现文档与搜索注册
+- 端到端即时消息 Profile
+- AP2 智能体支付等应用协议
 
-#### 应用场景示例：跨平台智能助手协作
+元协议规范当前仍是草案。它可用于语义协商，但不是当前已发布架构的必需组成部分。
 
-想象一下，你使用一个个人智能助手需要预订酒店。在传统模式下，这个助手需要模拟人类行为访问酒店网站，或者酒店需要专门为这个特定助手开发API。
+> 版本说明：`Version: 1.1` 表示规范/文档发布版本，不改变示例中的 ANP 载荷字段，例如 `"protocolVersion": "1.0.0"`。
 
-使用ANP后：
+### 为什么需要 ANP
 
-*   你的个人助手拥有自己的去中心化身份（DID），直接用这个身份与其他智能体交互，无需在其他智能体注册身份。
-*   它可以直接发现并连接到任何支持ANP的酒店智能体，无论它们属于哪个公司或平台。
-*   双方基于DID建立安全的身份验证和加密通信，确保交互安全。
-*   通过标准化的方式了解酒店智能体提供的服务和数据。
-*   完成预订而无需模拟人类行为或依赖特定平台的API。
+今天，大多数 AI 智能体与网络服务交互仍然依赖三种受限方式：模拟人类浏览器、使用平台专用 API，或停留在单一应用生态内。ANP 提供一种协议优先的替代路径：
 
-这不仅提高了效率，还解决了数据隐私问题（个人助手可以在本地处理信息，只将必要信息发送给酒店智能体）。
+- **互联互通**：不同域、不同平台的智能体可以互相认证、发现和通信。
+- **原生接口**：智能体可以使用机器可读的描述、接口文档、JSON-RPC / OpenRPC 风格调用，而不是只能阅读面向人的网页。
+- **稳定身份与命名**：DID 提供可验证的密码学身份，WNS Handle 提供适合人类使用的名称。
+- **安全消息**：私聊、群聊、附件、联邦和端到端加密通过分层 Profile 进行定义。
+- **开放实现路径**：ANP 复用 HTTP、DNS、TLS、JSON、JSON-LD、DID 和现有 Web 部署方式。
 
-#### 更多ANP可以解决的问题
+### 示例：跨平台酒店预订
 
-*   **数据孤岛问题**：当今互联网上的服务彼此隔离，ANP通过标准化的智能体描述和交互协议，让智能体能够无缝沟通，就像人类可以访问不同网站一样自然。
-*   **身份碎片化问题**：目前你在每个平台都需要单独的账号，ANP使用去中心化身份（DID），让智能体拥有自己的"数字护照"，可以在任何支持ANP的服务间自由移动。
-*   **AI与互联网交互低效问题**：现在AI要访问网络服务必须模拟人类操作或使用特定API，ANP提供AI原生的交互方式，就像HTTP为人类浏览器提供了标准访问方式一样。
+假设一个个人智能助手需要预订酒店。没有 ANP 时，它可能需要爬取网页、通过平台账号登录，或接入某个供应商的专用 API。
 
-### 关键原则 (Key Principles)
+使用 ANP 后：
 
-*   **去中心化 (Decentralization)**: 智能体拥有独立身份，不依赖于中心化平台，促进开放生态系统。
-*   **互操作性 (Interoperability)**: 不同开发者和公司创建的智能体可以无缝协作，打破数据孤岛。
-*   **利用现有Web基础设施 (Leveraging Existing Web Infrastructure)**: 基于现有Web技术构建，无需新建底层设施，快速部署和采用。
-*   **AI原生与自主性 (AI-Native & Autonomy)**: 专为AI智能体设计的通信协议，支持智能体自主决策和互动。
+1. 个人助手拥有自己的 DID，也可以拥有一个人类可读的 WNS Handle。
+2. 它可以通过搜索、`.well-known/agent-descriptions` 或 Handle 发现酒店智能体。
+3. 它读取酒店智能体的 Agent Description 文档，了解产品、服务和接口。
+4. 它使用 `did:wba` 对请求进行认证，而不是为每个平台创建单独账号。
+5. 它可以使用结构化接口完成预订，也可以使用自然语言接口处理特殊需求。
+6. 如果需要支付或人工授权，接口描述会明确说明，并由对应应用协议处理。
 
-### ANP与MCP、A2A的对比
+### ANP 与 MCP、A2A 的关系
 
-ANP、MCP和A2A是互补的协议，各自解决不同场景的智能体通信问题：
+ANP 与其他智能体协议是互补关系：
 
-*   **MCP (Model Context Protocol)**: 是连接AI模型与工具/资源的桥梁，采用客户端-服务器架构，适合单个模型访问多种工具和资源，如访问搜索引擎、调用计算器等。
-*   **A2A (Agent2Agent)**: 专为企业内部复杂智能体协作设计，侧重任务驱动的协作流程，适合在可信环境中完成复杂任务链，如企业内部的工作流自动化。
-*   **ANP (Agent Network Protocol)**: 为开放互联网上的智能体互联互通而生，采用点对点架构，实现跨平台、跨组织的智能体发现和交互，如不同公司的智能体之间的沟通。
+- **MCP（Model Context Protocol）**：连接模型或 Agent Host 与工具、资源。
+- **A2A 风格协议**：通常聚焦受控环境内的任务协作流程。
+- **ANP**：聚焦开放互联网中的身份、命名、发现、安全通信和应用层协作。
 
-**简言之**：连接工具或资源用MCP，企业内部智能体协作用A2A，开放互联网上的智能体连接用ANP。
+一个简单判断方法是：连接工具用 MCP；受控工作流用企业协作协议；跨域发现和通信智能体用 ANP。
 
-### 核心概念与机制
+## 当前 ANP 架构
 
-#### ANP协议架构
+最新 README 中的架构将 ANP 已发布能力组织为现有互联网基础设施、两个核心协议层，以及具体领域的应用协议。
 
-ANP采用三层架构设计，让智能体能够自由、安全地在互联网上交流：
+![ANP 协议架构](../../images/anp-architecture2.png)
 
-![](/images/anp-architecture.png)
+### 开放互联网基础设施
 
-*   **身份与加密通信层**：解决"我是谁"和"如何安全通信"的问题，基于W3C DID标准，实现去中心化身份和端到端加密。
-*   **元协议层**：解决"如何协商通信方式"的问题，让智能体能够自动协商使用哪种协议格式和版本进行交互。
-*   **应用协议层**：解决"提供什么功能"和"如何被发现"的问题，包含智能体描述和发现机制。
+ANP 不重建互联网协议栈，而是复用：
 
-这种架构确保了智能体能够在互联网上自主寻找彼此，安全建立连接，并有效交流。
+- HTTP / HTTPS 作为传输基础
+- DNS 与域名作为可达性基础
+- CA / TLS 作为 Web 安全根
+- CDN 与托管基础设施承载静态文档
+- 搜索引擎与爬虫进行公开发现
 
-#### 传输与格式 (Transport & Format)
+### 身份与加密通信层
 
-ANP基于HTTP协议传输数据，使用JSON-LD格式组织信息。
+这一层回答：**智能体是谁、对端如何验证它、消息如何被保护？**
 
-为什么选择JSON-LD？
+它包括：
 
-*   **兼容性高**：基于JSON，几乎所有编程语言都支持。
-*   **语义丰富**：通过"@context"引入词汇表，并使用schema.org，赋予数据明确含义。
-*   **易于AI理解**：提供统一的数据结构和语义，AI更容易正确理解信息。
-*   **形成数据网络**：通过链接数据，构建智能体之间的关联网络。
+- 基于 W3C DID 的身份
+- `did:wba` DID 方法
+- HTTP Message Signatures 风格认证
+- DID Document 服务发现
+- 签名密钥与密钥协商密钥分离
+- 私聊和群聊端到端加密基础能力
 
-JSON-LD示例：
+### 应用协议层
+
+这一层回答：**智能体能做什么、如何被发现、应该使用哪个应用协议？**
+
+它包括：
+
+- 智能体描述协议
+- 智能体发现协议
+- 即时消息 Profile
+- 支付、授权、认证、交易等应用协议
+
+### 元协议状态
+
+ANP-06 仍是草案。更新后的方向是由 Agent Description 驱动的语义协商：
+
+```text
+Agent Description -> MetaProtocolInterface -> anp.get_capabilities -> anp.negotiate
+```
+
+在已发布路径中，智能体已经可以通过 DID 服务发现、Agent Description 文档、声明的接口和消息 Profile 互操作。除非实现明确支持，否则应把 `MetaProtocolInterface` 与 `anp.negotiate` 视为可选草案能力。
+
+## 智能体如何连接
+
+典型 ANP 连接路径如下：
+
+```text
+WNS Handle 或搜索结果
+  -> DID
+  -> DID Document
+  -> AgentDescription / ANPMessageService
+  -> 运行时能力
+  -> 业务接口或消息 Profile
+```
+
+需要区分几个层次：
+
+- **WNS Handle** 是人类可读名称。
+- **DID** 是密码学身份锚点。
+- **DID Document** 是验证方法和服务端点的权威来源。
+- **Agent Description** 说明智能体公开信息和可用接口。
+- **ANPMessageService** 是即时消息 Profile 使用的统一消息与交互端点。
+- **运行时能力协商** 确认端点当前真正支持的能力。
+
+## 身份：`did:wba`
+
+### `did:wba` 提供什么
+
+`did:wba` 是 ANP 的 Web-based DID 方法。它让智能体拥有去中心化身份，同时继续使用普通 Web 基础设施。
+
+裸域名 DID：
+
+```text
+did:wba:example.com
+```
+
+解析到：
+
+```text
+https://example.com/.well-known/did.json
+```
+
+使用默认 `e1_` Profile 的路径型 DID：
+
+```text
+did:wba:example.com:user:alice:e1_<fingerprint>
+```
+
+解析到：
+
+```text
+https://example.com/user/alice/e1_<fingerprint>/did.json
+```
+
+如果域名包含端口，DID 中的冒号需要百分号编码：
+
+```text
+did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
+```
+
+### 裸域名 DID 与路径型 DID
+
+- **裸域名 DID**（如 `did:wba:example.com`）通常表示域名级主体或服务身份。
+- **路径型 DID**（如 `did:wba:example.com:user:alice:e1_<fingerprint>`）表示域名下的具体主体。
+- 新建路径型 DID 应使用默认的 `e1_` Ed25519 绑定指纹 Profile。
+- 当绑定密钥变化时，路径型 DID 可能轮换；如果需要稳定的人类可读引用，应使用 WNS Handle。
+
+### 最小 DID Document 形态
+
+DID Document 发布密钥和服务。在 ANP 中常见服务类型包括：
+
+- `AgentDescription`：指向智能体 `ad.json` 文档。
+- `ANPHandleService`：支持 WNS 双向绑定验证。
+- `ANPMessageService`：暴露统一 ANP 消息 / 交互端点。
+
+示例：
 
 ```json
 {
   "@context": [
     "https://www.w3.org/ns/did/v1",
-    "https://schema.org"
+    "https://w3id.org/security/data-integrity/v2",
+    "https://w3id.org/security/multikey/v1"
   ],
-  "@type": "Agent",
-  "name": "旅行助手",
-  "description": "帮助规划旅行并预订服务",
-  "url": "https://travel-assistant.example.com",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": "https://travel-assistant.example.com/search?q={search_term}",
-    "query-input": "required name=search_term"
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "verificationMethod": [
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+      "type": "Multikey",
+      "controller": "did:wba:example.com:user:alice:e1_<fingerprint>",
+      "publicKeyMultibase": "z6Mk..."
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#key-x25519-1",
+      "type": "X25519KeyAgreementKey2019",
+      "controller": "did:wba:example.com:user:alice:e1_<fingerprint>",
+      "publicKeyMultibase": "z9h..."
+    }
+  ],
+  "authentication": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-1"
+  ],
+  "assertionMethod": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-1"
+  ],
+  "keyAgreement": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-x25519-1"
+  ],
+  "service": [
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#ad",
+      "type": "AgentDescription",
+      "serviceEndpoint": "https://example.com/agents/alice/ad.json"
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#handle",
+      "type": "ANPHandleService",
+      "serviceEndpoint": "https://example.com/.well-known/handle/alice"
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#anp",
+      "type": "ANPMessageService",
+      "serviceEndpoint": "https://example.com/anp",
+      "serviceDid": "did:wba:example.com"
+    }
+  ],
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "created": "2025-01-01T00:00:00Z",
+    "verificationMethod": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z..."
   }
 }
 ```
 
-#### 智能体身份 (DID)
+### 身份认证流程
 
-去中心化身份标识符（Decentralized Identifiers, DID）是ANP智能体身份的基础。
+高层流程如下：
 
-为什么智能体身份非常重要？ 互联网上的智能体要互联互通，首先需要解决"我是谁"和"你是谁"的问题。没有可靠的身份，就无法建立信任，也无法确保通信安全。
+1. 智能体 A 使用与其 DID Document 对应的私钥签名 HTTP 请求。
+2. 智能体 B 解析智能体 A 的 DID Document。
+3. 智能体 B 检查该密钥是否被授权用于认证。
+4. 智能体 B 验证请求签名。
+5. 认证通过后，双方使用选定的 ANP 接口或消息 Profile 交互。
 
-为什么选择DID？
+## Name Service：WNS Handle
 
-*   **W3C国际标准**，确保全球互操作性，一个身份全球通用。
-*   **原生去中心化设计**，让智能体自主控制自己的身份。
-*   **灵活支持多种验证方法**，适应不同场景。
-*   **无需依赖中心化身份提供商**，避免单点故障。
+### 为什么需要 WNS
 
-相比其他方案：
+DID 是可靠的机器标识符，但不方便人类输入、记忆和传播。WNS（WBA Name Space）在 `did:wba` 之上提供稳定的人类可读命名层。
 
-*   **区块链身份**：部署成本高，交易速度慢，资源消耗大。
-*   **OpenID Connect**：依赖中心化身份提供商，自主性差。
-*   **API密钥**：缺乏标准化，互操作性差，管理复杂。
+Handle 示例：
 
-#### did:wba方法
-
-did:wba（Web-Based Agent）是ANP设计的DID方法，基于Web而非区块链。**它巧妙地利用了现有的Web基础设施（如HTTPS和DNS）**，结合了Web的便利性和去中心化的身份控制，能够达到类似电子邮件身份的效果。
-
-**其核心思想是：每个 `did:wba` 标识符都映射到一个特定的HTTPS URL。这个URL指向一个托管在智能体自己控制的Web服务器上的DID文档（通常命名为 `did.json`）。**
-
-did:wba格式示例：
-
-```
-did:wba:example.com:alice
+```text
+alice.example.com
 ```
 
-下面是一个最精简的DID文档示例（`did.json`）：
+可选传播形式：
+
+```text
+wba://alice.example.com
+```
+
+Handle 解析为 DID，DID 再解析到 DID Document：
+
+```text
+Handle -> Handle Resolution Endpoint -> DID -> DID Document -> service
+```
+
+### Handle 解析端点
+
+对于 `alice.example.com`，标准端点是：
+
+```text
+https://example.com/.well-known/handle/alice
+```
+
+响应示例：
 
 ```json
 {
-    "@context": [ // 定义文档中使用的词汇表和命名空间
-      "https://www.w3.org/ns/did/v1", // W3C DID核心词汇
-      "https://w3id.org/security/suites/ed25519-2020/v1", // Ed25519 签名套件
-    ],
-    "id": "did:wba:example.com%3A8800:user:alice", // DID标识符，唯一标识该智能体，注意端口号':'进行了URL编码 (%3A)
-    "authentication": [ // 指定可用于身份验证 (证明对DID的控制权) 的验证方法
-      {
-        "id": "did:wba:example.com%3A8800:user:alice#key-1",
-        "type": "Ed25519VerificationKey2020", // 另一种签名算法 (EdDSA - Edwards-curve Digital Signature Algorithm)
-        "controller": "did:wba:example.com%3A8800:user:alice",
-        "publicKeyMultibase": "zH3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV" // Multibase格式的公钥 ，最重要的字段，用于身份验证
-      }
-    ],
-    "service": [ // 可选：定义与此DID关联的服务端点列表
-      {
-        "id": "did:wba:example.com%3A8800:user:alice#agent-description", // 服务端点的唯一标识符
-        "type": "AgentDescription", // 服务类型，用于发现智能体的描述文档
-        "serviceEndpoint": "https://agent-network-protocol.com/agents/example/ad.json" // 可以访问服务的URL (在此示例中是智能体描述文件)
-      }
-      // 可能还有其他服务端点...
-    ]
+  "handle": "alice.example.com",
+  "did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "status": "active",
+  "updated": "2025-01-01T00:00:00Z",
+  "versionId": "42",
+  "ttl": 300,
+  "profile": {
+    "type": "DIDSubjectProfile",
+    "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+    "subject_type": "agent",
+    "handle": "alice.example.com",
+    "display_name": "Alice Agent",
+    "description": "一个旅行规划智能体",
+    "avatar_uri": "https://example.com/avatars/alice.png",
+    "discoverability": "listed"
+  }
 }
 ```
 
-特点：
+重要规则：
 
-*   **不依赖区块链**，降低使用门槛。
-*   **利用现有Web基础设施（HTTPS, DNS）**，易于部署和解析。
-*   **智能体自主控制身份**，DID文档托管在自己的服务器上。
-*   **兼具去中心化特点与Web兼容性**。
+- 外层 `did` 是权威身份结果。
+- `profile` 只是公开展示元数据。
+- `profile` 不得用于身份认证、授权、路由、E2EE 绑定或服务端点选择。
+- 安全敏感操作必须通过 DID Document 中的 `ANPHandleService` 验证 Handle 到 DID 的绑定。
+- 需要信任具体 Handle 时必须获得 `exact-handle` 验证；仅 `provider-confirmed` 不足以满足高保证绑定。
 
-身份验证流程：
+## 智能体描述
 
-```mermaid
-sequenceDiagram
-    participant Agent A Client
-    participant Agent B Server 
-    participant Agent A DID Sever
+### Agent Description 的作用
 
-    Note over Agent A Client,Agent B Server: First Request
+Agent Description 文档是智能体的公开入口页。其他智能体读取它以了解：
 
-    Agent A Client->>Agent B Server: HTTP Request: DID,Signature
-    Agent B Server->>Agent A DID Sever: Get DID Document
-    Agent A DID Sever->>Agent B Server: DID Document
+- 智能体名称、DID、所有者和描述
+- 产品、服务、文档、媒体等公开信息资源
+- 支持的自然语言接口和结构化接口
+- 安全要求
+- 可选的文档完整性 proof
 
-    Note over Agent B Server: Authentication
+ANP 的信息交互模式类似爬虫：智能体发布数据、描述和接口文档的 URL；其他智能体拉取这些资源，在本地推理，并仅在需要时调用合适接口。
 
-    Agent B Server->>Agent A Client: HTTP Response: access token
+### 信息与接口
 
-    Note over Agent A Client, Agent B Server: Subsequent Requests
+Agent Description 使用两个核心概念：
 
-    Agent A Client->>Agent B Server: HTTP Request: access token
-    Agent B Server->>Agent A Client: HTTP Response
-```
+- **Information**：对外可用资源，例如产品描述、服务描述、文档、视频或其他数据。
+- **Interface**：与智能体交互的方式。
+  - `NaturalLanguageInterface`：灵活的对话接口。
+  - `StructuredInterface`：结构化 API 接口，例如 YAML 描述的 API、OpenRPC、JSON-RPC、MCP 兼容接口或 WebRTC。
+  - `MetaProtocolInterface`：用于语义协商的可选草案扩展。
 
-本质上，DID身份验证基于公私钥加密技术：
+如果结构化接口能满足任务，智能体应优先使用结构化接口以提高精确性和效率。自然语言接口仍适用于开放式请求。
 
-*   智能体A向智能体B发起连接请求，携带自己的DID。
-*   智能体B通过DID解析获取A的DID文档和公钥。
-*   智能体B用A的公钥验证签名，确认A身份。
-*   智能体B返回访问令牌给智能体A。
-*   智能体A在后续请求中携带访问令牌，智能体B验证访问令牌，确认智能体A的身份。
-
-### 智能体描述
-
-#### 智能体描述定义
-
-智能体描述协议定义了如何描述智能体的信息和交互方式，是智能体被发现和使用的基础。
-
-#### 智能体描述的核心概念
-
-智能体描述的核心概念是信息和接口(Interface)：
-
-*   **信息**：智能体的信息，如名称、描述、产品、服务等，帮助其他智能体了解"这是谁"和"能做什么"。
-*   **接口(Interface)**：定义如何与智能体交互，分为两类：
-    *   **自然语言接口**：允许通过自然语言对话与智能体交互，适合复杂、开放式交流。
-    *   **结构化接口**：定义标准化的API调用格式，适合精确的数据交换和操作执行。支持现有大部分规范，比如OpenAPI、JSON-RPC等。
-
-#### 智能体描述格式
-
-ANP使用JSON-LD（JSON for Linked Data）格式和schema.org词汇描述智能体，这是语义网技术的实现。
-
-#### 智能体描述示例
-
-智能体描述包含：
-
-*   基本信息（名称、描述、创建者等）
-*   身份验证方法
-*   提供的服务和产品
-*   支持的交互接口
-*   能力描述
-
-优势：
-
-*   **标准化的描述方式**，提高互操作性。
-*   **基于现有schema.org标准**，易于理解和扩展。
-*   **智能体信息可链接成数据网络**，形成"智能体网络"。
-*   **提高AI对信息的理解一致性**。
-
-酒店智能体描述文件示例：
+### Agent Description 示例
 
 ```json
 {
-  "@context": {
-    "@vocab": "https://schema.org/",
-    "did": "https://w3id.org/did#",
-    "ad": "https://agent-network-protocol.com/ad#"
-  },
-  "@type": "ad:AgentDescription",
-  "@id": "https://example.com/agents/hotel/ad.json",
-  "name": "XX海滩酒店",
-  "did": "did:wba:example.com:hotel",
+  "protocolType": "ANP",
+  "protocolVersion": "1.0.0",
+  "type": "AgentDescription",
+  "url": "https://grand-hotel.com/agents/hotel-assistant/ad.json",
+  "name": "Grand Hotel Assistant",
+  "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_<fingerprint>",
   "owner": {
-    "@type": "Organization",
-    "name": "海滩度假村集团",
-    "@id": "https://xxx.example.com"
+    "type": "Organization",
+    "name": "Grand Hotel Management Group",
+    "url": "https://grand-hotel.com"
   },
-  "description": "XX海滩酒店是一家位于美丽海滩旁的豪华酒店，提供舒适的住宿环境和优质的服务。",
-  "version": "1.0.0",
+  "description": "面向房间预订、礼宾服务、住客协助和消息通信的智能酒店助手。",
   "created": "2024-12-31T12:00:00Z",
   "securityDefinitions": {
     "didwba_sc": {
@@ -255,85 +361,233 @@ ANP使用JSON-LD（JSON for Linked Data）格式和schema.org词汇描述智能�
     }
   },
   "security": "didwba_sc",
-  "products": [
+  "Infomations": [
     {
-      "@type": "Product",
-      "name": "豪华海景房",
-      "description": "提供绝美海景视野的豪华客房，配备高端设施。",
-      "@id": "https://example.com/products/deluxe-ocean-view"
+      "type": "Product",
+      "description": "提供高级设施和个性化服务的豪华酒店客房。",
+      "url": "https://grand-hotel.com/products/luxury-rooms.json"
     },
     {
-      "@type": "Product",
-      "name": "SPA水疗服务",
-      "description": "提供专业的SPA水疗和放松服务。",
-      "@id": "https://example.com/products/spa-services"
+      "type": "Information",
+      "description": "酒店设施、便利设施、位置和政策信息。",
+      "url": "https://grand-hotel.com/info/hotel-basic-info.json"
     }
   ],
   "interfaces": [
     {
-      "@type": "ad:NaturalLanguageInterface",
+      "type": "NaturalLanguageInterface",
       "protocol": "YAML",
-      "url": "https://example.com/api/nl-interface.yaml",
-      "description": "通过自然语言与酒店智能体交互，查询房间信息、设施服务等。"
+      "version": "1.2.2",
+      "url": "https://grand-hotel.com/api/nl-interface.yaml",
+      "description": "用于酒店服务对话的自然语言接口。"
     },
     {
-      "@type": "ad:StructuredInterface",
-      "protocol": "YAML",
+      "type": "StructuredInterface",
+      "protocol": "openrpc",
+      "url": "https://grand-hotel.com/api/booking-openrpc.json",
       "humanAuthorization": true,
-      "url": "https://example.com/api/booking-interface.yaml",
-      "description": "用于预订酒店房间和服务的结构化接口，需要人工授权。"
+      "description": "用于预订和预约管理的结构化接口。"
     },
     {
-      "@type": "ad:StructuredInterface",
-      "protocol": "JSON-RPC 2.0",
-      "url": "https://example.com/api/hotel-api.json",
-      "description": "酒店API接口，用于查询房间可用性、价格和设施信息。"
+      "type": "MetaProtocolInterface",
+      "profile": "anp.meta.negotiation.v1",
+      "binding": "jsonrpc-2.0",
+      "url": "https://grand-hotel.com/anp",
+      "methods": ["anp.get_capabilities", "anp.negotiate"],
+      "description": "可选的草案协商接口。"
     }
   ]
 }
 ```
 
-### 智能体发现
+> 注意：当前智能体描述规范示例使用字段名 `Infomations`。实现时应遵循当前有效规范，同时为未来版本可能修正拼写做好兼容处理。
 
-智能体发现协议定义了如何在互联网上发现和连接智能体的机制。
+## 智能体发现
 
-#### 发现机制
+智能体发现定义智能体和搜索服务如何找到公开 Agent Description 文档。
 
-ANP的智能体发现基于RFC 8615定义的".well-known" URI标准：
+### 主动发现
 
-*   **Web发现**：在域名的`.well-known`目录下提供智能体描述文件URL列表。
-    ```
-    https://example.com/.well-known/agent-descriptions
-    ```
-    `agent-descriptions` 示例：
-    ```json
+一个域名可以在以下路径发布所有公开 Agent Description URL：
+
+```text
+https://{domain}/.well-known/agent-descriptions
+```
+
+示例：
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "did": "https://w3id.org/did#",
+    "ad": "https://agent-network-protocol.com/ad#"
+  },
+  "@type": "CollectionPage",
+  "url": "https://example.com/.well-known/agent-descriptions",
+  "items": [
     {
-      "@context": {
-        "@vocab": "https://schema.org/",
-        "did": "https://w3id.org/did#",
-        "ad": "https://agent-network-protocol.com/ad#"
-      },
-      "@type": "CollectionPage",
-      "url": "https://agent-network-protocol.com/.well-known/agent-descriptions",
-      "items": [
-        {
-          "@type": "ad:AgentDescription",
-          "name": "Smart Assistant",
-          "@id": "https://agent-network-protocol.com/agents/smartassistant/ad.json"
-        },
-        {
-          "@type": "ad:AgentDescription",
-          "name": "Customer Support Agent",
-          "@id": "https://agent-network-protocol.com/agents/customersupport/ad.json"
-        }
-      ],
-      "next": "https://agent-network-protocol.com/.well-known/agent-descriptions?page=2"  // 分页机制
+      "@type": "ad:AgentDescription",
+      "name": "Hotel Assistant",
+      "@id": "https://example.com/agents/hotel-assistant/ad.json"
+    },
+    {
+      "@type": "ad:AgentDescription",
+      "name": "Customer Support Agent",
+      "@id": "https://example.com/agents/support/ad.json"
     }
-    ```
-*   **主动注册**：智能体可以主动注册到私有注册表，适用于局域网或封闭环境。
-*   **搜索引擎发现**：标准化的描述文档放到域名的`.well-known`目录下，搜索引擎通过DNS发现域名下的agent-descriptions文档，索引其中的智能体描述。
+  ],
+  "next": "https://example.com/.well-known/agent-descriptions?page=2"
+}
+```
 
-ANP允许一个域名下托管多个智能体，每个智能体可以有自己独特的功能和服务。
+客户端和搜索爬虫应沿 `next` 继续获取，直到没有下一页。
+
+### 被动发现
+
+在被动发现中，智能体主动把自己的 Agent Description URL 提交给搜索服务智能体。搜索服务的注册 API 由该搜索服务智能体自己的 Agent Description 文档描述。
+
+典型流程：
+
+1. 读取搜索服务智能体的 Agent Description。
+2. 找到其注册接口。
+3. 提交自己的 Agent Description URL。
+4. 搜索服务验证、抓取并索引该描述。
+
+### 基于 Handle 的入口
+
+WNS Handle 解析也可以作为发现入口：
+
+```text
+alice.example.com -> DID -> DID Document -> AgentDescription service
+```
+
+但客户端不得直接从 Handle 推断服务端点；DID Document 仍是权威来源。
+
+## 即时消息协议
+
+ANP 端到端即时消息是一组用于跨域智能体消息通信的 Profile。它不是单一中心化聊天产品协议，而是定义智能体如何发现消息服务、发送私聊和群聊消息、保护内容、传输附件并跨域联邦。
+
+### 核心思想
+
+- **联邦而非中心化**：不同域托管自己的智能体和服务。
+- **身份优先**：`agent_did` 和 `group_did` 是第一标识符。
+- **服务发现优先**：消息端点通过 DID Document 中的 `ANPMessageService` 发现。
+- **JSON-RPC 2.0 外层绑定**：请求使用 `jsonrpc`、`method`、`id` 和对象形式的 `params`。
+- **通用 params 形态**：大多数方法使用 `params.meta`、可选 `params.auth` 和 `params.body`。
+- **基础语义与 E2EE Overlay 分离**：仅传输保护的明文模式和端到端加密模式可以并存。
+- **控制平面与数据平面分离**：附件使用 Manifest 和独立 HTTPS 对象传输。
+
+### 统一 `ANPMessageService`
+
+当前消息 Profile 期望 DID Document 对外暴露一个用于跨域交互的公共 `ANPMessageService`。实现内部可以拆分私聊、群组、密钥、对象和联邦组件，但对外这些能力收敛在统一服务端点之后。
+
+服务条目可以包含静态提示：
+
+```json
+{
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>#message",
+  "type": "ANPMessageService",
+  "serviceEndpoint": "https://example.com/anp",
+  "serviceDid": "did:wba:example.com",
+  "profiles": [
+    "anp.core.binding.v1",
+    "anp.direct.base.v1",
+    "anp.direct.e2ee.v1",
+    "anp.attachment.v1"
+  ],
+  "securityProfiles": [
+    "transport-protected",
+    "direct-e2ee"
+  ]
+}
+```
+
+重要交互前，调用方应通过以下方法确认运行时能力：
+
+```text
+anp.get_capabilities
+```
+
+当 DID 静态提示与运行时能力结果不一致时，以运行时结果为准。
+
+### 即时消息 Profile 索引
+
+即时消息规范集拆分为九个 Profile：
+
+| Profile | 作用 |
+| --- | --- |
+| [P1 核心绑定](../../chinese/message/01-核心绑定.md) | JSON-RPC 2.0 绑定、`params` 结构、能力协商、幂等和错误模型 |
+| [P2 身份与发现](../../chinese/message/02-身份与发现.md) | Agent DID / Group DID、DID Document 解释规则和 `ANPMessageService` 发现 |
+| [P3 私聊基础语义](../../chinese/message/03-私聊基础语义.md) | `direct.send`、内容模型、回执、排序和发送方证明边界 |
+| [P4 群组基础语义](../../chinese/message/04-群组基础语义.md) | 群生命周期、成员关系、群消息、群状态版本和 Host 排序 |
+| [P5 私聊端到端加密](../../chinese/message/05-私聊端到端加密.md) | 使用 DID 绑定密钥材料和 Ratchet 思路的私聊 E2EE |
+| [P6 群组端到端加密](../../chinese/message/06-群组端到端加密.md) | 基于 MLS 的群组 E2EE 和群密码学状态 |
+| [P7 附件与对象传输](../../chinese/message/07-附件与对象传输.md) | 附件 Manifest、对象服务、上传 / 下载 ticket 和对象级加密 |
+| [P8 联邦与跨域](../../chinese/message/08-联邦与跨域.md) | 跨域服务调用、路由、中继和结果见证 |
+| [P9 消息 Mention 扩展](../../chinese/message/09-消息Mention扩展.md) | 结构化群消息 mention 和 selector 语义 |
+
+推荐阅读顺序：先读 P1/P2，再读 P3/P4，然后读 P5/P6，最后按需阅读 P7/P8/P9。
+
+## 协议 SDK：AgentConnect
+
+ANP 的开源 SDK 和参考实现维护在 AgentConnect：
+
+- [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+
+AgentConnect 提供身份、认证、proof、WNS、Agent Description、OpenRPC / JSON-RPC、爬取、AP2、E2EE 和示例支持。
+
+下表基于 2026-06-27 检查的 AgentConnect README：
+
+| 语言 | 包 / 模块 | 如何开始 | 状态 |
+| --- | --- | --- | --- |
+| Python | `anp` | `pip install anp` 或 `pip install "anp[api]"` | 稳定发布 SDK |
+| Go | `github.com/agent-network-protocol/anp/golang` | `go get github.com/agent-network-protocol/anp/golang@latest` | 稳定发布 SDK |
+| Rust | `anp` | `cargo add anp` | 稳定发布 SDK |
+| Dart | `anp` | `dart pub add anp` | 已发布 SDK |
+| TypeScript | `@anp/typescript-sdk` workspace | 从 `typescript/ts_sdk` 源码构建 | 预览 / 本地源码 |
+| Java | `com.agentconnect:anp4j` 和 Spring Boot starter | 从 `java` 源码构建 | 本地 SDK |
+
+### 使用 OpenANP 创建最小 Python 智能体
+
+```bash
+pip install "anp[api]"
+```
+
+```python
+from fastapi import FastAPI
+from anp.openanp import AgentConfig, anp_agent, interface
+
+@anp_agent(AgentConfig(
+    name="Calculator",
+    did="did:wba:example.com:calculator:e1_<fingerprint>",
+    prefix="/agent",
+    description="A simple calculator agent",
+))
+class CalculatorAgent:
+    @interface
+    async def add(self, a: int, b: int) -> int:
+        return a + b
+
+app = FastAPI(title="Calculator Agent")
+app.include_router(CalculatorAgent.router())
+```
+
+常见自动生成端点：
+
+| 端点 | 用途 |
+| --- | --- |
+| `GET /agent/ad.json` | Agent Description 文档 |
+| `GET /agent/interface.json` | OpenRPC 接口文档 |
+| `POST /agent/rpc` | JSON-RPC 2.0 方法调用 |
+
+## 推荐阅读路径
+
+1. 阅读 [README.cn](../../README.cn.md) 了解当前规范索引和架构。
+2. 阅读 [ANP-03：did:wba](../../chinese/03-did-wba方法规范.md) 和 [ANP-04：WNS](../../chinese/04-ANP-基于DID-WBA的命名空间规范.md) 了解身份和命名。
+3. 阅读 [ANP-07：智能体描述](../../chinese/07-ANP-智能体描述协议规范.md) 和 [ANP-08：智能体发现](../../chinese/08-ANP-智能体发现协议规范.md) 发布和发现智能体。
+4. 构建消息能力时阅读 [ANP-09](../../chinese/09-ANP-端到端即时消息协议规范.md) 和各消息 Profile。
+5. 使用 [AgentConnect](https://github.com/agent-network-protocol/AgentConnect) 构建或测试可运行实现。
 
 ### ANP流程详解
 

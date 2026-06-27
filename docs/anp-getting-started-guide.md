@@ -4,248 +4,354 @@
 
 ### What is ANP
 
-ANP (Agent Network Protocol) is an open-source intelligent agent communication protocol, designed to be the HTTP protocol for the age of the agent internet. ANP enables agents to discover, connect, and interact with each other on the internet, establishing an open and secure network for agent collaboration.
+ANP (Agent Network Protocol) is an open protocol suite for the Agentic Web. It is designed to let agents on the open internet identify each other, publish capabilities, discover services, negotiate usable interfaces, exchange secure messages, and build application-level collaborations.
 
-ANP solves the key problem of agents being unable to communicate and collaborate efficiently, securely, and in a standardized way on the internet, providing a foundational communication protocol for the internet in the AI era.
+The current specification set is organized around the ANP 1.1 release line. It covers:
 
-### How ANP Helps Solve Practical Problems
+- `did:wba` identity and cross-domain authentication
+- WNS (WBA Name Space) human-readable handles
+- Agent Description documents
+- Agent Discovery documents and search registration
+- End-to-end instant messaging profiles
+- Application protocols such as AP2 agent payments
 
-#### Application Scenario Example: Cross-Platform Intelligent Assistant Collaboration
+The meta-protocol specification is still a draft. It is useful for semantic negotiation, but it is not required for the currently released architecture.
 
-Imagine using a personal intelligent assistant to book a hotel. In the traditional model, this assistant would need to simulate human behavior to access the hotel website, or the hotel would need to develop a specific API for this particular assistant.
+> Version note: `Version: 1.1` is the document release version. It does not change ANP payload fields such as `"protocolVersion": "1.0.0"` in examples.
+
+### Why ANP is Needed
+
+Today, most AI agents still interact with network services in one of three limited ways: simulating a human browser, using platform-specific APIs, or staying inside a single application ecosystem. ANP provides a protocol-first alternative:
+
+- **Interconnection**: agents from different domains can authenticate, discover, and communicate with each other.
+- **Native interfaces**: agents can use machine-readable descriptions, interface documents, and JSON-RPC / OpenRPC style calls instead of only reading human webpages.
+- **Stable identity and naming**: DIDs provide verifiable cryptographic identity, while WNS handles provide user-friendly names.
+- **Secure messaging**: direct messages, group messages, attachments, federation, and end-to-end encryption are specified as layered profiles.
+- **Open implementation path**: ANP reuses HTTP, DNS, TLS, JSON, JSON-LD, DID, and existing Web deployment patterns.
+
+### Example: Cross-Platform Hotel Booking
+
+Suppose a personal assistant needs to book a hotel room. Without ANP, it may have to scrape a website, log in through a platform account, or integrate with a vendor-specific API.
 
 With ANP:
 
-* Your personal assistant has its own decentralized identity (DID) and can directly interact with other agents using this identity, without needing to register an identity with other agents.
-* It can directly discover and connect to any hotel agent that supports ANP, regardless of which company or platform they belong to.
-* Both parties establish secure identity verification and encrypted communication based on DIDs, ensuring interaction security.
-* They understand the services and data provided by the hotel agent through standardized methods.
-* They complete the booking without simulating human behavior or relying on platform-specific APIs.
+1. The personal assistant has its own DID and may also have a human-readable WNS handle.
+2. It discovers hotel agents through search, `.well-known/agent-descriptions`, or a handle.
+3. It reads the hotel agent's Agent Description document to understand products, services, and interfaces.
+4. It authenticates requests with `did:wba` instead of creating a platform-specific account.
+5. It can use a structured interface for booking and a natural-language interface for special requests.
+6. If payment or human authorization is required, that requirement is visible in the interface description and handled by the relevant application protocol.
 
-This not only improves efficiency but also solves data privacy issues (the personal assistant can process information locally and only send necessary information to the hotel agent).
+### Relationship with MCP and A2A
 
-#### More Problems ANP Can Solve
+ANP is complementary to other agent protocols:
 
-* **Data Silos**: Today's internet services are isolated from each other. ANP enables seamless communication between agents through standardized agent descriptions and interaction protocols, making it as natural as humans visiting different websites.
-* **Identity Fragmentation**: Currently, you need separate accounts on each platform. ANP uses decentralized identities (DIDs), giving agents their own "digital passports" that can move freely between any services supporting ANP.
-* **Inefficient AI-Internet Interaction**: Currently, AI must simulate human operations or use specific APIs to access network services. ANP provides an AI-native interaction method, just like HTTP provides a standard access method for human browsers.
+- **MCP (Model Context Protocol)** connects a model or agent host to tools and resources.
+- **A2A-style protocols** often focus on task collaboration in controlled environments.
+- **ANP** focuses on identity, naming, discovery, secure communication, and application collaboration across the open internet.
 
-### Key Principles
+A simple rule of thumb: use MCP to connect tools, use enterprise collaboration protocols for controlled workflows, and use ANP when agents need to find and communicate with each other across domains.
 
-* **Decentralization**: Agents have independent identities, not relying on centralized platforms, promoting an open ecosystem.
-* **Interoperability**: Agents created by different developers and companies can collaborate seamlessly, breaking down data silos.
-* **Leveraging Existing Web Infrastructure**: Built on existing web technologies, requiring no new underlying infrastructure, enabling rapid deployment and adoption.
-* **AI-Native & Autonomy**: A communication protocol specifically designed for AI agents, supporting autonomous decision-making and interaction.
+## Current ANP Architecture
 
-### Comparison of ANP with MCP and A2A
+The latest README architecture organizes the released ANP capabilities into existing Internet infrastructure, two core protocol layers, and domain-specific application protocols.
 
-ANP, MCP, and A2A are complementary protocols, each solving agent communication problems in different scenarios:
+![ANP protocol architecture](../images/anp-architecture2.png)
 
-* **MCP (Model Context Protocol)**: A bridge connecting AI models with tools/resources, using a client-server architecture, suitable for a single model accessing multiple tools and resources, such as accessing search engines, calling calculators, etc.
-* **A2A (Agent2Agent)**: Designed for complex agent collaboration within enterprises, focusing on task-driven collaborative processes, suitable for completing complex task chains in trusted environments, such as workflow automation within enterprises.
-* **ANP (Agent Network Protocol)**: Created for agent interconnection on the open internet, using a peer-to-peer architecture, enabling cross-platform and cross-organization agent discovery and interaction, such as communication between agents from different companies.
+### Open Internet Infrastructure
 
-**In short**: Use MCP to connect tools or resources, A2A for agent collaboration within enterprises, and ANP for agent connections on the open internet.
+ANP does not rebuild the internet stack. It reuses:
 
-### Core Concepts and Mechanisms
+- HTTP / HTTPS for transport
+- DNS and domain names for reachability
+- CA / TLS for Web security roots
+- CDN and hosting infrastructure for static documents
+- Search engines and crawlers for public discovery
 
-#### ANP Protocol Architecture
+### Identity and Encrypted Communication Layer
 
-ANP adopts a three-layer architecture design, allowing agents to communicate freely and securely on the internet:
+This layer answers: **who is the agent, how can the peer verify it, and how can messages be protected?**
 
-![](/images/anp-architecture.png)
+It includes:
 
-* **Identity and Encrypted Communication Layer**: Solves the problems of "who am I" and "how to communicate securely," based on the W3C DID standard, implementing decentralized identity and end-to-end encryption.
-* **Meta-Protocol Layer**: Solves the problem of "how to negotiate communication methods," allowing agents to automatically negotiate which protocol format and version to use for interaction.
-* **Application Protocol Layer**: Solves the problems of "what functions are provided" and "how to be discovered," including agent description and discovery mechanisms.
+- W3C DID-based identity
+- the `did:wba` DID method
+- HTTP Message Signatures style authentication
+- DID Document service discovery
+- key separation for signing and key agreement
+- end-to-end encryption foundations for direct and group messaging
 
-This architecture ensures that agents can autonomously find each other on the internet, securely establish connections, and communicate effectively.
+### Application Protocol Layer
 
-#### Transport & Format
+This layer answers: **what can the agent do, how can it be found, and which application protocol should be used?**
 
-ANP transmits data based on the HTTP protocol and organizes information using the JSON-LD format.
+It includes:
 
-Why choose JSON-LD?
+- Agent Description Protocol
+- Agent Discovery Protocol
+- instant messaging profiles
+- application protocols such as payment, authorization, authentication, and transactions
 
-* **High Compatibility**: Based on JSON, supported by almost all programming languages.
-* **Rich Semantics**: Introduces vocabularies through "@context" and uses schema.org, giving data clear meaning.
-* **Easy for AI to Understand**: Provides unified data structures and semantics, making it easier for AI to correctly understand information.
-* **Forms a Data Network**: Builds an associative network between agents through linked data.
+### Meta-Protocol Status
 
-JSON-LD example:
+ANP-06 is a draft. The updated direction is Agent Description-driven semantic negotiation:
+
+```text
+Agent Description -> MetaProtocolInterface -> anp.get_capabilities -> anp.negotiate
+```
+
+In the released path, agents can already interoperate through DID service discovery, Agent Description documents, declared interfaces, and messaging profiles. Treat `MetaProtocolInterface` and `anp.negotiate` as optional draft features unless your implementation explicitly supports them.
+
+## How Agents Connect
+
+A typical ANP connection path is:
+
+```text
+WNS Handle or Search Result
+  -> DID
+  -> DID Document
+  -> AgentDescription / ANPMessageService
+  -> Runtime capabilities
+  -> Business interface or messaging profile
+```
+
+The important separation is:
+
+- **WNS Handle** is a human-readable name.
+- **DID** is the cryptographic identity anchor.
+- **DID Document** is the authoritative source for verification methods and service endpoints.
+- **Agent Description** explains the agent's public information and available interfaces.
+- **ANPMessageService** is the unified messaging and interaction endpoint used by the instant messaging profile suite.
+- **Runtime capability negotiation** confirms what the endpoint currently supports.
+
+## Identity: `did:wba`
+
+### What `did:wba` Provides
+
+`did:wba` is ANP's Web-based DID method. It gives agents decentralized identity while still using ordinary Web infrastructure.
+
+A root domain DID:
+
+```text
+did:wba:example.com
+```
+
+resolves to:
+
+```text
+https://example.com/.well-known/did.json
+```
+
+A path DID using the default `e1_` profile:
+
+```text
+did:wba:example.com:user:alice:e1_<fingerprint>
+```
+
+resolves to:
+
+```text
+https://example.com/user/alice/e1_<fingerprint>/did.json
+```
+
+If the domain contains a port, the colon is percent-encoded in the DID:
+
+```text
+did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
+```
+
+### Root DID vs Path DID
+
+- A **root domain DID** such as `did:wba:example.com` usually represents a domain-level subject or service identity.
+- A **path DID** such as `did:wba:example.com:user:alice:e1_<fingerprint>` represents a specific subject under the domain.
+- New path DIDs should use the default `e1_` Ed25519 binding fingerprint profile.
+- When the binding key changes, a path DID may rotate. Use WNS handles when you need a stable human-readable reference.
+
+### Minimal DID Document Shape
+
+A DID Document publishes keys and services. For ANP, the common service types are:
+
+- `AgentDescription`: points to the agent's `ad.json` document.
+- `ANPHandleService`: supports WNS bidirectional binding verification.
+- `ANPMessageService`: exposes the unified ANP messaging / interaction endpoint.
+
+Example:
 
 ```json
 {
   "@context": [
     "https://www.w3.org/ns/did/v1",
-    "https://schema.org"
+    "https://w3id.org/security/data-integrity/v2",
+    "https://w3id.org/security/multikey/v1"
   ],
-  "@type": "Agent",
-  "name": "Travel Assistant",
-  "description": "Helps plan travel and book services",
-  "url": "https://travel-assistant.example.com",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": "https://travel-assistant.example.com/search?q={search_term}",
-    "query-input": "required name=search_term"
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "verificationMethod": [
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+      "type": "Multikey",
+      "controller": "did:wba:example.com:user:alice:e1_<fingerprint>",
+      "publicKeyMultibase": "z6Mk..."
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#key-x25519-1",
+      "type": "X25519KeyAgreementKey2019",
+      "controller": "did:wba:example.com:user:alice:e1_<fingerprint>",
+      "publicKeyMultibase": "z9h..."
+    }
+  ],
+  "authentication": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-1"
+  ],
+  "assertionMethod": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-1"
+  ],
+  "keyAgreement": [
+    "did:wba:example.com:user:alice:e1_<fingerprint>#key-x25519-1"
+  ],
+  "service": [
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#ad",
+      "type": "AgentDescription",
+      "serviceEndpoint": "https://example.com/agents/alice/ad.json"
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#handle",
+      "type": "ANPHandleService",
+      "serviceEndpoint": "https://example.com/.well-known/handle/alice"
+    },
+    {
+      "id": "did:wba:example.com:user:alice:e1_<fingerprint>#anp",
+      "type": "ANPMessageService",
+      "serviceEndpoint": "https://example.com/anp",
+      "serviceDid": "did:wba:example.com"
+    }
+  ],
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "created": "2025-01-01T00:00:00Z",
+    "verificationMethod": "did:wba:example.com:user:alice:e1_<fingerprint>#key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z..."
   }
 }
 ```
 
-#### Agent Identity (DID)
+### Authentication Flow
 
-Decentralized Identifiers (DID) are the foundation of ANP agent identity.
+At a high level:
 
-Why is agent identity so important? For agents to interconnect on the internet, they first need to solve the problems of "who am I" and "who are you." Without reliable identity, trust cannot be established, and communication security cannot be ensured.
+1. Agent A signs an HTTP request with the private key corresponding to its DID Document.
+2. Agent B resolves Agent A's DID Document.
+3. Agent B checks that the key is authorized for authentication.
+4. Agent B verifies the request signature.
+5. After authentication, the parties can use the selected ANP interface or messaging profile.
 
-Why choose DID?
+## Name Service: WNS Handles
 
-* **W3C International Standard**, ensuring global interoperability, one identity usable worldwide.
-* **Native decentralized design**, allowing agents to autonomously control their own identity.
-* **Flexible support for multiple verification methods**, adapting to different scenarios.
-* **No dependency on centralized identity providers**, avoiding single points of failure.
+### Why WNS Exists
 
-Compared to other solutions:
+DIDs are reliable machine identifiers, but they are not convenient for humans to type, remember, or share. WNS (WBA Name Space) adds a stable human-readable naming layer on top of `did:wba`.
 
-* **Blockchain Identity**: High deployment cost, slow transaction speed, high resource consumption.
-* **OpenID Connect**: Depends on centralized identity providers, poor autonomy.
-* **API Keys**: Lack of standardization, poor interoperability, complex management.
+Example handle:
 
-#### did:wba Method
-
-did:wba (Web-Based Agent) is a DID method designed by ANP, based on the Web rather than blockchain. **It cleverly leverages existing Web infrastructure (such as HTTPS and DNS)**, combining the convenience of the Web with decentralized identity control, achieving an effect similar to email identity.
-
-**The core idea is: each `did:wba` identifier maps to a specific HTTPS URL. This URL points to a DID document (usually named `did.json`) hosted on a web server controlled by the agent itself.**
-
-did:wba format example:
-
-```
-did:wba:example.com:alice
+```text
+alice.example.com
 ```
 
-Below is a minimal DID document example (`did.json`):
+Optional sharing form:
+
+```text
+wba://alice.example.com
+```
+
+A handle resolves to a DID, and the DID then resolves to a DID Document:
+
+```text
+Handle -> Handle Resolution Endpoint -> DID -> DID Document -> service
+```
+
+### Handle Resolution Endpoint
+
+For `alice.example.com`, the standard endpoint is:
+
+```text
+https://example.com/.well-known/handle/alice
+```
+
+Example response:
 
 ```json
 {
-    "@context": [ // Defines vocabularies and namespaces used in the document
-      "https://www.w3.org/ns/did/v1", // W3C DID core vocabulary
-      "https://w3id.org/security/suites/ed25519-2020/v1", // Ed25519 signature suite
-    ],
-    "id": "did:wba:example.com%3A8800:user:alice", // DID identifier, uniquely identifies this agent, note the port number ':' is URL encoded (%3A)
-    "authentication": [ // Specifies verification methods that can be used for authentication (proving control of the DID)
-      {
-        "id": "did:wba:example.com%3A8800:user:alice#key-1",
-        "type": "Ed25519VerificationKey2020", // Another signature algorithm (EdDSA - Edwards-curve Digital Signature Algorithm)
-        "controller": "did:wba:example.com%3A8800:user:alice",
-        "publicKeyMultibase": "zH3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV" // Public key in Multibase format, the most important field, used for authentication
-      }
-    ],
-    "service": [ // Optional: defines a list of service endpoints associated with this DID
-      {
-        "id": "did:wba:example.com%3A8800:user:alice#agent-description", // Unique identifier for the service endpoint
-        "type": "AgentDescription", // Service type, used to discover the agent's description document
-        "serviceEndpoint": "https://agent-network-protocol.com/agents/example/ad.json" // URL where the service can be accessed (in this example, the agent description file)
-      }
-      // There may be other service endpoints...
-    ]
+  "handle": "alice.example.com",
+  "did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+  "status": "active",
+  "updated": "2025-01-01T00:00:00Z",
+  "versionId": "42",
+  "ttl": 300,
+  "profile": {
+    "type": "DIDSubjectProfile",
+    "subject_did": "did:wba:example.com:user:alice:e1_<fingerprint>",
+    "subject_type": "agent",
+    "handle": "alice.example.com",
+    "display_name": "Alice Agent",
+    "description": "A travel planning agent",
+    "avatar_uri": "https://example.com/avatars/alice.png",
+    "discoverability": "listed"
+  }
 }
 ```
 
-Features:
+Important rules:
 
-* **Not dependent on blockchain**, lowering the usage threshold.
-* **Leverages existing Web infrastructure (HTTPS, DNS)**, easy to deploy and resolve.
-* **Agents autonomously control their identity**, with DID documents hosted on their own servers.
-* **Combines decentralized features with Web compatibility**.
+- The top-level `did` is the authoritative identity result.
+- `profile` is public display metadata only.
+- `profile` must not be used for authentication, authorization, routing, E2EE binding, or service endpoint selection.
+- For security-sensitive operations, clients must verify the Handle-to-DID binding through the DID Document's `ANPHandleService`.
+- `exact-handle` verification is required when a specific handle must be trusted; `provider-confirmed` alone is not enough for high-assurance handle binding.
 
-Authentication process:
+## Agent Description
 
-```mermaid
-sequenceDiagram
-    participant Agent A Client
-    participant Agent B Server 
-    participant Agent A DID Sever
+### What an Agent Description Does
 
-    Note over Agent A Client,Agent B Server: First Request
+The Agent Description document is the public entry page of an agent. Other agents read it to understand:
 
-    Agent A Client->>Agent B Server: HTTP Request: DID,Signature
-    Agent B Server->>Agent A DID Sever: Get DID Document
-    Agent A DID Sever->>Agent B Server: DID Document
+- the agent's name, DID, owner, and description
+- public information resources such as products, services, documents, or media
+- supported natural-language and structured interfaces
+- security requirements
+- optional proof for document integrity
 
-    Note over Agent B Server: Authentication
+ANP's information interaction pattern is crawler-like: agents publish URLs for data, descriptions, and interface documents; other agents fetch those resources, reason locally, and call the appropriate interface only when needed.
 
-    Agent B Server->>Agent A Client: HTTP Response: access token
+### Information and Interfaces
 
-    Note over Agent A Client, Agent B Server: Subsequent Requests
+Agent Description uses two core ideas:
 
-    Agent A Client->>Agent B Server: HTTP Request: access token
-    Agent B Server->>Agent A Client: HTTP Response
-```
+- **Information**: externally available resources, such as product descriptions, service descriptions, documents, videos, or other data.
+- **Interface**: ways to interact with the agent.
+  - `NaturalLanguageInterface`: flexible conversation interface.
+  - `StructuredInterface`: structured API interface such as YAML-described APIs, OpenRPC, JSON-RPC, MCP-compatible interfaces, or WebRTC.
+  - `MetaProtocolInterface`: optional draft extension for semantic negotiation.
 
-Essentially, DID authentication is based on public-private key encryption technology:
+If a structured interface can satisfy the task, agents should prefer it for precision and efficiency. Natural-language interfaces remain useful for open-ended requests.
 
-* Agent A initiates a connection request to Agent B, carrying its own DID.
-* Agent B resolves A's DID to obtain A's DID document and public key.
-* Agent B verifies the signature using A's public key, confirming A's identity.
-* Agent B returns an access token to Agent A.
-* Agent A carries the access token in subsequent requests, and Agent B verifies the access token to confirm Agent A's identity.
-
-### Agent Description
-
-#### Agent Description Definition
-
-The agent description protocol defines how to describe an agent's information and interaction methods, which is the foundation for agents to be discovered and used.
-
-#### Core Concepts of Agent Description
-
-The core concepts of agent description are information and interfaces:
-
-* **Information**: The agent's information, such as name, description, products, services, etc., helping other agents understand "who this is" and "what it can do."
-* **Interface**: Defines how to interact with the agent, divided into two categories:
-    * **Natural Language Interface**: Allows interaction with the agent through natural language dialogue, suitable for complex, open-ended communication.
-    * **Structured Interface**: Defines standardized API call formats, suitable for precise data exchange and operation execution. Supports most existing specifications, such as OpenAPI, JSON-RPC, etc.
-
-#### Agent Description Format
-
-ANP uses the JSON-LD (JSON for Linked Data) format and schema.org vocabulary to describe agents, which is an implementation of semantic web technology.
-
-#### Agent Description Example
-
-Agent descriptions include:
-
-* Basic information (name, description, creator, etc.)
-* Authentication methods
-* Services and products provided
-* Supported interaction interfaces
-* Capability descriptions
-
-Advantages:
-
-* **Standardized description method**, improving interoperability.
-* **Based on existing schema.org standards**, easy to understand and extend.
-* **Agent information can be linked into a data network**, forming an "agent network."
-* **Improves consistency in AI understanding of information**.
-
-Hotel agent description file example:
+### Agent Description Example
 
 ```json
 {
-  "@context": {
-    "@vocab": "https://schema.org/",
-    "did": "https://w3id.org/did#",
-    "ad": "https://agent-network-protocol.com/ad#"
-  },
-  "@type": "ad:AgentDescription",
-  "@id": "https://example.com/agents/hotel/ad.json",
-  "name": "XX Beach Hotel",
-  "did": "did:wba:example.com:hotel",
+  "protocolType": "ANP",
+  "protocolVersion": "1.0.0",
+  "type": "AgentDescription",
+  "url": "https://grand-hotel.com/agents/hotel-assistant/ad.json",
+  "name": "Grand Hotel Assistant",
+  "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_<fingerprint>",
   "owner": {
-    "@type": "Organization",
-    "name": "Beach Resort Group",
-    "@id": "https://xxx.example.com"
+    "type": "Organization",
+    "name": "Grand Hotel Management Group",
+    "url": "https://grand-hotel.com"
   },
-  "description": "XX Beach Hotel is a luxury hotel located next to a beautiful beach, offering comfortable accommodations and quality service.",
-  "version": "1.0.0",
+  "description": "An intelligent hospitality agent for room booking, concierge services, guest assistance, and messaging.",
   "created": "2024-12-31T12:00:00Z",
   "securityDefinitions": {
     "didwba_sc": {
@@ -255,85 +361,233 @@ Hotel agent description file example:
     }
   },
   "security": "didwba_sc",
-  "products": [
+  "Infomations": [
     {
-      "@type": "Product",
-      "name": "Deluxe Ocean View Room",
-      "description": "Luxury guest room offering stunning ocean views, equipped with high-end facilities.",
-      "@id": "https://example.com/products/deluxe-ocean-view"
+      "type": "Product",
+      "description": "Luxury hotel rooms with premium amenities and personalized services.",
+      "url": "https://grand-hotel.com/products/luxury-rooms.json"
     },
     {
-      "@type": "Product",
-      "name": "SPA Services",
-      "description": "Professional SPA therapy and relaxation services.",
-      "@id": "https://example.com/products/spa-services"
+      "type": "Information",
+      "description": "Hotel facilities, amenities, location, and policies.",
+      "url": "https://grand-hotel.com/info/hotel-basic-info.json"
     }
   ],
   "interfaces": [
     {
-      "@type": "ad:NaturalLanguageInterface",
+      "type": "NaturalLanguageInterface",
       "protocol": "YAML",
-      "url": "https://example.com/api/nl-interface.yaml",
-      "description": "Interact with the hotel agent through natural language to query room information, facility services, etc."
+      "version": "1.2.2",
+      "url": "https://grand-hotel.com/api/nl-interface.yaml",
+      "description": "Natural language interface for conversational hotel services."
     },
     {
-      "@type": "ad:StructuredInterface",
-      "protocol": "YAML",
+      "type": "StructuredInterface",
+      "protocol": "openrpc",
+      "url": "https://grand-hotel.com/api/booking-openrpc.json",
       "humanAuthorization": true,
-      "url": "https://example.com/api/booking-interface.yaml",
-      "description": "Structured interface for booking hotel rooms and services, requiring human authorization."
+      "description": "Structured interface for booking and reservation management."
     },
     {
-      "@type": "ad:StructuredInterface",
-      "protocol": "JSON-RPC 2.0",
-      "url": "https://example.com/api/hotel-api.json",
-      "description": "Hotel API interface for querying room availability, prices, and facility information."
+      "type": "MetaProtocolInterface",
+      "profile": "anp.meta.negotiation.v1",
+      "binding": "jsonrpc-2.0",
+      "url": "https://grand-hotel.com/anp",
+      "methods": ["anp.get_capabilities", "anp.negotiate"],
+      "description": "Optional draft negotiation interface."
     }
   ]
 }
 ```
 
-### Agent Discovery
+> Note: the current Agent Description specification uses the field name `Infomations` in examples. Implementations should follow the active specification while being careful with compatibility if future versions correct the spelling.
 
-The agent discovery protocol defines mechanisms for discovering and connecting to agents on the internet.
+## Agent Discovery
 
-#### Discovery Mechanism
+Agent Discovery defines how agents and search services find public Agent Description documents.
 
-ANP's agent discovery is based on the ".well-known" URI standard defined in RFC 8615:
+### Active Discovery
 
-* **Web Discovery**: Provides a list of agent description file URLs in the `.well-known` directory of the domain.
-    ```
-    https://example.com/.well-known/agent-descriptions
-    ```
-    `agent-descriptions` example:
-    ```json
+A domain can publish all public Agent Description URLs under:
+
+```text
+https://{domain}/.well-known/agent-descriptions
+```
+
+Example:
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "did": "https://w3id.org/did#",
+    "ad": "https://agent-network-protocol.com/ad#"
+  },
+  "@type": "CollectionPage",
+  "url": "https://example.com/.well-known/agent-descriptions",
+  "items": [
     {
-      "@context": {
-        "@vocab": "https://schema.org/",
-        "did": "https://w3id.org/did#",
-        "ad": "https://agent-network-protocol.com/ad#"
-      },
-      "@type": "CollectionPage",
-      "url": "https://agent-network-protocol.com/.well-known/agent-descriptions",
-      "items": [
-        {
-          "@type": "ad:AgentDescription",
-          "name": "Smart Assistant",
-          "@id": "https://agent-network-protocol.com/agents/smartassistant/ad.json"
-        },
-        {
-          "@type": "ad:AgentDescription",
-          "name": "Customer Support Agent",
-          "@id": "https://agent-network-protocol.com/agents/customersupport/ad.json"
-        }
-      ],
-      "next": "https://agent-network-protocol.com/.well-known/agent-descriptions?page=2"  // Pagination mechanism
+      "@type": "ad:AgentDescription",
+      "name": "Hotel Assistant",
+      "@id": "https://example.com/agents/hotel-assistant/ad.json"
+    },
+    {
+      "@type": "ad:AgentDescription",
+      "name": "Customer Support Agent",
+      "@id": "https://example.com/agents/support/ad.json"
     }
-    ```
-* **Active Registration**: Agents can actively register with private registries, suitable for local networks or closed environments.
-* **Search Engine Discovery**: Standardized description documents placed in the `.well-known` directory of the domain, search engines discover agent-descriptions documents under domains through DNS and index the agent descriptions within them.
+  ],
+  "next": "https://example.com/.well-known/agent-descriptions?page=2"
+}
+```
 
-ANP allows multiple agents to be hosted under one domain, with each agent having its own unique functions and services.
+Clients and search crawlers should follow `next` until all pages are retrieved.
+
+### Passive Discovery
+
+In passive discovery, an agent submits its Agent Description URL to a search service agent. The search service's registration API is described in that search service agent's own Agent Description document.
+
+A typical passive discovery flow:
+
+1. Read the search service agent's Agent Description.
+2. Find its registration interface.
+3. Submit your Agent Description URL.
+4. The search service verifies, crawls, and indexes the description.
+
+### Handle-Based Entry
+
+WNS handle resolution can also be used as a discovery entry:
+
+```text
+alice.example.com -> DID -> DID Document -> AgentDescription service
+```
+
+However, clients must not infer service endpoints directly from the handle. The DID Document remains authoritative.
+
+## Instant Messaging Protocol
+
+ANP end-to-end instant messaging is a profile suite for cross-domain agent messaging. It is not a single centralized chat product protocol. It defines how agents discover messaging services, send direct and group messages, protect content, transfer attachments, and federate across domains.
+
+### Core Ideas
+
+- **Federated, not centralized**: different domains host their own agents and services.
+- **Identity first**: `agent_did` and `group_did` are the primary identifiers.
+- **Service discovery first**: messaging endpoints are discovered through DID Document `ANPMessageService` entries.
+- **JSON-RPC 2.0 outer binding**: requests use `jsonrpc`, `method`, `id`, and object-shaped `params`.
+- **Common params shape**: most methods use `params.meta`, optional `params.auth`, and `params.body`.
+- **Base semantics and E2EE overlays are separate**: plaintext transport-protected mode and E2EE modes can coexist.
+- **Control plane and data plane are separated**: attachments use manifests and separate HTTPS object transfer.
+
+### Unified `ANPMessageService`
+
+The current messaging profiles expect a DID Document to expose a single public `ANPMessageService` for cross-domain interaction. Internally, an implementation may have separate components for direct messages, groups, keys, objects, and federation, but externally these capabilities converge behind the unified service endpoint.
+
+A service entry may include static hints:
+
+```json
+{
+  "id": "did:wba:example.com:user:alice:e1_<fingerprint>#message",
+  "type": "ANPMessageService",
+  "serviceEndpoint": "https://example.com/anp",
+  "serviceDid": "did:wba:example.com",
+  "profiles": [
+    "anp.core.binding.v1",
+    "anp.direct.base.v1",
+    "anp.direct.e2ee.v1",
+    "anp.attachment.v1"
+  ],
+  "securityProfiles": [
+    "transport-protected",
+    "direct-e2ee"
+  ]
+}
+```
+
+Before important interactions, callers should confirm runtime capabilities with:
+
+```text
+anp.get_capabilities
+```
+
+Runtime results are authoritative when static DID hints and runtime capability results differ.
+
+### Messaging Profile Index
+
+The instant messaging suite is split into nine profiles:
+
+| Profile | Purpose |
+| --- | --- |
+| [P1 Core Binding](../message/01-core-binding.md) | JSON-RPC 2.0 binding, `params` structure, capability negotiation, idempotency, and errors |
+| [P2 Identity and Discovery](../message/02-identity-and-discovery.md) | Agent DID / Group DID, DID Document interpretation, and `ANPMessageService` discovery |
+| [P3 Direct Messaging Base Semantics](../message/03-direct-messaging-base-semantics.md) | `direct.send`, content model, receipts, ordering, and sender proof boundaries |
+| [P4 Group Messaging Base Semantics](../message/04-group-messaging-base-semantics.md) | group lifecycle, membership, group messages, group state versions, and host ordering |
+| [P5 Direct End-to-End Encryption](../message/05-direct-end-to-end-encryption.md) | direct E2EE using DID-bound key material and ratcheting concepts |
+| [P6 Group End-to-End Encryption](../message/06-group-end-to-end-encryption.md) | MLS-based group E2EE and group cryptographic state |
+| [P7 Attachments and Object Transfer](../message/07-attachments-and-object-transfer.md) | attachment manifests, object service, upload / download tickets, and object-level encryption |
+| [P8 Federation and Cross-Domain](../message/08-federation-and-cross-domain.md) | cross-domain service invocation, routing, relaying, and result witnessing |
+| [P9 Message Mentions Extension](../message/09-message-mentions.md) | structured group-message mentions and selector semantics |
+
+Recommended reading order: P1/P2 first, P3/P4 next, then P5/P6, and finally P7/P8/P9 as needed.
+
+## Protocol SDK: AgentConnect
+
+The ANP open-source SDK and reference implementation is maintained in AgentConnect:
+
+- [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
+
+AgentConnect provides SDK support for identity, authentication, proofs, WNS, Agent Description, OpenRPC / JSON-RPC, crawling, AP2, E2EE, and examples.
+
+Registry status below follows the AgentConnect README checked on 2026-06-27:
+
+| Language | Package / module | How to start | Status |
+| --- | --- | --- | --- |
+| Python | `anp` | `pip install anp` or `pip install "anp[api]"` | stable published SDK |
+| Go | `github.com/agent-network-protocol/anp/golang` | `go get github.com/agent-network-protocol/anp/golang@latest` | stable published SDK |
+| Rust | `anp` | `cargo add anp` | stable published SDK |
+| Dart | `anp` | `dart pub add anp` | published SDK |
+| TypeScript | `@anp/typescript-sdk` workspace | build from `typescript/ts_sdk` source | preview / local source |
+| Java | `com.agentconnect:anp4j` and Spring Boot starter | build from `java` source | local SDK |
+
+### Minimal Python Agent with OpenANP
+
+```bash
+pip install "anp[api]"
+```
+
+```python
+from fastapi import FastAPI
+from anp.openanp import AgentConfig, anp_agent, interface
+
+@anp_agent(AgentConfig(
+    name="Calculator",
+    did="did:wba:example.com:calculator:e1_<fingerprint>",
+    prefix="/agent",
+    description="A simple calculator agent",
+))
+class CalculatorAgent:
+    @interface
+    async def add(self, a: int, b: int) -> int:
+        return a + b
+
+app = FastAPI(title="Calculator Agent")
+app.include_router(CalculatorAgent.router())
+```
+
+Typical generated endpoints:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /agent/ad.json` | Agent Description document |
+| `GET /agent/interface.json` | OpenRPC interface document |
+| `POST /agent/rpc` | JSON-RPC 2.0 method calls |
+
+## Recommended Reading Path
+
+1. Read the [README](../README.md) for the current specification index and architecture.
+2. Read [ANP-03: did:wba](../03-did-wba-method-design-specification.md) and [ANP-04: WNS](../04-anp-did-wba-name-space-specification.md) for identity and naming.
+3. Read [ANP-07: Agent Description](../07-anp-agent-description-protocol-specification.md) and [ANP-08: Agent Discovery](../08-ANP-Agent-Discovery-Protocol-Specification.md) to publish and find agents.
+4. Read [ANP-09](../09-ANP-end-to-end-instant-messaging-protocol-specification.md) and the messaging profiles when building messaging.
+5. Use [AgentConnect](https://github.com/agent-network-protocol/AgentConnect) to build or test a working implementation.
 
 ### ANP Process Detailed Explanation
 
