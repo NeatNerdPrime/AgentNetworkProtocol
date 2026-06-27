@@ -20,14 +20,14 @@ graph LR
         PrivateKey["Private Key"]
         PublicKey["Public Key"]
     end
-    
+
     subgraph "Signing Process"
         Data["Original Data"]
         Sign["Digital Signature"]
         PrivateKey -->|Sign with Private Key| Sign
         Data -->|Calculate Hash| Sign
     end
-    
+
     subgraph "Verification Process"
         VerifyData["Received Data"]
         VerifySign["Received Signature"]
@@ -40,7 +40,7 @@ graph LR
     style PrivateKey fill:#f9f,stroke:#333,stroke-width:2px
     style PublicKey fill:#9ff,stroke:#333,stroke-width:2px
     style Sign fill:#ff9,stroke:#333,stroke-width:2px
-    style Result fill:#9f9,stroke:#333,stroke-width:2px 
+    style Result fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
 This encryption mechanism ensures:
@@ -94,7 +94,7 @@ Components include:
 4. **Signature Verification**:
    - Signature integrity verification
    - Authorized key usage confirmation
-   
+
 ## 4. Additional Security Considerations
 
 ### 4.1 Private Key Compromise
@@ -109,7 +109,7 @@ Private keys should be rotated regularly to maintain security.
 
 did:wba's security is founded on modern cryptography, utilizing asymmetric encryption, secure DID Document storage and verification processes, and regular private key rotation to ensure reliable and secure identity verification.
 
-Its fundamental principle remains rooted in the robust security of asymmetric encryption. At the infrastructure level, it relies on existing mature systems like DNS, Public Key Infrastructure, and HTTPS protocols rather than introducing new infrastructure. 
+Its fundamental principle remains rooted in the robust security of asymmetric encryption. At the infrastructure level, it relies on existing mature systems like DNS, Public Key Infrastructure, and HTTPS protocols rather than introducing new infrastructure.
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

@@ -94,11 +94,11 @@ From this perspective, ANP's technical route is closer to the Web. We believe th
 
 ## Open Source License
 
-ANP's license is MIT, and Google-A2A's license is Apache 2.0.
+ANP's license has been changed to Apache 2.0, aligning it with Google-A2A's Apache 2.0 license.
 
-I've studied this carefully, and if you want to push to big companies, participate in standardization, and go international, Apache 2.0 will be the protocol that corporate legal departments will prioritize. Although MIT is simple, in a protocol project like yours with potential patent risks and commercialization paths, it can easily be blocked by corporate legal teams.
+I've studied this carefully, and if you want to push to big companies, participate in standardization, and go international, Apache 2.0 will be the protocol that corporate legal departments will prioritize. It is better suited to a protocol project with potential patent considerations and commercialization paths.
 
-ANP will be modified to Apache 2.0 for open source licensing.
+ANP now uses Apache 2.0 for open source licensing.
 
 ## Trends
 

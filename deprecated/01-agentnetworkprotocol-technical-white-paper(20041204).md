@@ -1,12 +1,12 @@
 
 # AgentNetworkProtocol Technical White Paper: A Cross-Platform Identity Authentication and End-to-End Encrypted Communication Protocol Based on DID
 
-**Authors:** Gaowei Chang, chgaowei@gmail.com  
-**Website:** [https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
-**GitHub:** [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)  
+**Authors:** Gaowei Chang, chgaowei@gmail.com
+**Website:** [https://agent-network-protocol.com/](https://agent-network-protocol.com/)
+**GitHub:** [https://github.com/agent-network-protocol/AgentConnect](https://github.com/agent-network-protocol/AgentConnect)
 
-**Note:**  
-If you want to quickly understand our technical overview, you can first read this article: [Technical Introduction for General Audience](https://egp0uc2jnx.feishu.cn/wiki/KFTpwYoAPiwwOjkf9jacVbTInYd?from=from_copylink) or [Simplified Technical Introduction](https://egp0uc2jnx.feishu.cn/wiki/MFVNwz4PpiqBJ8kkqEfcLJKUnhf?from=from_copylink).  
+**Note:**
+If you want to quickly understand our technical overview, you can first read this article: [Technical Introduction for General Audience](https://egp0uc2jnx.feishu.cn/wiki/KFTpwYoAPiwwOjkf9jacVbTInYd?from=from_copylink) or [Simplified Technical Introduction](https://egp0uc2jnx.feishu.cn/wiki/MFVNwz4PpiqBJ8kkqEfcLJKUnhf?from=from_copylink).
 
 ## Abstract
 
@@ -249,5 +249,5 @@ This paper introduces an innovative cross-platform identity authentication and e
 
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

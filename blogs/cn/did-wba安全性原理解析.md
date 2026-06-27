@@ -20,14 +20,14 @@ graph LR
         PrivateKey["私钥"]
         PublicKey["公钥"]
     end
-    
+
     subgraph "签名过程"
         Data["原始数据"]
         Sign["数字签名"]
         PrivateKey -->|使用私钥签名| Sign
         Data -->|计算哈希| Sign
     end
-    
+
     subgraph "验证过程"
         VerifyData["接收到的数据"]
         VerifySign["接收到的签名"]
@@ -98,7 +98,7 @@ Authorization: DID <did> Nonce <nonce> Timestamp <timestamp> VerificationMethod 
 4. **签名验证**：
    - 验证签名的完整性
    - 确保签名使用了授权的密钥
-   
+
 ## 4. 其他安全性考虑
 
 ### 4.1 私钥泄漏
@@ -116,6 +116,6 @@ did:wba 的安全性建立在现代密码学的基础之上，通过非对称加
 其最底层的原理，仍然是基于非对称加密的强安全性。在基础设施层，它并没有发明或依赖新的设施，仍然是依赖现有非常成熟的域名系统、公钥基础设施、https协议等。
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

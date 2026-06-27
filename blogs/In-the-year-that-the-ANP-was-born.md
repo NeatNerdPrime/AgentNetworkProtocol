@@ -92,7 +92,7 @@ I have also communicated with the author of did:web on Twitter, and I hope our t
 
 ## Open Source and Community
 
-The ANP protocol and its core code implementations are licensed under the MIT license and will always remain so.
+The ANP protocol and its core code implementations are licensed under the Apache License 2.0.
 
 Throughout ANP's design process, we have extensively incorporated outstanding achievements from the open-source community, and we aim to give back to the community as well.
 

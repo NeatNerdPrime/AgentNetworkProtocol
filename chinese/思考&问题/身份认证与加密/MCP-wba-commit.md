@@ -2,12 +2,12 @@
 
 ## Motivation and Context
 
-We have added an experimental authentication scheme, `did:wba`, to MCP.  
+We have added an experimental authentication scheme, `did:wba`, to MCP.
 
-We believe `did:wba` can serve as an excellent complement to OAuth 2.0 for the following reasons:  
-1. `did:wba` provides security equivalent to OAuth 2.0.  
-2. `did:wba` supports decentralized identity authentication, offering better interoperability.  
-3. `did:wba` requires fewer interactions and has a simpler process.  
+We believe `did:wba` can serve as an excellent complement to OAuth 2.0 for the following reasons:
+1. `did:wba` provides security equivalent to OAuth 2.0.
+2. `did:wba` supports decentralized identity authentication, offering better interoperability.
+3. `did:wba` requires fewer interactions and has a simpler process.
 
 Using did:wba can lower the barrier for users to access MCP servers. Taking API services like exa as an example, if exa also supports did:wba and provides an API subscription interface, users won't need to log in to exa for registration, configuration, and subscription operations. The MCP client can directly use the API and the user's DID to subscribe to exa's services, then send requests with authentication information to exa's MCP server for identity verification and API calls. This makes it much more convenient for users to utilize various MCP servers.
 
@@ -37,7 +37,7 @@ Users do not need to update their code or configuration. As an experimental sche
 ## Additional context
 <!-- Add any other context, implementation notes, or design decisions -->
 
-Relevant documentation links:  
+Relevant documentation links:
 1. [did:wba Method Design Specification](https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/03-did%3Awba%20Method%20Design%20Specification.md)
 
 2. blogs：
@@ -46,6 +46,6 @@ Relevant documentation links:
   - [The Most Suitable Identity Authentication Technology for Agents: Comparing OpenID Connect, API Keys, and did:wba](https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/blogs/Comparison%20of%20did%3Awba%20with%20OpenID%20Connect%20and%20API%20keys.md)
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

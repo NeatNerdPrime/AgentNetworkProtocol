@@ -113,7 +113,7 @@ https://{domain}/.well-known/agent-descriptions
 sequenceDiagram
     participant Agent as 智能体
     participant Search as 搜索服务智能体
-    
+
     Agent->>Search: 获取智能体描述文档
     Search-->>Agent: 返回描述文档（包含注册API信息）
     Note over Agent: 从描述文档中解析注册API
@@ -141,5 +141,5 @@ sequenceDiagram
 3. **元协议**: 在智能体通信中可基于发现结果进行协议协商
 
 ## 版权声明
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

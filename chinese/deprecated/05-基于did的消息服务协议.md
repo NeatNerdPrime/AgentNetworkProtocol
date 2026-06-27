@@ -88,7 +88,7 @@ Example: Python 语言中的鉴权 token 组装过程
 ```python
 import time
 import jwt
- 
+
 def generate_token(apikey: str, exp_seconds: int):try:id, secret = apikey.split(".")except Exception as e:raise Exception("invalid apikey", e)
     payload = {"api_key": id,"exp": int(round(time.time() * 1000)) + exp_seconds * 1000,"timestamp": int(round(time.time() * 1000)),
     }
@@ -342,6 +342,6 @@ B发送给A消息是可以建立新的WSS连接，不用之前A连接B的消息�
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

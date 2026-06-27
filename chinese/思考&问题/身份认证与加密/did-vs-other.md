@@ -305,6 +305,6 @@ API 令牌是用于验证和授权对 API 的访问的唯一标识符。它们�
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

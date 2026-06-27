@@ -49,11 +49,11 @@ Intelligent agents empowered by LLMs combined with meta-protocols can effectivel
     |              |                                  |
     | <-------------                                  |
     | --------------- Code Generation --------------> |
-    |                                                 |---------------  
+    |                                                 |---------------
     |                                                 |              |
     |                                                 |   Protocol Code Generated
     |                                                 |              |
-    |                                                 | <-------------  
+    |                                                 | <-------------
     | <-------------- Code Generation --------------- |
     |                                                 |
     |                                                 |
@@ -560,7 +560,7 @@ Example of sourceHello message:
 ```json
 {
   "version": "1.0",
-  "type": "sourceHello",  
+  "type": "sourceHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -570,7 +570,7 @@ Example of sourceHello message:
         "testCasesNegotiation",
         "fixErrorNegotiation"
     ],
-    "usedProtocolHash": "1234567890abcdef..." 
+    "usedProtocolHash": "1234567890abcdef..."
   },
   // Other fields omitted
 }
@@ -581,7 +581,7 @@ Example of destinationHello message:
 ```json
 {
   "version": "1.0",
-  "type": "destinationHello",  
+  "type": "destinationHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -632,7 +632,7 @@ Example of sourceHello message:
 ```json
 {
   "version": "1.0",
-  "type": "sourceHello",  
+  "type": "sourceHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -656,7 +656,7 @@ Example of destinationHello message:
 ```json
 {
   "version": "1.0",
-  "type": "destinationHello",  
+  "type": "destinationHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -691,5 +691,5 @@ However, how to design a reasonable protocol election consensus algorithm, how t
 If AI cannot effectively integrate protocol code with application business logic and data processing code, and instead only uses protocols to process formats, the role played by the meta-protocol will be much smaller.
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

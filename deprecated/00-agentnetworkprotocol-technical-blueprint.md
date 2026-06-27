@@ -121,10 +121,10 @@ Whether you're a developer, researcher, enterprise, or anyone interested in Agen
 
 Contact us:
 
-- Author: Chang Gaowei, chgaowei@gmail.com  
-- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
-- Website: [https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
+- Author: Chang Gaowei, chgaowei@gmail.com
+- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)
+- Website: [https://agent-network-protocol.com/](https://agent-network-protocol.com/)
 - GitHub: [https://github.com/agent-network-protocol/AgentNetworkProtocol](https://github.com/agent-network-protocol/AgentNetworkProtocol)
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

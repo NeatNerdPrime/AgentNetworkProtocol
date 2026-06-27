@@ -118,7 +118,7 @@ Each capability unlocks specific protocol features for use during the session. F
 
 整体的原则是，服务原子化，主机（客户端或者AI助理的运行环境）负责编排工作流。
 
-Design Principles 设计原则 
+Design Principles 设计原则
 MCP is built on several key design principles that inform its architecture and implementation:
 MCP 建立在几个关键设计原则之上，这些原则为其架构和实施提供了信息：
 
@@ -258,7 +258,7 @@ Relatedly, we would prefer to avoid a central trust authority. We want clients a
 
 让我们首先明确下MCP客户端和MCP服务端的身份认证的用例。我认为它有两种类型的用例：
 - MCP客户端需要访问用户在MCP服务器上的资源。比如，让MCP客户端操作用户github上的代码，这个时候MCP服务器（Github服务器）需要对用户进行身份认证，MCP服务端需要提供oauth server。
-- 
+-
 
 
 # 点评：
@@ -288,6 +288,6 @@ Relatedly, we would prefer to avoid a central trust authority. We want clients a
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

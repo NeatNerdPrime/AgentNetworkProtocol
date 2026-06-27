@@ -373,35 +373,35 @@ def encrypt_aes_gcm_sha256(data: bytes, key: bytes) -> Dict[str, str]:
     # Ensure key length is 16 bytes (128 bits)
     if len(key) != 16:
         raise ValueError("Key must be 128 bits (16 bytes).")
-    
+
     # Generate random IV
     iv = os.urandom(12)  # Recommended IV length for GCM is 12 bytes
-    
+
     # Create cipher object
     encryptor = Cipher(
         algorithms.AES(key),
         modes.GCM(iv),
         backend=default_backend()
     ).encryptor()
-    
+
     # Encrypt data
     ciphertext = encryptor.update(data) + encryptor.finalize()
-    
+
     # Get authentication tag
     tag = encryptor.tag
-    
+
     # Encode to Base64
     iv_encoded = base64.b64encode(iv).decode('utf-8')
     tag_encoded = base64.b64encode(tag).decode('utf-8')
     ciphertext_encoded = base64.b64encode(ciphertext).decode('utf-8')
-    
+
     # Create JSON object
     encrypted_data = {
         "iv": iv_encoded,
         "tag": tag_encoded,
         "ciphertext": ciphertext_encoded
     }
-        
+
     return encrypted_data
 ```
 
@@ -435,7 +435,7 @@ from cryptography.hazmat.backends import default_backend
 def generate_16_char_from_random_num(random_num1: str, random_num2: str):
     content = random_num1 + random_num2
     random_bytes = content.encode('utf-8')
-    
+
     # Use HKDF to derive an 8-byte key
     hkdf = HKDF(
         algorithm=hashes.SHA256(),  # Ensure using the hash algorithm instance from the cryptography library
@@ -444,12 +444,12 @@ def generate_16_char_from_random_num(random_num1: str, random_num2: str):
         info=b'',  # Optional context information to distinguish keys for different purposes
         backend=default_backend()  # Use the default cryptographic backend
     )
-    
+
     derived_key = hkdf.derive(random_bytes)
-    
+
     # Encode the derived key to a hexadecimal string
     derived_key_hex = derived_key.hex()
-    
+
     return derived_key_hex
 ```
 
@@ -535,5 +535,5 @@ Through this scheme, we aim to achieve secure and efficient encrypted communicat
 
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

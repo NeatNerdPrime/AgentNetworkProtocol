@@ -8,7 +8,7 @@
 
 > ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
 
-**Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
+**Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, and end-to-end instant messaging. The meta-protocol specification and AP2 agent payment protocol remain drafts and are not released yet.
 
 **Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
@@ -60,7 +60,7 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
 | Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
 | Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, federation, and mentions |
-| Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | Released v1.1 (EN); CN draft available | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
+| Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | draft | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
 
 ### Instant Messaging Profiles
 
@@ -148,9 +148,9 @@ We extend our sincere gratitude to all contributors for their outstanding work a
 
 ## License
 
-This project is open-sourced under the MIT License. For details, please refer to [LICENSE](LICENSE). The copyright is held by GaoWei Chang. Any user of this project must retain the original copyright notice and license file.
+This project is open-sourced under the Apache License 2.0. For details, please refer to [LICENSE](LICENSE). The copyright is held by the ANP Open Source Community. Any user of this project must retain the original copyright notice and license file.
 
 ## Copyright Notice
 
-Copyright (c) 2024 GaoWei Chang
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but must retain this copyright notice.

@@ -224,6 +224,6 @@ AgentNetworkProtocol的目标是成为智能体互联网时代的HTTP。我们�
 
 也欢迎加入智能体通信协议讨论群，这可能是全网第一个专门面向智能体通信协议的讨论群：
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

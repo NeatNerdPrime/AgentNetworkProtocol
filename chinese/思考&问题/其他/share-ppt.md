@@ -416,6 +416,6 @@ did:wba作为一个去中心化的方案，可以去掉连接前的准备工作�
 - **联系方式**：
   - 微信：
   - GitHub：
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

@@ -54,7 +54,7 @@ Using the did:wba method, a basic DID document looks like this:
     "keyAgreement": [
       {
         "id": "did:wba:example.com%3A8800:user:alice#key-2",
-        "type": "X25519KeyAgreementKey2019", 
+        "type": "X25519KeyAgreementKey2019",
         "controller": "did:wba:example.com%3A8800:user:alice",
         "publicKeyMultibase": "z9hFgmPVfmBZwRvFEyniQDBkz9LmV7gDEqytWyGZLmDXE"
       }
@@ -81,7 +81,7 @@ did:wba can be used in conjunction with the HTTP protocol to complete identity a
 ```mermaid
 sequenceDiagram
     participant Agent A Client
-    participant Agent B Server 
+    participant Agent B Server
     participant Agent A DID Sever
 
     Note over Agent A Client,Agent B Server: Prerequisites
@@ -152,5 +152,5 @@ We have completed development and open-sourced it. For details, please refer to:
 [AgentNetworkProtocol Technical White Paper](https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/english/01-AgentNetworkProtocol-technical-white-paper.md)
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

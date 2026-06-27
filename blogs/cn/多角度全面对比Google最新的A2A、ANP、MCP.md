@@ -95,11 +95,11 @@ ANP在这里比较独特，ANP采用的是语义网的Linked-Data技术，目标
 
 ## 开源license
 
-ANP的license是MIT，Google-A2A的license是Apache 2.0。
+ANP 的 license 已经更改为 Apache 2.0，与 Google-A2A 的 Apache 2.0 license 保持一致。
 
-我仔细研究了一下，后面如果要推到大厂、参与标准化、走国际化路线，Apache 2.0 会是企业法律部门优先认可的协议。MIT 虽然简单，但在你这种有专利潜在风险和商业化路径的协议项目里，容易被企业法律团队卡住。
+我仔细研究了一下，后面如果要推到大厂、参与标准化、走国际化路线，Apache 2.0 会是企业法律部门优先认可的协议。对于有潜在专利风险和商业化路径的协议项目，Apache 2.0 更适合作为开源许可。
 
-开源许可上ANP会修改为Apache 2.0。
+开源许可上，ANP 现在使用 Apache 2.0。
 
 ## 趋势
 

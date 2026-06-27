@@ -113,7 +113,7 @@ Passive discovery typically requires using the registration API provided by sear
 sequenceDiagram
     participant Agent as Agent
     participant Search as Search Service Agent
-    
+
     Agent->>Search: Get agent description document
     Search-->>Agent: Return description document (including registration API info)
     Note over Agent: Parse registration API from description document
@@ -141,5 +141,5 @@ The Agent Discovery Protocol is closely related to the following protocols:
 3. **Meta-Protocol**: In agent communication, protocol negotiation can be based on discovery results
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This document is released under the [MIT License](./LICENSE), you are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This document is released under the [Apache License 2.0](./LICENSE), you are free to use and modify it, but you must retain this copyright notice.

@@ -1,6 +1,6 @@
 # Three Technical Approaches to AI-Internet Interaction: Insights from OpenAI's Operator
 
-The release of OpenAI's Operator has reignited discussions about AI agents. 
+The release of OpenAI's Operator has reignited discussions about AI agents.
 
 While there are numerous articles explaining what Operator is, you can also refer to the official introduction at https://openai.com/index/computer-using-agent/.
 
@@ -221,5 +221,5 @@ If you're interested in agent communication protocols or have similar needs, fee
 Welcome to join our agent communication protocol discussion group, possibly the first dedicated group for discussing agent communication protocols:
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

@@ -98,7 +98,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
       "url": "https://grand-hotel.com/products/luxury-rooms.json"
     },
     {
-      "type": "Product", 
+      "type": "Product",
       "description": "Comprehensive concierge and guest services including dining, spa, and local attractions.",
       "url": "https://grand-hotel.com/products/concierge-services.json"
     },
@@ -238,7 +238,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
       "value": "80平方米"
     },
     {
-      "type": "PropertyValue", 
+      "type": "PropertyValue",
       "name": "床型",
       "value": "特大号床 (King Size)"
     }
@@ -257,7 +257,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
       "value": true
     },
     {
-      "type": "LocationFeatureSpecification", 
+      "type": "LocationFeatureSpecification",
       "name": "空调",
       "value": true
     }
@@ -273,7 +273,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
     },
     {
       "type": "ImageObject",
-      "url": "https://grand-hotel.com/images/deluxe-suite-living.jpg", 
+      "url": "https://grand-hotel.com/images/deluxe-suite-living.jpg",
       "caption": "豪华套房 - 客厅区域",
       "description": "独立客厅配备沙发、茶几和工作区"
     },
@@ -290,7 +290,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
     "geographicArea": "全球"
   },
   "manufacturer": {
-    "type": "Organization", 
+    "type": "Organization",
     "name": "Grand Hotel Management Group",
     "url": "https://grand-hotel.com"
   }
@@ -363,7 +363,7 @@ interface是智能体对外提供的接口，Interface分为两类接口：
                 "description": "Check-in date in YYYY-MM-DD format"
               },
               "checkOut": {
-                "type": "string", 
+                "type": "string",
                 "format": "date",
                 "description": "Check-out date in YYYY-MM-DD format"
               },
@@ -660,6 +660,6 @@ AD中的安全配置是必需的。必须通过智能体级别的security成员�
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

@@ -390,35 +390,35 @@ def encrypt_aes_gcm_sha256(data: bytes, key: bytes) -> Dict[str, str]:
     # 确保密钥长度为16字节（128位）
     if len(key) != 16:
         raise ValueError("Key must be 128 bits (16 bytes).")
-    
+
     # 生成随机IV
     iv = os.urandom(12)  # 对于GCM，推荐的IV长度是12字节
-    
+
     # 创建加密对象
     encryptor = Cipher(
         algorithms.AES(key),
         modes.GCM(iv),
         backend=default_backend()
     ).encryptor()
-    
+
     # 加密数据
     ciphertext = encryptor.update(data) + encryptor.finalize()
-    
+
     # 获取tag
     tag = encryptor.tag
-    
+
     # 编码为Base64
     iv_encoded = base64.b64encode(iv).decode('utf-8')
     tag_encoded = base64.b64encode(tag).decode('utf-8')
     ciphertext_encoded = base64.b64encode(ciphertext).decode('utf-8')
-    
+
     # 创建JSON对象
     encrypted_data = {
         "iv": iv_encoded,
         "tag": tag_encoded,
         "ciphertext": ciphertext_encoded
     }
-        
+
     return encrypted_data
 ```
 
@@ -452,7 +452,7 @@ from cryptography.hazmat.backends import default_backend
 def generate_16_char_from_random_num(random_num1: str, random_num2: str):
     content = random_num1 + random_num2
     random_bytes = content.encode('utf-8')
-    
+
     # 使用HKDF派生8字节的随机数
     hkdf = HKDF(
         algorithm=hashes.SHA256(),  # 确保使用的是cryptography库中的哈希算法实例
@@ -461,12 +461,12 @@ def generate_16_char_from_random_num(random_num1: str, random_num2: str):
         info=b'',  # 可选的上下文信息，用于区分不同用途的密钥
         backend=default_backend()  # 使用默认的加密后端
     )
-    
+
     derived_key = hkdf.derive(random_bytes)
-    
+
     # 将派生的密钥编码为十六进制字符串
     derived_key_hex = derived_key.hex()
-    
+
     return derived_key_hex
 ```
 
@@ -546,6 +546,6 @@ source_data_key = HKDF(
 
 通过这套方案，我们期待在不同平台用户之间实现安全、高效的加密通信，并为去中心化身份认证提供一个可靠的技术基础。后续的工作将包括优化现有协议，增加更多安全特性，以及扩展到更多应用场景。
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

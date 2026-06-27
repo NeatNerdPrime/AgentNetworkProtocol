@@ -1,12 +1,12 @@
 
 # Tim Berners-Lee
 
-**Date**: 2006-07-27  
-**Last Change**: $Date: 2009/06/18 18:24:33 $  
-**Status**: 仅代表个人观点  
-**Editing Status**: 尚未完善，但已发布  
+**Date**: 2006-07-27
+**Last Change**: $Date: 2009/06/18 18:24:33 $
+**Status**: 仅代表个人观点
+**Editing Status**: 尚未完善，但已发布
 
-[返回设计问题](#)  
+[返回设计问题](#)
 
 ## 链接数据 (Linked Data)
 
@@ -118,6 +118,6 @@ Tim Berners-Lee在文章中强调，语义网的潜力在于“意想不到的�
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

@@ -50,11 +50,11 @@ LLM加持的智能体结合元协议可以有限的解决现有软件系统协�
     |              |                                  |
     | <-------------                                  |
     | --------------- Code Generation --------------> |
-    |                                                 |---------------  
+    |                                                 |---------------
     |                                                 |              |
     |                                                 |   Protocol Code Generated
     |                                                 |              |
-    |                                                 | <-------------  
+    |                                                 | <-------------
     | <-------------- Code Generation --------------- |
     |                                                 |
     |                                                 |
@@ -573,7 +573,7 @@ sourceHello消息示例：
 ```json
 {
   "version": "1.0",
-  "type": "sourceHello",  
+  "type": "sourceHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -583,7 +583,7 @@ sourceHello消息示例：
         "testCasesNegotiation",
         "fixErrorNegotiation"
     ],
-    "usedProtocolHash": "1234567890abcdef..." 
+    "usedProtocolHash": "1234567890abcdef..."
   },
   //其他字段省略
 }
@@ -594,7 +594,7 @@ destinationHello消息示例：
 ```json
 {
   "version": "1.0",
-  "type": "destinationHello",  
+  "type": "destinationHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -647,7 +647,7 @@ sourceHello消息示例：
 ```json
 {
   "version": "1.0",
-  "type": "sourceHello",  
+  "type": "sourceHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -671,7 +671,7 @@ destinationHello消息示例：
 ```json
 {
   "version": "1.0",
-  "type": "destinationHello",  
+  "type": "destinationHello",
   "metaProtocol": {
     "version": "1.0",
     "supportedCapabilities": [
@@ -710,6 +710,6 @@ destinationHello消息示例：
 
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

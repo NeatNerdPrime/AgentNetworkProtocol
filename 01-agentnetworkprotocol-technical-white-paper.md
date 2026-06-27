@@ -135,7 +135,7 @@ In the authentication process, the DID document contains methods and correspondi
 ```mermaid
 sequenceDiagram
     participant Agent A Client
-    participant Agent B Server 
+    participant Agent B Server
     participant Agent A DID Sever
 
     Note over Agent A Client,Agent B Server: First Request
@@ -260,8 +260,8 @@ This section systematically explains ANP's security and privacy design from thre
 
 ### 4.1 Distinction Between Human Authorization and Agent Authorization
 
-To ensure human control over sensitive operations, ANP introduces a dedicated verification method called `humanAuthorization` in DID documents.  
-- **Low-risk operations** (such as querying public information, browsing data) allow agents to authorize automatically using their autonomous keys without human intervention.  
+To ensure human control over sensitive operations, ANP introduces a dedicated verification method called `humanAuthorization` in DID documents.
+- **Low-risk operations** (such as querying public information, browsing data) allow agents to authorize automatically using their autonomous keys without human intervention.
 - **High-risk operations** (such as fund transfers, important data submissions, privacy information disclosure) must be explicitly authorized by human users.
 
 When executing high-risk requests, user agents must sign using the `humanAuthorization` method. This process requires agents to first initiate an authorization request to the human user, and only after explicit confirmation by the user (for example, through biometric verification, password verification, or hardware security module confirmation) can they call the private key bound to that method for signing and submission.
@@ -325,6 +325,6 @@ Building the agent internet network is a grand undertaking that requires extensi
 
 [^7]: A Scalable Communication Protocol for Networks of Large Language Models, [https://arxiv.org/pdf/2410.11905](https://arxiv.org/pdf/2410.11905)
 
-## Copyright Notice  
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.  
+## Copyright Notice
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

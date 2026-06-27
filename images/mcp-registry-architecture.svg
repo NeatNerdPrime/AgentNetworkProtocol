@@ -63,28 +63,28 @@
     <text x="450" y="160" text-anchor="middle" class="title">MCP Registry</text>
     <text x="450" y="180" text-anchor="middle" class="small-label">Single Source of Truth</text>
     <text x="450" y="195" text-anchor="middle" class="small-label">registry.modelcontextprotocol.io</text>
-    
+
     <!-- Core Components Grid -->
     <rect x="290" y="210" width="150" height="55" rx="4" class="component-box"/>
     <text x="365" y="233" text-anchor="middle" class="label">API Layer</text>
     <text x="365" y="250" text-anchor="middle" class="small-label">REST API v0</text>
-    
+
     <rect x="460" y="210" width="150" height="55" rx="4" class="component-box"/>
     <text x="535" y="233" text-anchor="middle" class="label">Service Layer</text>
     <text x="535" y="250" text-anchor="middle" class="small-label">Business Logic</text>
-    
+
     <rect x="290" y="280" width="150" height="55" rx="4" class="component-box"/>
     <text x="365" y="303" text-anchor="middle" class="label">Validators</text>
     <text x="365" y="320" text-anchor="middle" class="small-label">Schema Validation</text>
-    
+
     <rect x="460" y="280" width="150" height="55" rx="4" class="component-box"/>
     <text x="535" y="303" text-anchor="middle" class="label">Auth &amp; Security</text>
     <text x="535" y="320" text-anchor="middle" class="small-label">Namespace Control</text>
-    
+
     <rect x="290" y="350" width="150" height="55" rx="4" class="component-box"/>
     <text x="365" y="373" text-anchor="middle" class="label">Database</text>
     <text x="365" y="390" text-anchor="middle" class="small-label">PostgreSQL</text>
-    
+
     <rect x="460" y="350" width="150" height="55" rx="4" class="component-box"/>
     <text x="535" y="373" text-anchor="middle" class="label">Telemetry</text>
     <text x="535" y="390" text-anchor="middle" class="small-label">Metrics &amp; Monitoring</text>
@@ -127,22 +127,22 @@
   <!-- Arrows and Connections -->
   <!-- Publisher to Auth -->
   <path d="M 110,160 L 110,185" class="auth-arrow" marker-end="url(#arrowhead-auth)"/>
-  
+
   <!-- Auth to Registry -->
   <path d="M 190,240 L 270,240" class="auth-arrow" marker-end="url(#arrowhead-auth)"/>
-  
+
   <!-- CLI to Registry -->
   <path d="M 190,355 L 270,300" class="arrow" marker-end="url(#arrowhead)"/>
-  
+
   <!-- Registry to Clients -->
   <path d="M 630,200 L 710,120" class="arrow" marker-end="url(#arrowhead)"/>
-  
+
   <!-- Registry to Public Sub-Registry -->
   <path d="M 630,265 L 680,265" class="arrow-bi" marker-end="url(#arrowhead-bi)"/>
-  
+
   <!-- Registry to Private Sub-Registry -->
   <path d="M 630,375 L 680,375" class="arrow-bi" marker-end="url(#arrowhead-bi)"/>
-  
+
   <!-- Community to Registry -->
   <path d="M 450,485 L 450,460" class="arrow" marker-end="url(#arrowhead)"/>
 
@@ -150,26 +150,26 @@
   <g id="legend">
     <rect x="20" y="560" width="860" height="75" rx="5" fill="#ffffff" stroke="#cccccc" stroke-width="1"/>
     <text x="35" y="583" class="label">Legend:</text>
-    
+
     <line x1="90" y1="578" x2="140" y2="578" class="arrow" marker-end="url(#arrowhead)"/>
     <text x="145" y="583" class="small-label">Data Flow</text>
-    
+
     <line x1="90" y1="598" x2="140" y2="598" class="arrow-bi" marker-end="url(#arrowhead-bi)"/>
     <text x="145" y="603" class="small-label">Bi-directional Sync</text>
-    
+
     <line x1="90" y1="618" x2="140" y2="618" class="auth-arrow" marker-end="url(#arrowhead-auth)"/>
     <text x="145" y="623" class="small-label">Authentication Flow</text>
-    
+
     <rect x="260" y="573" width="50" height="15" class="sub-registry"/>
     <text x="315" y="583" class="small-label">Sub-Registry</text>
-    
+
     <rect x="260" y="593" width="50" height="15" class="central-box"/>
     <text x="315" y="603" class="small-label">Main Registry</text>
-    
+
     <rect x="260" y="613" width="50" height="15" class="component-box"/>
     <text x="315" y="623" class="small-label">Component</text>
-    
-    <text x="420" y="583" class="small-label">Features: Open Source • MIT License</text>
+
+    <text x="420" y="583" class="small-label">Features: Open Source • Apache 2.0</text>
     <text x="420" y="603" class="small-label">Built with: Go • PostgreSQL • OpenAPI</text>
     <text x="420" y="623" class="small-label">Deployment: Pulumi IaC</text>
   </g>

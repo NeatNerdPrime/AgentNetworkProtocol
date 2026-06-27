@@ -84,7 +84,7 @@ wba-did      = wba-root-did / wba-path-did
 ```
 
 > Description:
-> 1. The main specification default path profile only defines `e1_`.  
+> 1. The main specification default path profile only defines `e1_`.
 > 2. If the implementation needs to be compatible with secp256k1 path binding, please see the `k1_` compatible extension in Appendix A.
 
 #### How to use naked domain name DID
@@ -285,7 +285,7 @@ For a path-type DID using the default path scheme, there MUST be at least one Ed
       - When the returned document contains `handle` and it exactly matches the input Handle, the verifier can complete precise reverse verification for that specific Handle.
       - When the returned document contains only confirmation information, the verifier can confirm only the provider relationship. It MUST NOT treat that result alone as meaning that a specific Handle has been verified as bound, especially in security-sensitive scenarios that require confirmation of a specific Handle.
     - `ANPMessageService`: ANP's unified service endpoint for instant messaging. If the DID subject participates in the ANP instant messaging protocol, `serviceEndpoint` **MAY** point to its unified ANP messaging endpoint; direct messaging, group messaging, key material access, attachment control, and other capabilities are carried by this single service endpoint. The specific methods and capability statements follow ANP Profile 2 and related Profiles. If the service needs to participate in cross-domain service-to-service calls, the service entry **SHOULD** additionally declare `serviceDid`, indicating which DID the service uses in the outer HTTP request signature. For did:wba deployments, a naked domain name DID (such as `did:wba:example.com` or `did:wba:example.com%3A8800`) should normally be used.
-  - **serviceEndpoint**: The endpoint URL of the service. 
+  - **serviceEndpoint**: The endpoint URL of the service.
   - **serviceDid**: Optional field. It is recommended to declare this field when the service participates in cross-domain service-to-service calls. Its value should be a DID string, not a DID URL, telling the peer "which DID's public key should be used to verify this outer HTTP request signature."
 
 - **proof**: For the default `e1_` profile, `proof` is a required field; for other profiles, whether this field appears is determined by the corresponding profile rules. `proof` is used to express the integrity proof of the DID Document, proving that the DID Document has not been tampered with after generating the proof, and indicating that the signer controlled the corresponding private key when the proof was created. Proof itself does not replace the DID method parsing process alone, nor does it alone replace the `id` consistency check.
@@ -947,5 +947,5 @@ Reference document [Appendix B: Compatibility with Native `did:web`](appendix-b-
 
 ## Copyright Notice
 
-Copyright (c) 2024 GaoWei Chang
-This file is released under the [MIT License](/LICENSE), which you may freely use and modify, provided you retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](/LICENSE), which you may freely use and modify, provided you retain this copyright notice.

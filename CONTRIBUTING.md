@@ -33,10 +33,10 @@ Before you start writing documentation, we recommend that you:
 
 If you have any questions, feel free to contact us through the following channels:
 - GitHub Issues: [https://github.com/agent-network-protocol/AgentNetworkProtocol/issues](https://github.com/agent-network-protocol/AgentNetworkProtocol/issues)
-- Discord Community: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
+- Discord Community: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)
 
 Thank you again for your attention and support for the project!
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

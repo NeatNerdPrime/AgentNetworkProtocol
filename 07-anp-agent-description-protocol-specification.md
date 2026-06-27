@@ -98,7 +98,7 @@ The following is an example of an agent description document:
       "url": "https://grand-hotel.com/products/luxury-rooms.json"
     },
     {
-      "type": "Product", 
+      "type": "Product",
       "description": "Comprehensive concierge and guest services including dining, spa, and local attractions.",
       "url": "https://grand-hotel.com/products/concierge-services.json"
     },
@@ -238,7 +238,7 @@ The following is an example of a Product description:
       "value": "80 square meters"
     },
     {
-      "type": "PropertyValue", 
+      "type": "PropertyValue",
       "name": "Bed Type",
       "value": "King Size Bed"
     }
@@ -257,7 +257,7 @@ The following is an example of a Product description:
       "value": true
     },
     {
-      "type": "LocationFeatureSpecification", 
+      "type": "LocationFeatureSpecification",
       "name": "Air Conditioning",
       "value": true
     }
@@ -273,7 +273,7 @@ The following is an example of a Product description:
     },
     {
       "type": "ImageObject",
-      "url": "https://grand-hotel.com/images/deluxe-suite-living.jpg", 
+      "url": "https://grand-hotel.com/images/deluxe-suite-living.jpg",
       "caption": "Deluxe Suite - Living Area",
       "description": "Separate living room with sofa, coffee table, and work area"
     },
@@ -290,7 +290,7 @@ The following is an example of a Product description:
     "geographicArea": "Global"
   },
   "manufacturer": {
-    "type": "Organization", 
+    "type": "Organization",
     "name": "Grand Hotel Management Group",
     "url": "https://grand-hotel.com"
   }
@@ -363,7 +363,7 @@ The following is an example of an interface description document conforming to t
                 "description": "Check-in date in YYYY-MM-DD format"
               },
               "checkOut": {
-                "type": "string", 
+                "type": "string",
                 "format": "date",
                 "description": "Check-out date in YYYY-MM-DD format"
               },
@@ -659,6 +659,6 @@ A similar approach can be used for interfaces. For example, for a product purcha
 
 
 
-## Copyright Notice  
-Copyright (c) 2024 GaoWei Chang  
-This document is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+## Copyright Notice
+Copyright (c) 2024 ANP Open Source Community
+This document is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

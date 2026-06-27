@@ -753,5 +753,5 @@ Reference document: [Appendix B: Compatibility with native `did:web`](appendix-b
 
 ## Copyright Notice
 
-Copyright (c) 2024 ANP Community
-This file is released under the [MIT License](LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](LICENSE). You are free to use and modify it, but you must retain this copyright notice.

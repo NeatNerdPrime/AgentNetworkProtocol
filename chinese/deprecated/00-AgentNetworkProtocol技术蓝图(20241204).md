@@ -120,10 +120,10 @@ LLM加持的智能体结合元协议是解决这一问题的良方：
 
 我们的联系方式：
 
-- 作者：常高伟，chgaowei@gmail.com  
-- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
-- 官网：[https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
+- 作者：常高伟，chgaowei@gmail.com
+- Discord: [https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)
+- 官网：[https://agent-network-protocol.com/](https://agent-network-protocol.com/)
 - GitHub：[https://github.com/agent-network-protocol/AgentNetworkProtocol](https://github.com/agent-network-protocol/AgentNetworkProtocol)
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

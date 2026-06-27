@@ -1,6 +1,6 @@
 
 didcomm
-规范地址：https://identity.foundation/didcomm-messaging/spec/v2.1/  
+规范地址：https://identity.foundation/didcomm-messaging/spec/v2.1/
 
 # 对比
 我们的didall，要求对方必须在线，如果不在线，则无法通信。
@@ -94,6 +94,6 @@ didcomm没有此要求，对方不在线也可以发送加密消息。并且didc
 这些协议都各有优缺点，选择时需考虑应用场景、安全需求和性能要求。如果你正在设计自己的端到端加密方案，可以参考这些协议的核心设计思想，并结合实际需求进行优化。
 
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

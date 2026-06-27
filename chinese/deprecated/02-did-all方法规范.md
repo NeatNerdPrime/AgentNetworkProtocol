@@ -3,23 +3,23 @@
 > !!!**注意：** 此规范暂时停止支持，请使用最新的DID方法[did:wba](/chinese/03-did:wba方法规范.md)。
 
 ## 背景
-在一种基于DID的跨平台身份认证和端到端加密通信技术一文中，为了解决跨平台身份认证问题，我们提出了一个新的DID方法all(Alliance，联盟)，类似区块链中的联盟链，即所有支持此方法标准的服务提供商，都可以对外提供DID的相关服务。  
+在一种基于DID的跨平台身份认证和端到端加密通信技术一文中，为了解决跨平台身份认证问题，我们提出了一个新的DID方法all(Alliance，联盟)，类似区块链中的联盟链，即所有支持此方法标准的服务提供商，都可以对外提供DID的相关服务。
 
-本文将基于W3C DID规范，详细描述all方法设计，包括DID生成、解析、DID文档特殊修改。  
+本文将基于W3C DID规范，详细描述all方法设计，包括DID生成、解析、DID文档特殊修改。
 
-本文假设你已经了解W3C DID相关背景知识，如果没有可以阅读下相关文章或本文参考文献。  
+本文假设你已经了解W3C DID相关背景知识，如果没有可以阅读下相关文章或本文参考文献。
 
 本文提出的all方法对W3C标准进行了一些扩充和修改，以适应我们要解决的问题。
 
 ## 1. DID方法all（Alliance）
 
-DID方法（DID Method）是去中心化标识符（Decentralized Identifier, DID）的一种实现方式，规定了如何创建、解析、更新和撤销DID。每个DID方法都与特定的区块链或去中心化网络关联，并且定义了与该网络交互的具体规则。  
+DID方法（DID Method）是去中心化标识符（Decentralized Identifier, DID）的一种实现方式，规定了如何创建、解析、更新和撤销DID。每个DID方法都与特定的区块链或去中心化网络关联，并且定义了与该网络交互的具体规则。
 
-现有已经定义的DID方法大部分基于区块链设计，受限于区块链技术阶段，在扩展性、商业化落地上存在非常大的问题。基于web的DID方法则和域名深度绑定，需要web服务提供者支持DID的相关操作，对web服务提供者带来一定的复杂度。  
+现有已经定义的DID方法大部分基于区块链设计，受限于区块链技术阶段，在扩展性、商业化落地上存在非常大的问题。基于web的DID方法则和域名深度绑定，需要web服务提供者支持DID的相关操作，对web服务提供者带来一定的复杂度。
 
-我们提出了一个新的DID方法all（Alliance，联盟），类似区块链中的联盟链，即所有支持此方法标准的服务提供商，都可以对外提供DID的相关服务。DID的使用者可以根据所有服务提供商的价格、服务水平、口碑等，选择一个或多个提供服务。所有支持此方法的服务提供商可以将自己的服务域名写入到区块链一个特定内存上，以保证所有all方法的使用者能够得到完整的服务提供商列表。  
+我们提出了一个新的DID方法all（Alliance，联盟），类似区块链中的联盟链，即所有支持此方法标准的服务提供商，都可以对外提供DID的相关服务。DID的使用者可以根据所有服务提供商的价格、服务水平、口碑等，选择一个或多个提供服务。所有支持此方法的服务提供商可以将自己的服务域名写入到区块链一个特定内存上，以保证所有all方法的使用者能够得到完整的服务提供商列表。
 
-同时，DID的创建者也可以在DID中指定DID文档的托管服务域名，以告知DID查询者去特定服务商或者用户自己搭建的服务器中获取DID文档。  
+同时，DID的创建者也可以在DID中指定DID文档的托管服务域名，以告知DID查询者去特定服务商或者用户自己搭建的服务器中获取DID文档。
 
 最后，all方法的操作全部使用https等标准的web协议，以让all方法能够利用已有的web基础设施。
 
@@ -29,9 +29,9 @@ all方法设计的核心是用密码学技术来保证DID文档的不可篡改�
 
 ### 2.1 用密码学保证DID文档不可篡改性
 
-如果底层技术使用区块链或者分布式账本技术，则可以基于共识机制、加密技术和分布式存储，让DID文档不可篡改。我们采用“联盟”的技术思路，单个节点其实可以看做一个中心节点，除了信任中心节点，在技术上无法验证DID文档的未被篡改。  
+如果底层技术使用区块链或者分布式账本技术，则可以基于共识机制、加密技术和分布式存储，让DID文档不可篡改。我们采用“联盟”的技术思路，单个节点其实可以看做一个中心节点，除了信任中心节点，在技术上无法验证DID文档的未被篡改。
 
-我们通过设计DID的生成规范，让DID和DID持有者的公钥一一对应，再用公钥来对文档进行签名。这样，即便是将这个DID文档发送给任何一个中心化的节点，我们也有技术手段保证文档的不可篡改性。  
+我们通过设计DID的生成规范，让DID和DID持有者的公钥一一对应，再用公钥来对文档进行签名。这样，即便是将这个DID文档发送给任何一个中心化的节点，我们也有技术手段保证文档的不可篡改性。
 
 DID创建、托管流程如下：
 
@@ -49,7 +49,7 @@ DID创建、托管流程如下：
 
 - 根据DID生成规范验证DID和公钥的对应关系，如果一一对应，则说明公钥正确。
 
-- 再用公钥去验证DID文档中的签名，如果签名正确，则说明文档未被篡改。  
+- 再用公钥去验证DID文档中的签名，如果签名正确，则说明文档未被篡改。
 
 至此，DID文档的创建和验证过程完成。
 
@@ -72,7 +72,7 @@ all方法的创建、解析、更新和撤销DID等操作全部使用https方法
 
 
 ## 3. DID文档设计
-当前版本的DID文档并没有用到W3C所有的字段，我们的DID文档目前是W3C规范的一个子集。  
+当前版本的DID文档并没有用到W3C所有的字段，我们的DID文档目前是W3C规范的一个子集。
 
 DID文档示例：
 ```json
@@ -245,7 +245,7 @@ did_document["proof"]["proofValue"] = Base64.urlsafe_encode(signature)
 ```
 
 ### 3.6 deprecation
-这个是自定义字段，用于表示DID是否被废弃。  
+这个是自定义字段，用于表示DID是否被废弃。
 如果DID文档存在该字段，且status值为deactivated，则说明此DID文档被废弃。如果newDid存在，则是此DID对应的新的DID。
 
 ## 4. DID文档验证
@@ -257,7 +257,7 @@ did_document["proof"]["proofValue"] = Base64.urlsafe_encode(signature)
 
 3. 根据DID生成过程，验证DID与公钥对应关系。
 
-4. 根据签名的生成过程，验证签名的正确性。  
+4. 根据签名的生成过程，验证签名的正确性。
 由此，只要DID正确，就可以校验DID文档是否完整，是否被篡改。
 
 ## 5. DID http接口
@@ -266,7 +266,7 @@ did_document["proof"]["proofValue"] = Base64.urlsafe_encode(signature)
 如果一个用户使用的是自己搭建的DID server，可以选择不对请求鉴权，否则调用者需要向多个平台申请API key。
 
 #### 5.1.1 HTTP 请求参数
-服务支持标准的 HTTP 调用。  
+服务支持标准的 HTTP 调用。
 请求头
 
 - Content-Type: application/json
@@ -284,7 +284,7 @@ did_document["proof"]["proofValue"] = Base64.urlsafe_encode(signature)
 登录DID服务商 API Keys 页面获取最新版生成的用户 API Key。 API Key 同时包含 “用户标识 id” 和 “签名密钥 secret”，即格式为 {id}.{secret}。
 
 ##### 5.1.2.2 使用 API Key 进行请求
-用户需要将 API Key 放入 HTTP 的 Authorization header 头中。  
+用户需要将 API Key 放入 HTTP 的 Authorization header 头中。
 Example：curl请求中的API key参数示例
 ```bash
 curl --location 'https://open.bigmodel.cn/api/paas/v4/chat/completions' \
@@ -322,7 +322,7 @@ curl --location 'https://open.bigmodel.cn/api/paas/v4/chat/completions' \
 ```python
 import time
 import jwt
- 
+
 def generate_token(apikey: str, exp_seconds: int):try:id, secret = apikey.split(".")except Exception as e:raise Exception("invalid apikey", e)
     payload = {"api_key": id,"exp": int(round(time.time() * 1000)) + exp_seconds * 1000,"timestamp": int(round(time.time() * 1000)),
     }
@@ -355,7 +355,7 @@ curl --location 'https://open.bigmodel.cn/api/paas/v4/chat/completions' \
 - 请求头：
   - Content-Type: application/text
 - 请求体：包含DID文档的JSON表示
-请求体示例  
+请求体示例
 ```json
 {
   "@context": "https://www.w3.org/ns/did/v1",
@@ -397,6 +397,6 @@ DID文档对应的私钥至关重要，如果私钥发生泄漏，会导致DID�
 
 [3] W3C DIDs：拆解权力结构的数字身份标准，[https://yurenju.blog/posts/2024-01-01_w3c-dids-redefining-identity-authority/](https://yurenju.blog/posts/2024-01-01_w3c-dids-redefining-identity-authority/)
 
-## 版权声明  
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。  
+## 版权声明
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

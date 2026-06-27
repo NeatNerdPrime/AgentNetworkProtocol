@@ -83,15 +83,15 @@ wba-path-did = "did:wba:" domain-name 1*(":" path-segment) ":" e1-fingerprint
 wba-did      = wba-root-did / wba-path-did
 ```
 
-> 说明：  
-> 1. 主规范默认路径 profile 仅定义 `e1_`。  
+> 说明：
+> 1. 主规范默认路径 profile 仅定义 `e1_`。
 > 2. 如果实现需要兼容 secp256k1 路径绑定，请参见附录 A 的 `k1_` 兼容扩展。
 
 #### 裸域名 DID 的使用方式
 
 `did:wba:{domain}` 的使用方式与 `did:web:{domain}` 类似，主要规则如下：
 
-1. 解析方式与 did:web 的裸域名入口一致：  
+1. 解析方式与 did:web 的裸域名入口一致：
    `did:wba:example.com` 对应 `https://example.com/.well-known/did.json`
 2. 裸域名 DID 主要用于表达“整个域名主体”或“域级服务身份”，而不是某个具体用户或子身份；
 3. 在 ANP 的跨域服务到服务调用中，若某个 `ANPMessageService` 需要声明自己用于外层 HTTP 身份认证的 DID，则 **SHOULD** 优先使用裸域名 DID；
@@ -286,7 +286,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
       - 当返回文档只包含确认信息时，验证者只能确认 provider 关系，不得将其单独视为“具体 Handle 已验证绑定”，尤其不能用于需要确认具体 Handle 的安全敏感场景。
 
     - `ANPMessageService`：ANP 即时消息统一服务入口。若 DID 主体参与 ANP 即时消息协议，`serviceEndpoint` **MAY** 指向其统一的 ANP 消息端点；私聊、群聊、密钥材料访问、附件控制等能力由该单一服务入口承载，具体方法与能力声明遵循 ANP Profile 2 及相关 Profile。若该服务需要参与跨域服务到服务调用，则服务条目 **SHOULD** 额外声明 `serviceDid`，表示该服务在外层 HTTP 请求签名中使用的 DID；对 did:wba 部署，通常应使用裸域名 DID（如 `did:wba:example.com` 或 `did:wba:example.com%3A8800`）。
-  - **serviceEndpoint**：服务的端点URL。 
+  - **serviceEndpoint**：服务的端点URL。
   - **serviceDid**：可选字段。当服务参与跨域服务到服务调用时，推荐声明该字段。其值应为 DID 字符串而非 DID URL，用于告诉对端“应当使用哪个 DID 的公钥来验证此外层 HTTP 请求签名”。
 
 - **proof**：对于默认 `e1_` profile，`proof` 是必须字段；对于其他 profile，该字段是否出现由对应 profile 规则决定。`proof` 用于表达 DID Document 的完整性证明，证明 DID Document 在生成 proof 之后未被篡改，并表明 proof 创建时签名者控制了对应私钥。proof 本身不单独替代 DID method 解析过程，也不单独替代 `id` 一致性检查。
@@ -343,7 +343,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
  -> https://example.com:3000/user/alice/e1_<fingerprint>/did.json
 ```
 
-> 说明：  
+> 说明：
 > 如果实现需要使用 secp256k1 绑定路径 DID，请参见附录 A 的 `k1_` 兼容扩展。
 
 #### 2.5.2 读取(解析)
@@ -368,7 +368,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 对于裸域名 DID，解析与验证流程遵循与 did:web 裸域名 DID 等价的基本模式：解析 `/.well-known/did.json`，检查 `id` 一致性，并按 DID Core / HTTP Message Signatures 规则验证 `authentication` 关系中的验证方法；不适用 `e1_` 路径绑定校验。
 
-> 说明：  
+> 说明：
 > 如果实现同时支持附录 A 的 `k1_` 兼容扩展，则对 `k1_` DID 的解析和绑定验证应按附录 A 执行。
 
 #### 2.5.3 更新
@@ -482,7 +482,7 @@ sequenceDiagram
 
 `Signature-Input` 中的关键参数要求如下：
 
-- `keyid`：必须（MUST）为完整 DID URL，指向 DID 文档中的一个验证方法，例如：  
+- `keyid`：必须（MUST）为完整 DID URL，指向 DID 文档中的一个验证方法，例如：
   `did:wba:example.com:user:alice:e1_<fingerprint>#key-1`
 - `created`：必须（MUST），表示签名创建时间
 - `expires`：应当（SHOULD），表示签名过期时间
@@ -502,7 +502,7 @@ Signature-Input: sig1=("@method" "@target-uri" "@authority" "content-digest");cr
 Signature: sig1=:BASE64_SIGNATURE:
 ```
 
-> 说明：  
+> 说明：
 > 如果实现同时支持附录 A 的 `k1_` 兼容扩展，则对 `k1_` DID 的认证签名可按附录 A 执行。
 
 #### 3.1.2 签名生成流程
@@ -554,7 +554,7 @@ Signature: sig1=:BASE64_SIGNATURE:
 
 10. **验证结果**：如果签名验证成功，则请求通过认证；否则，返回 `401 Unauthorized`，并附加挑战信息。
 
-> 说明：  
+> 说明：
 > 如果实现同时支持附录 A 的 `k1_` 兼容扩展，则对 `k1_` DID 的绑定验证和认证验证应按附录 A 执行。
 
 #### 3.2.2 验证签名过程
@@ -948,5 +948,5 @@ Alice希望通过智能助理调用一个名为example的第三方服务API。�
 
 ## 版权声明
 
-Copyright (c) 2024 GaoWei Chang  
-本文件依据 [MIT 许可证](/LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。
+Copyright (c) 2024 ANP 开源社区
+本文件依据 [Apache License 2.0](/LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。

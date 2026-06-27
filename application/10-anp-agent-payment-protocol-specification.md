@@ -2,8 +2,8 @@
 
 - Document ID: ANP-10
 - Title: ANP Agent Payment Protocol Specification
-- Status: Released
-- Version: 1.1
+- Status: draft
+- Version: 1.1-draft
 - Language: English
 - Applicability: This specification applies to payment and transaction interactions between agents in the ANP application layer.
 
@@ -858,5 +858,5 @@ Complete implementation should additionally include:
 
 ## Copyright Notice
 
-Copyright (c) 2024 GaoWei Chang
-This file is released under the [MIT License](../LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](../LICENSE). You are free to use and modify it, but you must retain this copyright notice.

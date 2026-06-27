@@ -54,7 +54,7 @@ did:wba方法也具有与OpenID Connect同等的安全性，可以参考[did:wba
     "keyAgreement": [
       {
         "id": "did:wba:example.com%3A8800:user:alice#key-2",
-        "type": "X25519KeyAgreementKey2019", 
+        "type": "X25519KeyAgreementKey2019",
         "controller": "did:wba:example.com%3A8800:user:alice",
         "publicKeyMultibase": "z9hFgmPVfmBZwRvFEyniQDBkz9LmV7gDEqytWyGZLmDXE"
       }
@@ -81,7 +81,7 @@ did:wba可以和HTTP协议结合使用，在一个HTTP请求中，完成身份�
 ```mermaid
 sequenceDiagram
     participant Agent A Client
-    participant Agent B Server 
+    participant Agent B Server
     participant Agent A DID Sever
 
     Note over Agent A Client,Agent B Server: Prerequisites
@@ -153,5 +153,5 @@ Alice希望通过智能助理调用一个名为example的第三方服务API。�
 [AgentNetworkProtocol Technical White Paper](https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/chinese/01-AgentNetworkProtocol%E6%8A%80%E6%9C%AF%E7%99%BD%E7%9A%AE%E4%B9%A6.md)
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP 开源社区
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.

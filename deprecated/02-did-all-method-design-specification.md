@@ -125,31 +125,31 @@ Example: `"did:all:14qQqsnEPZy2wcpRuLy2xeR737ptkE2Www@example.com:443"`
 The DID unique identifier is generated based on the public key (i.e., the `publicKeyHex` in `verificationMethod`), ensuring the document's immutability. The generation process is as follows:
 
 1. **Generate Private Key**
-   
+
    Use a secure random number generator to generate a 256-bit (32-byte) private key.
 
 2. **Generate Public Key**
-   
+
    Use the Elliptic Curve Digital Signature Algorithm (ECDSA) with the Secp256r1 curve to encrypt the private key, generating the public key. The public key is in uncompressed format (prefix `0x04`, followed by the x and y coordinates).
 
 3. **Compute Public Key Hash**
-   
+
    Perform the following two hashing operations on the public key:
-   
+
    - Hash the public key using SHA-256 to generate a SHA-256 hash value.
-   
+
    - Hash the SHA-256 hash value using RIPEMD-160 to generate the public key hash.
 
 4. **Add Network Prefix**
-   
+
    Add a one-byte version number (`0x00`) in front of the public key hash to indicate the address type.
 
 5. **Compute Checksum**
-   
+
    Perform the following two SHA-256 hash operations on the result and take the first four bytes as the checksum.
 
 6. **Generate id**
-   
+
    Concatenate the version number, public key hash, and checksum, then use Base58Check encoding to generate the final `id`.
 
 ### 3.2 verificationMethod
@@ -172,17 +172,17 @@ The `service` field in the DID document is used to express ways to communicate w
 We currently have two core service definitions:
 
 - **messageService**
-  
+
   - **Message Service**: If another user wants to communicate with this user, they can send messages using the `serviceEndpoint` in the service.
-  
+
   - **serviceEndpoint**: Currently, this is a WSS link and does not support other protocols. The detailed design of the WSS communication protocol for end-to-end encryption is in the encryption design document.
-  
+
   - **router**: A custom field whose value is a DID. This field is crucial for high-concurrency systems as it indicates the router DID to which a DID belongs. When a system initiates a WSS connection to a third-party message service, it may receive messages for multiple users simultaneously on this connection. Registering all users at once could lead to prolonged processing. Instead, registering the router allows the message service to automatically associate the router's DID with the WSS connection.
 
 - **didDocumentService**
-  
+
   - **Optional Field**: Indicates the service endpoints where this DID document is hosted, allowing multiple entries.
-  
+
   - **Purpose**: Enables DID verifiers to check if the DID document matches the DID service provider, such as verifying whether the DID service provider has obtained the DID document through unauthorized means.
 
 ### 3.5 proof
@@ -414,5 +414,5 @@ Additionally, in the next version, we plan to add a multi-signature mechanism to
 
 
 ## Copyright Notice
-Copyright (c) 2024 GaoWei Chang  
-This file is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+Copyright (c) 2024 ANP Open Source Community
+This file is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
