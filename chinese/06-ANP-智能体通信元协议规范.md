@@ -3,713 +3,942 @@
 - 文档编号：ANP-06
 - 标题：ANP-智能体通信元协议规范
 - 状态：Draft
-- 版本：1.1-draft
+- 版本：2.0-draft
 - 语言：中文
-- 适用范围：本规范适用于 ANP 智能体之间的协议协商、协议选择与通信建立过程。
+- 适用范围：本规范适用于 ANP 智能体之间的语义元协议协商、接口选择、Profile 选择、安全模式选择、Schema 选择与协商结果复用。
 
 备注：
-- 本规范当前仍处于草案状态，尚未发布，后续可能会根据实现反馈和实际场景进行较大调整。
-- 当前的协议实现聚焦于端到端消息加密，后续将调整为基于 did:wba 和 HTTP 的方案。
 
-## 背景
+- 本规范当前仍处于草案状态，尚未发布；其目标是把早期消息内元协议协商模型升级为与当前 ANP 描述、发现、Core Binding、DID 身份认证和消息 Profile 体系兼容的独立协商 Profile。
+- 本规范不修改 ANP-07 智能体描述协议；本文定义的 `MetaProtocolInterface` 是 ANP-06 定义的扩展接口类型，可以声明在 Agent Description 的 `interfaces` 数组中。
+- 新实现应使用本规范定义的 `anp.meta.negotiation.v1` 与 `anp.negotiate`。早期基于加密消息内部二进制 `PT=00` 的协商方式仅作为历史兼容模型说明。
 
-**元协议（Meta-Protocol）**，即协商通信使用协议的协议，具体来说是一种定义协议如何操作、解析、组合和交互的协议。它提供协议的规则和模式，帮助设计通用、扩展性强的通信机制。元协议通常不处理具体的数据传输，而是定义通信框架和协议运行的基本约束。
+## 摘要
 
-元协议能够极大的提高智能体之间的通信效率，降低智能体之间通信成本。智能体之间如果采用自然语言传递数据，在智能体内部需要使用LLM对数据进行处理，信息处理效率低，成本高。使用元协议，结合AI生成代码处理协议的代码，可以：
-- 提高数据传输效率：在数据进入LLM之前，先进行协议协商，可以减少LLM处理的数据量，提高数据传输效率。
-- 提高数据理解的准确性：通过数据源对数据结构化，而非直接让LLM处理非结构化的数据，可以提高数据理解的准确性。
-- 降低数据处理复杂度：特定领域数据复杂度高，当前行业已经有大量协议规范，无法使用自然语言传递，比如音视频数据。
+元协议（Meta-Protocol）是“协商通信协议的协议”。在智能体网络中，它用于让调用方和目标智能体根据意图、能力、约束、安全要求和可用接口，选择后续真正执行业务交互时应使用的协议、接口、Profile、Schema、内容类型和执行模式。
 
-同时，在人工智能加持下的元协议，能够让智能体网络变成一个自组织、自协商的协作网络。自组织、自协商是指智能体网络中的各个智能体能够自主地进行相互连接、协议协商、协议共识达成。通过自然语言和元协议，智能体可以互相沟通各自的能力、数据格式和使用的协议，最终选出最优的通信协议，确保整个网络的高效协作和信息传递。
+本规范将 ANP 元协议重新定义为一个独立的语义协商 Profile：
 
-在元协议层，我们参考和借鉴了[Agora Protocol](https://arxiv.org/html/2410.11905v1)的思路，结合协议在具体场景中的最佳实践与挑战，设计了AgentNetworkProtocol的元协议规范。
-
-## 当前协议是如何协商的
-
-在现在的软件系统中，如果对外提供的开发的API，一般会给出API调用方法，包含API的调用参数、返回值、使用的协议等。这个过程本质上就是协议协商的过程。它有以下缺点：
-- 需要人工设计协议，并且编写协议处理代码。如果没有相应的协议，则无法进行通信。
-- 协议的对接需要大量的人工参与，中间需要进行多次的沟通和确认。
-- 如果行业没有标准规范，多个系统使用不同的定义，调用者需要分别进行协商和对接
-
-## 元协议协商流程
-
-LLM加持的智能体结合元协议可以有限的解决现有软件系统协议协商的问题，它的主要流程如下：
-
-```plaintext
-  Agent (A)                                       Agent (B)
-    |                                                 |
-    | ------------- Protocol Negotiation -----------> |
-    |                                                 |
-    |         (Multiple negotiations may occur)       |
-    |                                                 |
-    | <------------- Protocol Negotiation ----------- |
-    |                                                 |
-    |---------------                                  |
-    |              |                                  |
-    |   Protocol Code Generated                       |
-    |              |                                  |
-    | <-------------                                  |
-    | --------------- Code Generation --------------> |
-    |                                                 |---------------
-    |                                                 |              |
-    |                                                 |   Protocol Code Generated
-    |                                                 |              |
-    |                                                 | <-------------
-    | <-------------- Code Generation --------------- |
-    |                                                 |
-    |                                                 |
-    | ------------ Test Cases Negotiation ----------> |
-    |                  (Optional)                     |
-    |         (Multiple negotiations may occur)       |
-    |                                                 |
-    | <----------- Test Cases Negotiation ----------- |
-    |                                                 |
-    |                                                 |
-    |    (Start Communication Using Final Protocol)   |
-    |                                                 |
-    | <------- Application Protocol Message --------> |
-    |                                                 |
-    |                                                 |
+```text
+Agent Discovery
+  -> Agent Description
+  -> MetaProtocolInterface
+  -> anp.get_capabilities
+  -> anp.negotiate
+  -> selected interface / profile / security profile / schema
+  -> business call or message exchange
 ```
 
-如图所示，智能体A向智能体B发起协议协商过程如下：
-- 智能体A首先使用自然语言，向智能体B发起协议协商，携带A的需求、能力、期望协议规范等，可能有多个选项供B选择
-- 智能体B收到A的协商请求后，根据A提供的信息，使用自然语言，向A回复B的能力、确定的协议规范等
-- 智能体A和智能体B之间可能经过多轮协商，最终确定智能体之间通信使用的协议规范
-- 根据协商结果，智能体A和B使用AI生成处理协议的代码。为了安全考虑，生成的代码建议在沙盒中运行
-- 智能体之间进行协议互通测试，使用AI判断协议消息是否符合协商规范，如果不符合，则通过自然语言交互进行自动解决
-- 最后，确定最终使用协议，智能体A和B使用最终的协议进行通信
+与早期“在消息负载中用二进制 Protocol Type 区分元协议、应用协议、自然语言协议和验证协议”的设计不同，本规范不定义新的传输层、不定义新的加密消息格式，也不替代 ANP Core Binding。元协议协商消息应作为普通 ANP JSON-RPC 请求运行在现有 ANP 端点上。
 
-通过以上的流程我们可以看到，智能体使用元协议进行协议协商，结合代码生成技术，可以极大的提高协议协商的效率，降低协议协商的成本。同时，也让智能体网络变成一个自组织、自协商的协作网络。
+## 1. 背景与问题
 
-## 流程消息格式定义
+智能体之间的互操作通常先依赖公开描述：目标智能体通过 Agent Description 暴露能力、接口和安全要求，调用方读取这些描述后选择合适的调用方式。随着智能体和接口类型增多，仅靠静态描述会遇到以下问题：
 
-协商消息基于[端到端加密](03-基于did的端到端加密通信技术协议.md)消息的encryptedData进行扩展，属于加密消息的上层消息。
+1. **静态描述无法覆盖运行时变化**：服务端限流、可用安全模式、临时关闭的接口、用户授权状态和部署策略都可能动态变化。
+2. **同一意图可能有多个可用接口**：例如酒店预订既可以通过结构化 OpenRPC 接口完成，也可以通过自然语言消息接口完成。
+3. **调用方能力也影响选择**：调用方是否支持某个 ANP Profile、某种安全模式、某种内容类型或异步执行模式，会影响最终协议选择。
+4. **自然语言临时协商成本高**：完全依赖自然语言多轮协商可以提高灵活性，但会增加延迟、成本和不确定性。
+5. **早期消息内协商模型与当前协议栈脱节**：早期 ANP-06 直接扩展加密消息负载，并使用二进制 `PT` 字段区分协议类型；当前 ANP 已经收敛到 DID 发现、Agent Description、`ANPMessageService`、JSON-RPC 2.0 Core Binding 和运行时能力确认。
 
-加密消息encryptedData的ciphertext解密后的消息格式设计如下：
+因此，新的 ANP-06 把元协议定位为“语义协商控制面”：它不承载业务数据，而是帮助双方在业务执行前确定应使用哪一种互操作路径。
 
-```plaintext
-0               1               2               3
-0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 0 ...
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|PT |  Reserved |              Protocol data                    | ...
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+## 2. 设计目标与非目标
 
+### 2.1 设计目标
+
+本规范的目标是：
+
+- 定义一个标准 Profile：`anp.meta.negotiation.v1`；
+- 定义一种可声明在 Agent Description `interfaces` 数组中的 `MetaProtocolInterface`；
+- 复用 ANP Core Binding 的 JSON-RPC 2.0、`params.meta/body/auth`、`profile`、`security_profile`、`target` 和错误模型；
+- 复用 `anp.get_capabilities` 作为运行时能力确认方法；
+- 定义 `anp.negotiate` 方法，用于基于调用方意图、能力和约束选择最终执行接口；
+- 支持结构化接口优先、自然语言 fallback、缓存复用和未来协议 artifact 发布；
+- 给出早期 `PT=00` 消息协商模型到新模型的兼容说明。
+
+### 2.2 非目标
+
+本规范不定义：
+
+- 新的传输层、会话层或二进制消息头；
+- 新的 DID 方法或新的身份认证机制；
+- 新的端到端加密算法；
+- `anp.get_capabilities` 的完整规范；该方法由 Core Binding 定义；
+- 业务接口本身的请求、响应和状态机；
+- 强制 AI 代码生成、远程代码加载或代码交换流程；
+- 全网协议注册表、共识协议选举算法或经济激励机制。
+
+## 3. 与现有 ANP 协议的关系
+
+### 3.1 与 Agent Description 的关系
+
+Agent Description 是智能体的公开入口，描述智能体的 DID、所有者、信息资源、接口和安全配置。本文定义的 `MetaProtocolInterface` 是一种可放入 Agent Description `interfaces` 数组中的扩展接口类型，用于声明：
+
+- 该智能体支持 ANP-06 元协议协商；
+- 协商端点在哪里；
+- 端点使用哪个 binding；
+- 支持哪些协商方法；
+- 可协商哪些对象，例如 Profile、Interface、Schema、Security Profile、Content Type 和 Execution Mode。
+
+本规范不要求修改 ANP-07。实现者可以在保持 Agent Description 现有结构的前提下，将 `MetaProtocolInterface` 作为扩展 `Interface` 对象发布。
+
+### 3.2 与 Agent Discovery 的关系
+
+发现流程仍由 ANP-08 定义。调用方可以先通过：
+
+```text
+https://{domain}/.well-known/agent-descriptions
 ```
-- PT: Protocol Type，2bit，表示协议类型
-    - 00：meta protocol，元协议
-    - 01：application protocol，应用协议
-    - 10：natural language protocol，自然语言协议
-    - 11：verification protocol，验证协议
-- Reserved: 6bit，保留字段，暂未使用
-- Protocol Data: 变长，表示协议的具体内容
 
-所有的消息都有一个二进制的头，大小为1个字节，头中主要的信息是协议数据的协议类型：
-- 如果协议类型值为00，则表示此消息是元协议，用于进行协议的协商；
-- 如果协议类型值为01，则表示此消息是应用协议，用于进行实际的数据传输；
-- 如果协议类型值为10，则表示此消息是自然语言协议，直接使用自然语言进行数据传输；
-- 如果协议类型值为11，则表示此消息是验证协议，用于进行协商协议的验证，验证通过后，则使用此协议进行数据传输，验证协议并非真正的用户数据。
+获得 Agent Description URL，再读取目标智能体描述文档，并从 `interfaces` 中查找 `MetaProtocolInterface`。
 
-当前二进制头是一个字节，如果后期一个字节无法满足需求，可以扩展为多个字节。通过在Hello消息中携带消息格式版本信息，可以保持前后兼容。
+### 3.3 与 Core Binding 的关系
 
-### 元协议协商消息定义
+ANP-06 的运行时消息使用 ANP Core Binding 约定：
 
-当协议类型（PT）为00时，消息的Protocol Data携带元协议消息，用于协商两个智能体之间通信使用的协议。元协议的协商过程是预先定义的，不用进行协商。预定义的文档即为本文档。
+- JSON-RPC 2.0；
+- `params.meta`、`params.auth`、`params.body` 结构；
+- `meta.profile` 表示本次请求的解释 Profile；
+- `meta.security_profile` 表示本次请求采用的安全模式；
+- `meta.target` 表示目标建模；
+- JSON-RPC `error` 对象承载错误。
 
-元协议消息我们定义为半结构化的格式，核心的协议协商部分使用自然语言，保持协商的灵活性，同时在流程控制上，使用结构化的json，保持协议协商过程可控。
+`anp.negotiate` 的 `params.meta.profile` MUST 等于：
 
-元协议协商消息分为几类：
-- 协议协商消息：用于协商协议内容
-- 代码生成消息：用于生成处理协议的代码
-- 调试协议消息：用于协商调试协议
-- 自然语言消息：用于协商双方使用自然语言进行协商
+```text
+anp.meta.negotiation.v1
+```
 
-下面协议所用的json格式，均符合json规范[RFC8259](https://tools.ietf.org/html/rfc8259)。
+### 3.4 与 DID Document 和 ANPMessageService 的关系
 
-#### 协议协商消息定义
+Agent Description 中的 `MetaProtocolInterface.url` 是静态声明和可用入口 hint。身份和服务发现的权威仍来自 DID Document 中公开的 `ANPMessageService`，运行时能力的权威来自 `anp.get_capabilities` 返回结果。
 
-协议协商消息的json格式如下：
+当 Agent Description、DID Document 和运行时能力结果存在冲突时，调用方 SHOULD 按以下顺序处理：
+
+1. 使用 DID Document 和 DID 解析结果建立身份与服务端点信任；
+2. 调用 `anp.get_capabilities` 获取运行时能力；
+3. 将 Agent Description 中的 `MetaProtocolInterface` 作为发现和语义 hint；
+4. 若静态 hint 与运行时能力冲突，调用方 MUST 以运行时能力结果为准，并刷新本地缓存。
+
+### 3.5 与 DID:WBA 和安全机制的关系
+
+本规范不重新定义 DID:WBA。涉及身份认证、HTTP Message Signatures、`auth.origin_proof`、access token 或服务间身份校验时，应遵循 ANP-03 DID:WBA 方法规范以及相关消息 Profile 的安全要求。
+
+`anp.negotiate` 的协商结果不是身份凭证、授权凭证、access token、Verifiable Credential 或人类授权结果。
+
+## 4. Profile 标识与最小互通
+
+### 4.1 Profile 名称
+
+本规范定义的 Profile 名称是：
+
+```text
+anp.meta.negotiation.v1
+```
+
+Agent Description、`anp.get_capabilities` 返回值、`params.meta.profile` 和协商结果中的 Profile 引用均应使用该名称。
+
+### 4.2 标准方法
+
+本规范定义一个标准方法：
+
+```text
+anp.negotiate
+```
+
+该方法用于根据调用方 intent、调用方能力、候选接口和约束，返回后续业务交互应使用的能力、接口、Profile、安全模式、内容类型、Schema 和执行模式。
+
+### 4.3 最小互通要求
+
+一个支持 `anp.meta.negotiation.v1` 的实现至少 MUST 支持：
+
+1. 在运行时能力中声明 `anp.meta.negotiation.v1`；
+2. 在支持元协议协商的端点上处理 `anp.negotiate`；
+3. 识别 `MetaProtocolInterface` 的基本字段：`type`、`profile`、`binding`、`url`、`methods`；
+4. 支持 `transport-protected` 安全模式下的协商；
+5. 返回结构化 `NegotiationResult`；
+6. 对不支持的 Profile、接口、安全模式或内容类型返回明确错误；
+7. 不把协商结果解释为业务执行授权。
+
+## 5. MetaProtocolInterface 声明
+
+### 5.1 语义
+
+`MetaProtocolInterface` 表示一个智能体公开的语义元协议协商接口。它是 Agent Description `interfaces` 数组中的一种扩展接口类型。
+
+该接口负责说明：
+
+- 调用方应向哪个 URL 发送协商请求；
+- 协商请求使用什么 binding；
+- 支持哪些协商方法；
+- 可以协商哪些对象；
+- 需要哪些安全配置。
+
+### 5.2 字段定义
+
+| 字段 | 类型 | 要求 | 说明 |
+|---|---|---|---|
+| `id` | string | SHOULD | Interface 的稳定标识，用于协商结果引用。 |
+| `type` | string | MUST | 固定为 `MetaProtocolInterface`。 |
+| `protocol` | string | SHOULD | 建议为 `ANP`，表示这是 ANP 协议接口。 |
+| `version` | string | SHOULD | 接口声明版本。 |
+| `profile` | string | MUST | 固定为 `anp.meta.negotiation.v1`。 |
+| `binding` | string | MUST | 本版本应为 `jsonrpc-2.0`。 |
+| `url` | string | MUST | 协商端点 URL。该 URL 是静态 hint，运行时仍应以 DID Document 和 `anp.get_capabilities` 为准。 |
+| `methods` | array | MUST | 至少包含 `anp.negotiate`，通常也包含 `anp.get_capabilities`。 |
+| `security` | array/string | MAY | 引用 Agent Description 的安全定义。 |
+| `securityProfiles` | array | SHOULD | 支持的安全模式，例如 `transport-protected`、`direct-e2ee`。 |
+| `negotiates` | array | SHOULD | 可协商对象列表。 |
+| `inputSchema` | string | MAY | 协商请求 Schema 的 URI。 |
+| `outputSchema` | string | MAY | 协商结果 Schema 的 URI。 |
+| `description` | string | SHOULD | 人类可读说明。 |
+
+### 5.3 可协商对象
+
+`negotiates` 中的常见值包括：
+
+| 值 | 说明 |
+|---|---|
+| `profiles` | 协商后续业务调用使用的 ANP Profile。 |
+| `interfaces` | 协商后续使用哪个 Agent Description interface。 |
+| `schemas` | 协商请求和响应 Schema。 |
+| `security_profiles` | 协商安全模式。 |
+| `content_types` | 协商内容类型。 |
+| `execution_modes` | 协商同步调用、消息、异步任务、流式或自然语言 fallback 等执行模式。 |
+| `protocol_artifacts` | 协商可复用协议 artifact、digest 或 URI。 |
+
+### 5.4 声明示例
+
 ```json
 {
-    "action": "protocolNegotiation",
-    "sequenceId": 0,
-    "candidateProtocols": "",
-    "modificationSummary": "",
-    "status": "negotiating"
+  "id": "interface.negotiation.default",
+  "type": "MetaProtocolInterface",
+  "protocol": "ANP",
+  "version": "1.0",
+  "profile": "anp.meta.negotiation.v1",
+  "binding": "jsonrpc-2.0",
+  "url": "https://grand-hotel.com/anp",
+  "methods": [
+    "anp.get_capabilities",
+    "anp.negotiate"
+  ],
+  "security": ["didwba_sc"],
+  "securityProfiles": [
+    "transport-protected"
+  ],
+  "negotiates": [
+    "profiles",
+    "interfaces",
+    "schemas",
+    "security_profiles",
+    "content_types",
+    "execution_modes"
+  ],
+  "description": "Semantic meta-protocol negotiation interface for selecting the best execution interface."
 }
 ```
 
-字段说明：
-- action：固定为protocolNegotiation
-- sequenceId：协商序号，用于标识协商轮次。
-  - 从0开始，每次协商消息的sequenceId都需要在原有的基础上加1。
-  - 为了防止协商轮次过大，代码实现人员可以根据业务场景设定协商轮次上限。建议不超过10次。
-  - 同时在处理sequenceId的时候，需要判断对方返回的sequenceId是否按照规范递增。
-- candidateProtocols：候选协议
-  - 是一段自然语言文本，用于描述候选协议的目的、流程、数据格式、错误处理等。
-  - 这段文本一般会使用AI处理，建议使用markdown格式，保持清晰、简洁。
-  - 候选协议可以描述全部的协议内容，也可以基于已有的协议进行修改，携带已有协议的URI，以及修改的内容。
-  - 候选协议每次必须携带全量协议内容。
-  - status状态是negotiating时，必须携带candidateProtocols字段。
-- modificationSummary：协议修改摘要
-  - 是一段自然语言文本，用于描述在协商过程中，当前的候选协议相对上次的候选协议修改了哪些内容。
-  - 这段文本一般会使用AI处理，建议使用markdown格式，保持清晰、简洁。
-  - 首次发起协商时，可以不携带此字段。
-  - status状态是negotiating时，除首次发起协商外，需要携带modificationSummary字段。
-- status：协商状态，用于标识当前协商的状态，状态值如下：
-  - negotiating：协商中
-  - rejected：协商失败
-  - accepted：协商成功
+### 5.5 推荐端点部署方式
 
+实现方 SHOULD 优先复用统一 ANP endpoint，例如：
 
-协商双方在协商轮次超出最大限制前，可以反复协商，直到任意一方判定对方给出的协议满足自己的需求，则协商成功，否则协商失败，可以反馈给人类工程师，介入协商过程。
+```text
+https://example.com/anp
+```
 
-##### candidateProtocols示例
+该端点可以同时支持：
 
-- candidateProtocols携带全量协议描述示例如下：
+```text
+anp.get_capabilities
+anp.negotiate
+direct.send
+group.send
+...
+```
 
-```plaintext
-# 需求
-获取商品信息
+实现方 MAY 为元协议协商部署独立端点，例如：
 
-# 流程描述
-请求者携带商品id或名字，发送给商品提供者，商品提供者根据商品id或名字，返回商品详细信息。
-异常处理：
-- 错误码使用HTTP的错误码
-- 错误信息使用自然语言描述
-- 15秒内没有返回，则认为超时
+```text
+https://example.com/anp/negotiation
+```
 
-# 数据格式描述
-请求和响应均采用json格式，使用规范https://tools.ietf.org/html/rfc8259。
+但这只是部署选择，不是协议强制要求。无论 URL 如何组织，服务身份和运行时能力仍应按 DID Document 与 `anp.get_capabilities` 进行确认。
 
-## 请求消息
-请求json schema定义如下：
+## 6. 协商流程
+
+### 6.1 总体流程
+
+```text
+Caller Agent
+  -> discover Agent Description
+  -> parse MetaProtocolInterface
+  -> resolve target DID and ANPMessageService
+  -> call anp.get_capabilities
+  -> call anp.negotiate
+  -> receive NegotiationResult
+  -> invoke selected interface or profile
+```
+
+### 6.2 Step 1：发现 Agent Description
+
+调用方通过 ANP-08 主动发现或其他可信渠道获得目标 Agent Description URL。
+
+### 6.3 Step 2：解析 MetaProtocolInterface
+
+调用方读取 Agent Description，并在 `interfaces` 数组中查找：
+
+```json
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ProductInfoRequest",
-  "type": "object",
-  "properties": {
-    "messageId": {
-      "type": "string",
-      "description": "A random string identifier for the message"
+  "type": "MetaProtocolInterface",
+  "profile": "anp.meta.negotiation.v1"
+}
+```
+
+如果目标 Agent 没有声明 `MetaProtocolInterface`，调用方 MAY：
+
+- 直接使用 Agent Description 中已有的结构化接口；
+- 使用自然语言接口；
+- 终止自动协商并请求人工处理；
+- 使用双方已缓存的协议 artifact。
+
+### 6.4 Step 3：运行时能力确认
+
+调用方 SHOULD 在首次交互前调用 `anp.get_capabilities`。该方法返回目标端点当前支持的 Profile、安全模式、内容类型和限制。
+
+`anp.get_capabilities` 可以匿名调用；若服务端基于调用方身份返回不同能力集合，调用方 MAY 在完成认证后再次调用。
+
+### 6.5 Step 4：语义协商
+
+调用方发送 `anp.negotiate` 请求，携带：
+
+- 调用方 intent；
+- 所需能力；
+- 调用方支持的 Profile、安全模式和内容类型；
+- 候选 interface 引用；
+- 延迟、授权、自然语言 fallback 等约束。
+
+目标智能体根据静态描述、运行时能力、本地策略、授权状态和调用方能力，返回 `NegotiationResult`。
+
+### 6.6 Step 5：执行业务交互
+
+收到 `NegotiationResult` 后，调用方按照 `result.selected` 和 `result.execution` 执行真正业务调用或消息交互。
+
+`anp.negotiate` 的响应不是业务响应。业务接口是否成功、是否需要人类授权、是否产生交易或状态变更，由后续被选择的业务协议决定。
+
+## 7. `anp.negotiate` 方法
+
+### 7.1 方法语义
+
+`anp.negotiate` 是一个 JSON-RPC 2.0 Request 方法，用于执行语义元协议协商。
+
+方法名：
+
+```text
+anp.negotiate
+```
+
+请求的 `params.meta.profile` MUST 等于：
+
+```text
+anp.meta.negotiation.v1
+```
+
+目标建模模式通常为 `agent-addressed`。当某个部署把元协议协商作为 service-scoped 控制面能力暴露时，具体 Profile 或实现文档 MUST 明确声明目标绑定规则。
+
+### 7.2 请求结构
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "method": "anp.negotiate",
+  "params": {
+    "meta": {
+      "profile": "anp.meta.negotiation.v1",
+      "security_profile": "transport-protected",
+      "sender_did": "did:wba:user.example.com:agents:personal-assistant:e1_example",
+      "target": {
+        "kind": "agent",
+        "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_example"
+      },
+      "operation_id": "op-neg-001",
+      "created_at": "2026-06-27T12:00:05Z",
+      "content_type": "application/json"
     },
-    "type": {
-      "type": "string",
-      "description": "Indicates whether the message is a REQUEST or RESPONSE"
+    "auth": {
+      "origin_proof": {
+        "type": "anp-rfc9421-origin-proof-v1",
+        "keyid": "did:wba:user.example.com:agents:personal-assistant:e1_example#key-1",
+        "contentDigest": "sha-256=:BASE64URL_DIGEST:",
+        "signature": "BASE64URL_SIGNATURE"
+      }
     },
-    "action": {
-      "type": "string",
-      "description": "The action to be performed"
+    "body": {
+      "negotiation_id": "neg-20260627-001",
+      "mode": "structured_selection",
+      "intent": {
+        "name": "book_hotel_room",
+        "description": "Book a hotel room for two people next Friday.",
+        "intentTags": [
+          "hotel.booking",
+          "reservation.create"
+        ]
+      },
+      "requiredCapabilities": [
+        "cap.hotel.booking"
+      ],
+      "callerCapabilities": {
+        "supportedProfiles": [
+          "anp.core.binding.v1",
+          "anp.direct.base.v1",
+          "anp.rpc.v1"
+        ],
+        "supportedSecurityProfiles": [
+          "transport-protected",
+          "direct-e2ee"
+        ],
+        "supportedContentTypes": [
+          "application/json",
+          "text/plain"
+        ]
+      },
+      "constraints": {
+        "preferredInterfaceTypes": [
+          "StructuredInterface",
+          "NaturalLanguageInterface"
+        ],
+        "requiresHumanAuthorization": true,
+        "maxLatencyMs": 3000,
+        "allowNaturalLanguageFallback": true
+      },
+      "candidateInterfaceRefs": [
+        "interface.booking.structured.v1",
+        "interface.conversation.nl.v1"
+      ]
+    }
+  }
+}
+```
+
+### 7.3 `body` 字段定义
+
+| 字段 | 类型 | 要求 | 说明 |
+|---|---|---|---|
+| `negotiation_id` | string | SHOULD | 协商过程标识。 |
+| `mode` | string | SHOULD | 协商模式，默认 `structured_selection`。 |
+| `intent` | object | MUST | 调用方希望完成的意图。 |
+| `requiredCapabilities` | array | MAY | 调用方认为必须满足的能力标识。 |
+| `callerCapabilities` | object | SHOULD | 调用方运行时能力。 |
+| `constraints` | object | MAY | 延迟、授权、接口偏好、安全偏好等约束。 |
+| `candidateInterfaceRefs` | array | MAY | 调用方从 Agent Description 中选出的候选 interface ID。 |
+| `candidateProtocols` | array | MAY | 候选协议 artifact、Profile 或 URI；不应只使用自然语言大段文本作为唯一机器可处理内容。 |
+
+### 7.4 `intent` 对象
+
+`intent` 用于表达调用方希望完成的目标。它 SHOULD 包含结构化标签，也 MAY 包含自然语言描述。
+
+```json
+{
+  "name": "book_hotel_room",
+  "description": "Book a hotel room for two people next Friday.",
+  "intentTags": [
+    "hotel.booking",
+    "reservation.create"
+  ],
+  "inputSummary": {
+    "city": "Hangzhou",
+    "guests": 2,
+    "date": "2026-07-03"
+  }
+}
+```
+
+调用方 SHOULD 遵循最小披露原则，不应在协商阶段提供完成业务所不必需的敏感数据。
+
+### 7.5 `callerCapabilities` 对象
+
+`callerCapabilities` 描述调用方当前支持的能力。常见字段包括：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `supportedProfiles` | array | 调用方支持的 ANP Profile。 |
+| `supportedSecurityProfiles` | array | 调用方支持的安全模式。 |
+| `supportedContentTypes` | array | 调用方可处理的内容类型。 |
+| `supportedExecutionModes` | array | 调用方可接受的执行模式。 |
+| `limits` | object | 调用方自身限制，例如最大消息大小、超时时间。 |
+
+### 7.6 `constraints` 对象
+
+`constraints` 用于表达调用方偏好或硬性约束。常见字段包括：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `preferredInterfaceTypes` | array | 偏好的接口类型，例如 `StructuredInterface`。 |
+| `requiresHumanAuthorization` | boolean | 本次意图是否预期需要人类授权。该字段只是协商约束，不代表授权已完成。 |
+| `maxLatencyMs` | integer | 期望最大延迟。 |
+| `allowNaturalLanguageFallback` | boolean | 是否允许退回自然语言协议草拟或自然语言接口。 |
+| `requiredSecurityProfile` | string | 必须使用的安全模式。 |
+| `preferredContentTypes` | array | 偏好的内容类型。 |
+
+## 8. Negotiation Result 对象
+
+### 8.1 成功响应
+
+`anp.negotiate` 成功时返回 `result`：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "result": {
+    "negotiationId": "neg-20260627-001",
+    "status": "accepted",
+    "selected": {
+      "capability": "cap.hotel.booking",
+      "interface": "interface.booking.structured.v1",
+      "protocol": "openrpc",
+      "profile": "anp.rpc.v1",
+      "securityProfile": "transport-protected",
+      "contentType": "application/json",
+      "url": "https://grand-hotel.com/api/booking.openrpc.json"
     },
-    "productId": {
-      "type": "string",
-      "description": "The unique identifier for a product"
+    "execution": {
+      "mode": "direct_structured_call",
+      "requiresHumanAuthorization": true,
+      "timeoutMs": 3000
     },
-    "productName": {
-      "type": "string",
-      "description": "The name of the product"
+    "schemas": {
+      "requestSchema": "https://grand-hotel.com/schemas/create-booking-request.schema.json",
+      "responseSchema": "https://grand-hotel.com/schemas/create-booking-response.schema.json"
+    },
+    "validUntil": "2026-06-27T12:10:05Z",
+    "negotiationDigest": "sha-256:BASE64URL_DIGEST"
+  }
+}
+```
+
+### 8.2 字段定义
+
+| 字段 | 类型 | 要求 | 说明 |
+|---|---|---|---|
+| `negotiationId` | string | MUST | 协商结果标识。 |
+| `status` | string | MUST | `accepted`、`rejected` 或 `needs_more_information`。 |
+| `selected` | object | 当 `accepted` 时 MUST | 被选择的能力、接口、协议、Profile、安全模式、内容类型和 URL。 |
+| `execution` | object | SHOULD | 后续执行模式和执行约束。 |
+| `schemas` | object | MAY | 请求和响应 Schema。 |
+| `validUntil` | string | MAY | 协商结果有效期。 |
+| `negotiationDigest` | string | SHOULD | 协商结果摘要，用于缓存和复用。 |
+| `alternatives` | array | MAY | 未被选中的候选方案。 |
+| `reason` | string | MAY | 拒绝或需要更多信息时的人类可读说明。 |
+
+### 8.3 `selected` 对象
+
+`selected` 表示后续真正业务交互应使用的路径。常见字段包括：
+
+| 字段 | 说明 |
+|---|---|
+| `capability` | 选中的能力 ID。 |
+| `interface` | 选中的 Agent Description interface ID。 |
+| `protocol` | 选中接口使用的协议，例如 `openrpc`、`ANP`、`MCP`。 |
+| `profile` | 后续业务调用的 ANP Profile。 |
+| `securityProfile` | 后续业务调用的安全模式。 |
+| `contentType` | 后续业务负载内容类型。 |
+| `url` | 后续业务接口或接口描述 URL。 |
+| `protocolArtifact` | 可选协议 artifact URI 或 digest。 |
+
+### 8.4 `execution` 对象
+
+`execution.mode` 常见取值包括：
+
+| 值 | 说明 |
+|---|---|
+| `direct_structured_call` | 直接调用结构化接口。 |
+| `direct_message` | 使用私聊消息 Profile。 |
+| `group_message` | 使用群消息 Profile。 |
+| `async_task` | 创建异步任务或异步协作流程。 |
+| `stream` | 使用流式交互。 |
+| `natural_language` | 使用自然语言接口。 |
+| `natural_language_protocol_drafting` | 使用自然语言草拟临时协议。 |
+
+## 9. 自然语言协议草拟 fallback
+
+结构化协商是本规范的主路径。自然语言协议草拟是 fallback，适用于：
+
+- 目标 Agent 没有可满足意图的结构化接口；
+- 调用方和目标方没有共同支持的 Profile 或 Schema；
+- 双方需要临时生成实验性协议；
+- 任务低频、一次性或高度个性化。
+
+调用方可以在 `anp.negotiate` 请求中声明：
+
+```json
+{
+  "mode": "natural_language_protocol_drafting",
+  "constraints": {
+    "allowNaturalLanguageFallback": true
+  }
+}
+```
+
+自然语言 fallback MAY 产生一个协议 artifact 草案，但该 artifact 在被双方接受前不应被视为稳定协议。实现方 SHOULD 尽可能将自然语言草案转化为结构化字段、Schema、示例和测试用例。
+
+## 10. 缓存、复用与协议 artifact
+
+### 10.1 协商结果缓存
+
+调用方 MAY 缓存 `NegotiationResult`，并在有效期内复用。缓存键 SHOULD 至少包含：
+
+- 目标 Agent DID；
+- 调用方 DID 或调用方能力摘要；
+- intent 标签或规范化 intent 摘要；
+- 选中的 interface ID；
+- `selected.profile`；
+- `selected.securityProfile`；
+- `negotiationDigest`。
+
+当出现以下情况时，调用方 SHOULD 重新协商：
+
+- `validUntil` 过期；
+- `anp.get_capabilities` 返回与缓存不一致；
+- DID Document 或 `ANPMessageService` 发生变化；
+- 后续业务调用返回不支持 Profile、接口、安全模式或内容类型；
+- 本地策略、安全要求或用户授权状态变化。
+
+### 10.2 协议 artifact
+
+协议 artifact 是可复用的协议描述对象，MAY 包括：
+
+- `protocol_id`；
+- `protocol_uri`；
+- `version`；
+- 方法列表；
+- 请求和响应 Schema；
+- 支持的安全模式；
+- 内容类型；
+- 示例；
+- 测试用例；
+- digest；
+- 签名或发布者信息。
+
+示例：
+
+```json
+{
+  "protocol_id": "example.product-info.v1",
+  "protocol_uri": "https://example.com/protocols/product-info/1.0",
+  "version": "1.0",
+  "description": "Get product information by product ID.",
+  "depends_on_profiles": [
+    "anp.core.binding.v1"
+  ],
+  "methods": [
+    {
+      "name": "product.get_info",
+      "request_schema_uri": "https://example.com/schemas/product-info-request.json",
+      "response_schema_uri": "https://example.com/schemas/product-info-response.json"
+    }
+  ],
+  "content_types": [
+    "application/json"
+  ],
+  "security_profiles": [
+    "transport-protected"
+  ],
+  "digest": "sha-256:BASE64URL_DIGEST"
+}
+```
+
+本规范不定义全局 artifact 注册表。artifact 的发布、审核、签名、版本治理和共识机制由未来规范定义。
+
+### 10.3 与早期 0RTT 思路的关系
+
+早期 ANP-06 中的 0RTT 设计通过握手消息携带 `usedProtocolHash` 来跳过协商。本规范不定义新的握手消息。等价能力应通过以下方式实现：
+
+1. 调用方缓存 `NegotiationResult` 或协议 artifact；
+2. 后续请求直接使用选中的 Profile / Interface / Schema；
+3. 如果目标端点不支持该选择，返回明确错误；
+4. 调用方根据错误重新调用 `anp.get_capabilities` 和 `anp.negotiate`。
+
+## 11. 错误模型
+
+`anp.negotiate` 使用 JSON-RPC `error` 对象返回错误。建议使用 ANP 自定义错误范围，并在 `error.data.anp_code` 中提供机器可识别错误码。
+
+| code | anp_code | 含义 |
+|---|---|---|
+| 1600 | `meta.negotiation_rejected` | 目标拒绝协商请求。 |
+| 1601 | `meta.no_matching_interface` | 没有满足 intent 和约束的接口。 |
+| 1602 | `meta.unsupported_negotiation_mode` | 不支持请求的协商模式。 |
+| 1603 | `meta.unsupported_candidate_profile` | 候选 Profile 不被支持。 |
+| 1604 | `meta.unsupported_security_profile` | 候选安全模式不被支持。 |
+| 1605 | `meta.unsupported_content_type` | 候选内容类型不被支持。 |
+| 1606 | `meta.more_information_required` | 需要更多信息才能协商。 |
+| 1607 | `meta.authorization_required` | 需要先完成身份认证或授权上下文。 |
+| 1608 | `meta.negotiation_expired` | 协商结果或请求已过期。 |
+
+错误示例：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-neg-001",
+  "error": {
+    "code": 1601,
+    "message": "No matching interface",
+    "data": {
+      "anp_code": "meta.no_matching_interface",
+      "retryable": false,
+      "details": {
+        "unsupportedConstraints": [
+          "requiredSecurityProfile"
+        ]
+      }
+    }
+  }
+}
+```
+
+## 12. 安全与隐私考虑
+
+### 12.1 身份认证
+
+`anp.get_capabilities` MAY 作为匿名公共发现能力调用。
+
+`anp.negotiate` 如果包含以下任一内容，调用方 SHOULD 提供 `auth.origin_proof` 或等价的 DID 认证上下文：
+
+- `sender_did`；
+- 敏感 intent；
+- 用户上下文；
+- 受限能力；
+- 支付、预订、交易、授权、身份或隐私相关能力；
+- 非公开接口候选；
+- 服务端基于身份返回差异化协商结果的场景。
+
+服务端 MAY 对匿名 `anp.negotiate` 返回能力子集、拒绝请求或要求认证。
+
+### 12.2 协商结果不是授权
+
+`NegotiationResult` 只说明“后续应该如何交互”。它不表示：
+
+- 用户已经批准业务动作；
+- 服务端已经授权访问受限资源；
+- 支付、预订或交易已经成立；
+- 调用方已经获得长期访问凭证；
+- 后续业务请求可以省略该业务 Profile 要求的 proof。
+
+如果被选择的接口要求 `humanAuthorization`，后续业务流程仍 MUST 按对应业务协议完成授权。
+
+### 12.3 最小披露
+
+调用方 SHOULD 最小化协商请求中的信息披露：
+
+- intent 只提供协商所需摘要；
+- 不在协商阶段提交完整支付信息、身份证件、私密消息或大对象内容；
+- 对 `callerCapabilities` 做必要裁剪，避免暴露无关内部能力；
+- 对协商日志进行脱敏处理。
+
+### 12.4 降级攻击
+
+调用方和服务端 MUST NOT 在未明确同意的情况下从更强安全模式降级到更弱安全模式。
+
+如果调用方要求 `direct-e2ee`，服务端不能静默返回 `transport-protected`。如果无法满足要求，应返回明确错误。
+
+### 12.5 协议 artifact 安全
+
+如果协商结果引用外部协议 artifact，实现方 SHOULD 验证：
+
+- artifact digest；
+- 发布者或签名；
+- Schema 完整性；
+- 版本和依赖；
+- artifact 中是否包含不安全代码、远程执行指令或过度权限要求。
+
+本规范不要求执行远程代码。任何代码生成或代码加载都属于本地实现细节，必须在沙盒和最小权限环境中处理。
+
+## 13. 旧版 PT=00 消息协商兼容说明
+
+早期 ANP-06 草案曾定义在端到端加密消息负载内部增加 1 字节二进制头，用 `PT` 字段区分：
+
+- `00`：meta protocol；
+- `01`：application protocol；
+- `10`：natural language protocol；
+- `11`：verification protocol。
+
+该模型还定义了 `sourceHello`、`destinationHello`、`candidateProtocols`、`codeGeneration`、`testCasesNegotiation` 和 `fixErrorNegotiation` 等流程。
+
+在当前 ANP 协议栈中，新实现 SHOULD 使用本规范定义的 `anp.meta.negotiation.v1`，不应再依赖旧的二进制 `PT` 消息头。旧模型可以按下表迁移：
+
+| 旧模型概念 | 新模型对应方式 |
+|---|---|
+| `PT=00 meta protocol` | `params.meta.profile = "anp.meta.negotiation.v1"` + `method = "anp.negotiate"` |
+| `PT=01 application protocol` | 具体业务 Profile 与 JSON-RPC method，例如 `direct.send`、`group.send` 或业务 RPC。 |
+| `PT=10 natural language protocol` | Agent Description 中的 `NaturalLanguageInterface`，或 `anp.negotiate` 的 `natural_language_protocol_drafting` fallback。 |
+| `PT=11 verification protocol` | 协议 artifact 中的测试用例、future test extension 或业务 Profile 自己的验证流程。 |
+| `sourceHello` / `destinationHello` | `anp.get_capabilities` 运行时能力确认。 |
+| `candidateProtocols` 自然语言文本 | 结构化 `candidateProtocols`、`candidateInterfaceRefs`、协议 artifact、Schema 和示例。 |
+| `codeGeneration` | 本地实现细节；不是 wire protocol 必需步骤。 |
+| `testCasesNegotiation` | 协议 artifact 的可选测试用例或未来扩展方法。 |
+| `fixErrorNegotiation` | JSON-RPC 错误模型、协商重试或未来 issue-report extension。 |
+| `usedProtocolHash` | `negotiationDigest`、artifact digest、缓存键或已选 Profile / Interface。 |
+
+兼容网关 MAY 将旧 PT=00 消息转换为 `anp.negotiate` 请求，但该转换不属于本规范最小互通要求。
+
+## 14. 示例
+
+### 14.1 Agent Description 片段
+
+```json
+{
+  "protocolType": "ANP",
+  "protocolVersion": "1.1",
+  "type": "AgentDescription",
+  "url": "https://grand-hotel.com/agents/hotel-assistant/ad.json",
+  "name": "Grand Hotel Assistant",
+  "did": "did:wba:grand-hotel.com:service:hotel-assistant:e1_example",
+  "securityDefinitions": {
+    "didwba_sc": {
+      "scheme": "didwba",
+      "in": "header",
+      "name": "Authorization"
     }
   },
-  "required": ["messageId", "type", "action", "productId"]
-}
-
-## 响应消息
-响应json schema定义如下：
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ProductInfoResponse",
-  "type": "object",
-  "properties": {
-    "messageId": {
-      "type": "string",
-      "description": "The messageId from the request json"
-    },
-    "type": {
-      "type": "string",
-      "description": "Indicates whether the message is a REQUEST or RESPONSE"
-    },
-    "status": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "integer",
-          "description": "HTTP status code"
-        },
-        "message": {
-          "type": "string",
-          "description": "Status message"
-        }
-      },
-      "required": ["code", "message"]
-    },
-    "productInfo": {
-      "type": "object",
-      "properties": {
-        "productId": {
-          "type": "string",
-          "description": "The unique identifier for a product"
-        },
-        "productName": {
-          "type": "string",
-          "description": "The name of the product"
-        },
-        "productDescription": {
-          "type": "string",
-          "description": "A detailed description of the product"
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the product"
-        },
-        "currency": {
-          "type": "string",
-          "description": "The currency of the price"
-        }
-      },
-      "required": ["productId", "productName", "productDescription", "price", "currency"]
+  "security": "didwba_sc",
+  "capabilities": [
+    {
+      "id": "cap.hotel.booking",
+      "name": "Hotel room booking",
+      "description": "Book hotel rooms, modify reservations, and check room availability.",
+      "intentTags": [
+        "hotel.booking",
+        "reservation.create",
+        "reservation.modify"
+      ],
+      "requiresHumanAuthorization": true
     }
-  },
-  "required": ["messageId", "type", "status", "productInfo"]
-}
-
-```
-
-- candidateProtocols基于已有协议进行修改示例如下：
-
-```plaintext
-# 需求
-获取商品信息
-
-# 流程描述
-该流程基于已有协议（URI: https://agent-network-protocol.com/protocols/product-info-0-1-1）实现。
-
-# 修改内容
-- 在响应消息中增加自定义错误码
-  - 100001：商品缺货中
-  - 100002：商品下架中
-  - 100003：商品价格未知
-
-```
-
-##### modificationSummary示例
-
-modificationSummary也是自然文本，示例如下：
-
-```plaintext
-
-修改点：
-- 响应中增加字段：productImageUrl, productVideoUrl, productTags
-- 明显响应超时时间：15秒。15秒内没有返回，则认为超时
-
-```
-
-#### 协议代码生成消息定义
-
-协商完成协议后，智能体需要准备处理协议的代码，代码可能是AI生成或从网络加载。在代码就绪之前，如果收到用户的消息，可能会导致协议处理失败。
-
-因此，协商完成后，智能体双方都需要回复对方代码生成消息，通知对方代码已生成，可以进行消息处理。
-
-如果长时间没有收到代码生成消息，则认为代码生成失败，通信终止。建议超时时长15秒。
-
-```json
-{
-    "action": "codeGeneration",
-    "status": "generated"
-}
-```
-
-字段说明：
-- action：固定为codeGeneration
-- status：状态
-  - generated，表示代码已生成
-  - error，表示代码生成失败，通信终止
-
-#### 测试用例协商消息定义
-
-协议协商完成、代码完成后，两个智能体是否能够基于此正常通信，可能需要一个测试过程。测试用例协商消息主要为此设计，用来让两个智能体协商测试用例，并通知对方进行测试。
-
-测试用例协商消息并非流程中的必须支持功能，如果智能体或者人类工程师认为协议无需测试，可以跳过此步骤，直接进行后面的通信过程。
-
-测试用例协商消息的json格式如下：
-
-```json
-{
-    "action": "testCasesNegotiation",
-    "testCases": "",
-    "modificationSummary": "",
-    "status": "negotiating"
+  ],
+  "interfaces": [
+    {
+      "id": "interface.negotiation.default",
+      "type": "MetaProtocolInterface",
+      "protocol": "ANP",
+      "version": "1.0",
+      "profile": "anp.meta.negotiation.v1",
+      "binding": "jsonrpc-2.0",
+      "url": "https://grand-hotel.com/anp",
+      "methods": [
+        "anp.get_capabilities",
+        "anp.negotiate"
+      ],
+      "security": ["didwba_sc"],
+      "securityProfiles": [
+        "transport-protected"
+      ],
+      "negotiates": [
+        "profiles",
+        "interfaces",
+        "schemas",
+        "security_profiles",
+        "content_types",
+        "execution_modes"
+      ],
+      "description": "Endpoint for runtime capability and semantic meta-protocol negotiation."
+    },
+    {
+      "id": "interface.booking.structured.v1",
+      "type": "StructuredInterface",
+      "protocol": "openrpc",
+      "version": "1.0",
+      "profile": "anp.rpc.v1",
+      "url": "https://grand-hotel.com/api/booking.openrpc.json",
+      "capabilityRefs": [
+        "cap.hotel.booking"
+      ],
+      "humanAuthorization": true,
+      "description": "Structured booking interface for room reservation."
+    },
+    {
+      "id": "interface.conversation.nl.v1",
+      "type": "NaturalLanguageInterface",
+      "protocol": "ANP",
+      "version": "1.0",
+      "profile": "anp.direct.base.v1",
+      "url": "https://grand-hotel.com/anp",
+      "capabilityRefs": [
+        "cap.hotel.booking"
+      ],
+      "description": "Natural language conversation interface."
+    }
+  ]
 }
 ```
 
-字段说明：
-- action：固定为testCasesNegotiation
-- testCases：测试用例集，一段自然语言文本，用于描述测试用例集的内容，包括多个测试用例，每个测试用例包含测试请求数据、测试响应数据、测试预期结果。
-- modificationSummary：测试用例修改摘要，一段自然语言文本，用于描述在协商过程中，当前的测试用例集相对上次的测试用例集修改了哪些内容。
-- status：协商状态，用于标识当前协商的状态，状态值如下：
-  - negotiating：协商中
-  - rejected：协商失败
-  - accepted：协商成功
+说明：上例中的 `capabilities` 是 ANP-06 使用的可选扩展示例。实现方不应把它理解为 ANP-07 的必需顶层字段。
 
-testCases示例：
+### 14.2 能力确认请求
 
-```plaintext
- # 测试用例1
-
- - **测试请求数据**：
- {
-   "messageId": "msg001",
-   "type": "REQUEST",
-   "action": "getProductInfo",
-   "productId": "P12345"
- }
-
- - **测试响应数据**：
- {
-   "messageId": "msg001",
-   "type": "RESPONSE",
-   "status": {
-     "code": 200,
-     "message": "成功"
-   },
-   "productInfo": {
-     "productId": "P12345",
-     "productName": "高性能笔记本电脑",
-     "productDescription": "配备最新处理器和大容量内存的高性能笔记本电脑。",
-     "price": 1299.99,
-     "currency": "USD"
-   }
- }
-
- - **测试预期结果**：
- 成功获取产品信息，状态码为200。
-
- # 测试用例2
-
- - **测试请求数据**：
- {
-   "messageId": "msg002",
-   "type": "REQUEST",
-   "action": "getProductInfo",
-   "productId": "P99999"
- }
-
- - **测试响应数据**：
- {
-   "messageId": "msg002",
-   "type": "RESPONSE",
-   "status": {
-     "code": 404,
-     "message": "产品未找到"
-   },
-   "productInfo": null
- }
-
- - **测试预期结果**：
- 请求的产品不存在，返回状态码404，产品信息为空。
-
-```
-
-#### 修复错误协商消息定义
-
-在协议的测试或实际的运行过程中，如果发现对方的消息不符合协议定义或有错误，则需要通知对方错误信息，并一起协商修复错误。这个过程也可能会经过多轮，协议对接过程中的错误可能是双方都存在问题，需要一起协商修复。
-
-比如，智能体A发送错误修复消息，指出智能体B发送的消息不符合协议定义或有错误，智能体B收到错误修复消息后，根据错误信息和协议定义，分析自己是否有错误。如果有错误，则接受错误并修改代码，进入代码生成过程。如果没有错误，则回复错误修复消息，拒绝修改并告知智能体A详细的原因。
-
-修复错误协商消息的json格式如下
 ```json
 {
-    "action": "fixErrorNegotiation",
-    "errorDescription": "",
-    "status": "negotiating"
+  "jsonrpc": "2.0",
+  "id": "req-cap-001",
+  "method": "anp.get_capabilities",
+  "params": {
+    "meta": {
+      "profile": "anp.core.binding.v1",
+      "security_profile": "transport-protected",
+      "operation_id": "op-cap-001",
+      "created_at": "2026-06-27T12:00:00Z"
+    },
+    "body": {}
+  }
 }
 ```
 
-字段说明：
-- action：固定为fixErrorNegotiation
-- errorDescription：错误描述，一段自然语言文本，用于描述错误信息。
-- status：协商状态，用于标识当前协商的状态，状态值如下：
-  - negotiating：协商中
-  - rejected：协商失败
-  - accepted：协商成功
-
-errorDescription示例：
-
-```plaintext
-# 错误描述
-- 响应消息中，status字段缺少code字段
-
-```
-
-#### 自然语言协商消息
-
-使用上面定义的协议协商、代码生成、修复错误等消息，已经能够满足大部分智能体之间的协商过程。不幸的是经验告诉我们，现实世界往往是非常复杂且有很多我们考虑不到的地方。之前我们很难解决这个问题，现在基于生成式AI和自然语言，这个问题可以得到很好的解决。
-
-所以我们设计了一个纯自然语言交互的消息，用于解决那些无法使用我们预先定义的消息进行协商的问题。
-
-自然语言协商消息非必须支持消息，智能体可以自由选择是否支持。我们建议优先使用预定义的消息进行协商，这样协商消息更高。
-
-自然语言交互消息采用请求响应模式，json格式如下：
+### 14.3 能力确认响应片段
 
 ```json
 {
-    "action": "naturalLanguageNegotiation",
-    "type": "REQUEST",
-    "messageId": "",
-    "message": ""
-}
-```
-
-字段说明：
-- action：固定为naturalLanguageNegotiation
-- type：消息类型，用于标识消息的类型，值为REQUEST或RESPONSE
-- messageId：消息ID，16位随机字符串，用于标识消息，在对方回复时，需要携带相同的messageId。
-- message：自然语言内容，一段自然语言文本，智能体可以在message中携带自己的关于协议协商、通信等特殊的需求。
-
-### 应用协议消息定义
-
-当协议类型（PT）为01时，消息的Protocol Data携带应用协议消息，用于传递两个智能体之间的交互数据。消息的格式，取决于协议协商流程中协商出的具体协议。它可以是二进制数据，也可以是json、xml等结构化数据。
-
-### 自然语言协议消息定义
-
-当协议类型（PT）为02时，消息的Protocol Data携带自然语言协议消息，用于传递两个智能体之间的交互数据。
-
-在某些特殊的情况下，智能体之间仅进行少量、低频甚至单次的交互，为了达到最高通信效率，可以跳过协议协商流程，直接使用自然语言进行数据交互。
-
-Protocol Data中的数据为UTF-8编码的自然语言文本，为了方便AI处理，建议使用markdown格式，使用清晰、简洁的描述。
-
-此消息非必须支持消息，智能体可以自由选择是否支持。
-
-自然语言协议消息示例：
-
-请求示例：
-```plaintext
-# 需求
-获取商品信息，根据商品ID，返回商品的详细信息，包括商品ID、商品名称、商品描述、商品价格、商品货币单位。
-
-# 输入
-- 商品ID：P12345
-```
-
-响应示例：
-```plaintext
-# 输出
-- 商品ID：P12345
-- 商品名称：高性能笔记本电脑
-- 商品描述：配备最新处理器和大容量内存的高性能笔记本电脑。
-- 商品价格：1299.99
-- 商品货币单位：USD
-```
-
-### 验证协议消息
-
-当协议类型（PT）为03时，消息的Protocol Data携带验证协议消息，用于传递两个智能体之间的验证数据。消息的格式，取决于协议协商流程中协商出的具体协议。验证协议消息不是实际的业务数据，而是为了验证协议流程是否正常，验证协议消息的内容一般在协议协商流程中通过verificationProtocol消息协商。
-
-此消息非必须支持消息，智能体可以自由选择是否支持。
-
-## 元协议能力协商机制与扩展性设计
-
-上面的协议协商流程展示了两个智能体是如何协商出具体协议的，但是出于现实中的各种原因，智能体可能未必能够支持所有的元协议能力，比如有的智能体不支持自然语言协议，有的智能体不支持验证协议。
-
-为了解决这个问题，我们设计了元协议能力协商机制，用于智能体在连接前协商元协议能力，告知对方自己支持的元协议能力，避免协商失败。
-
-这个问题和元协议的扩展性本质上属于一个问题，所以放在一起讨论。当我们需要对元协议流程进行升级的时候，比如将一个字节的协议类型扩展为两个字节，会产生新的元协议版本，这个时候需要考虑新老版本兼容问题。
-
-我们的方案是，在连接握手消息，即sourceHello和destinationHello消息中，携带元协议的版本、以及在此版本上，支持的元协议能力。如果一个智能体支持V1版本，另外一个智能体支持V1和V2版本，则双方使用V1版本元协议进行协商。
-
-关于元协议能力的协商，我们要求所有的智能体必须要支持基本的元协议能力，而对于可选的元协议能力，比如自然语言协议、验证协议等，智能体可以自由选择是否支持。
-
-对sourceHello和destinationHello消息的修改如下：
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",  // destinationHello同理
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+  "jsonrpc": "2.0",
+  "id": "req-cap-001",
+  "result": {
+    "service_did": "did:wba:grand-hotel.com:e1_service",
+    "supported_profiles": [
+      "anp.core.binding.v1",
+      "anp.meta.negotiation.v1",
+      "anp.direct.base.v1",
+      "anp.rpc.v1"
     ],
-    "protocolHash": "1234567890abcdef..."
-  },
-  //其他字段省略
-}
-```
-
-字段说明：
-- version：元协议版本，当前版本为1.0
-- supportedCapabilities：支持的元协议能力，数组类型，数组中每个元素为支持的元协议能力名称，对应功能如下：
-  - naturalLanguageProtocol：自然语言协议
-  - verificationProtocol：验证协议
-  - naturalLanguageNegotiation：自然语言协商
-  - testCasesNegotiation：测试用例协商
-  - fixErrorNegotiation：错误修复协商
-
-## 元协议协商效率优化
-
-智能体使用元协议协商通信双方使用的数据传输协议，能够解决异构系统间协议对接带来的人工成本问题，让智能体组成一个自组织、自协商的网络，但也带来一些新的问题。
-
-首先，协议协商流程明显增加通信RTT，并且使用AI处理自然语言也会引入新的耗时。从协议协商、代码生成、测试用例协商（非必须）、错误修复协商（非必须），整个流程至少会新增2个RTT，如果遇到多轮协商的情况，RTT会更多。使用LLM处理自然语言也会产生新的耗时，耗时大小取决于输入输出的长度，以及模型处理的速度，单次耗时可能从几秒到十几秒不等。
-
-其次，协商过程中依赖AI对需求的理解能力、协议设计能力、协议处理代码生成能力，这些能力对AI的要求较高，并且由于当前AI的固有缺陷如LLM的幻觉问题，AI无法100%保证处理成功，这会降低协商成功率。
-
-在用户实际的业务流程中，一个功能网上涉及很多次智能体交互，耗时问题和成功率问题如果无法很好的解决，将会严重影响用户体验。
-
-为此，我们设计了0RTT的元协议协商机制，以及基于共识协议的元协议协商机制，来解决上述问题。
-
-### 0RTT元协议协商机制
-
-现代通信协议设计中，为了减少连接过程的RTT，一般都会设计0RTT的通信机制。比如以TLS1.3为例，它通过在首次连接中生成并缓存会话票据（Session Ticket），允许客户端在后续连接时利用该票据和早先协商的密钥直接发送加密的0-RTT数据，从而实现快速重连和即时数据传输。
-
-ANP的0RTT元协议协商机制是在两个智能体首次连接时，完整的进行元协议协商全过程，双方都对协商协议进行缓存，保存协议的内容以及协议内容对应的hash值。协议的内容使用达成协议时protocolNegotiation消息的candidateProtocols字段。
-
-第二次连接时，就可以直接复用第一次的协商结果进行通信。在握手消息设计上，连接发起者可以在sourceHello消息中携带上一次协商的结果，主要是使用的协议hash值。连接接收者在destinationHello消息中对发起者的协议进行确认，双方就可以直接跳过协商过程，使用上次协商的协议进行通信。
-
-sourceHello消息示例：
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+    "supported_security_profiles": [
+      "transport-protected"
     ],
-    "usedProtocolHash": "1234567890abcdef..."
-  },
-  //其他字段省略
-}
-```
-
-destinationHello消息示例：
-
-```json
-{
-  "version": "1.0",
-  "type": "destinationHello",
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
+    "supported_content_types": [
+      "application/json",
+      "text/plain"
     ],
-    "usedProtocolHash": "1234567890abcdef..."
-  },
-  //其他字段省略
+    "limits": {
+      "max_request_bytes": "1048576"
+    }
+  }
 }
 ```
 
-字段说明：
-- usedProtocolHash：最终达成协议内容的hash值，用于标识使用的协议，在第二次连接时，用于跳过协商过程，直接使用该协议通信。如果接收者不支持该协议，则在destinationHello消息中去掉usedProtocolHash字段，表示需要重新进行协议协商。
+### 14.4 协商请求与结果
 
-协议内容的hash值使用SHA-256算法生成，hash值为64个字符的十六进制字符串，usedProtocolHash生成代码示例：
+协商请求和结果可参考第 7 节与第 8 节。实现方 SHOULD 在实际业务调用前保存 `negotiationId` 和 `negotiationDigest`，以便调试、缓存和审计。
 
-```python
-import hashlib
+## 15. 未来扩展
 
-candidateProtocols = "..."  # 从达成协议时protocolNegotiation消息中获取
+未来版本可以进一步定义：
 
-def generate_protocol_hash(protocol_content):
-    return hashlib.sha256(protocol_content.encode('utf-8')).hexdigest()
-
-usedProtocolHash = generate_protocol_hash(candidateProtocols)
-```
-
-### 基于共识协议的元协议协商机制
-
-使用0RTT元协议协商机制，虽然能够减少RTT，但是首次连接仍然需要进行协商，协商过程中仍然需要使用AI处理自然语言，仍然存在耗时长和成功率问题。智能体网络中，存在着大量的需求和功能相同或相似的通信行为，如果智能体能够复用其他智能体已经协商好的协议与协议代码，则可以大大提高通信效率。
-
-为此，我们设计了基于共识协议的元协议协商机制。
-
-共识协议分为两类，分别是：
-- 由人制定的行业标准协议：由行业组织或标准化机构制定，比如W3C、IETF等组织制定的协议
-- 由智能体网络达成的共识协议：由智能体网络中的智能体共同协商、选举的协议
-
-我们可以为所有共识协议的每一个版本都生成一个唯一的标识URI，同时为这个版本的协议生成对应的协议处理代码。智能体在进行协议协商时，可以根据需求，选择一个或多个共识协议作为候选协议，直接向对方发起连接请求，对方选择一个它支持的协议并且返回。然后双方就可以使用此协议，以及此协议对应的协议代码进行通信。
-
-更进一步，智能体在一个在线文档上发布自己支持的共识协议，其他智能体可以查看此在线文档，并根据此在线文档中的协议，与目标智能体协商通信协议。这样又进一步加快了协议协商过程。
-
-智能体如何根据URI下载协议以及协议对应代码，将在其他规范中讨论。
-
-sourceHello消息示例：
-
-```json
-{
-  "version": "1.0",
-  "type": "sourceHello",
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
-    ],
-    "candidateProtocols": [
-        "https://example.com/protocol/1.0",
-        "https://example.com/protocol/2.0"
-    ]
-  },
-  //其他字段省略
-}
-```
-
-destinationHello消息示例：
-
-```json
-{
-  "version": "1.0",
-  "type": "destinationHello",
-  "metaProtocol": {
-    "version": "1.0",
-    "supportedCapabilities": [
-        "naturalLanguageProtocol",
-        "verificationProtocol",
-        "naturalLanguageNegotiation",
-        "testCasesNegotiation",
-        "fixErrorNegotiation"
-    ],
-    "selectedProtocol": "https://example.com/protocol/1.0"
-  },
-  //其他字段省略
-}
-```
-
-字段说明：
-- selectedProtocol：从candidateProtocols中选择的协议，用于标识双方使用的协议。
-
-#### 智能体网络共识协议的达成
-
-智能体网络如何达成共识协议，并且将共识协议发布到网络上，将在其他规范中讨论。
-
-## 未来
-
-本规范主要讨论了元协议的设计，以及元协议协商机制的设计。我们设计了一个更加灵活、更低成本的智能体协议协商规范，使用此规范，智能体可以在没有人参与的情况下完成智能体之间的自主协商、代码生成、调试、通信，为自组织、自协商的智能体网络打下了坚实的基础。
-
-同时，我们相信，有了元协议的加持，智能体网络之上会诞生非常多智能体之间达成共识的通信协议，这些协议的数量将会大大超过人类制定协议的数量。
-
-然而，如何设计一个合理的协议选举共识算法，如何激励智能体上报他们协商的共识协议，如何让智能体能够方便的获取其他智能体协商的共识协议，仍然需要进一步讨论。
-
-## 挑战
-
-如果AI无法将协议代码与应用的业务逻辑代码、数据处理代码很好的结合起来，而只是用协议处理格式，元协议发挥的作用会小很多。
-
-
-
-
+- 标准协议 artifact JSON Schema；
+- 协议 artifact 注册表和发现机制；
+- 协商结果签名和可验证发布；
+- 测试用例协商方法；
+- issue report / fix negotiation 扩展；
+- 与 MCP、OpenAPI、OpenRPC、A2A 等外部协议描述的映射；
+- 多方协商和群协商；
+- 协商隐私保护与最小披露 profile；
+- 协议共识、投票、审核和治理机制。
 
 ## 版权声明
 Copyright (c) 2024 ANP 开源社区
-本文件依据 [Apache License 2.0](./LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。
+本文件依据 [Apache License 2.0](../LICENSE) 发布，您可以自由使用和修改，但必须保留本版权声明。
