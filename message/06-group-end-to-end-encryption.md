@@ -19,6 +19,7 @@ This Profile defines the Group End-to-End Encryption control layer of ANP, stipu
 4. How to define a set of independent `group.e2ee.*` JSON-RPC methods to specifically carry MLS cryptographic actions;
 5. How to work closely with `anp.group.base.v1` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
 6. How to deal with `epoch`, `Welcome`, `PrivateMessage`, `PublicMessage`, `epoch_authenticator`, fork detection and recovery.
+7. How to replace the corresponding MLS leaf through an ordered `group.e2ee.add` and `group.e2ee.remove` after P4 accepts a DID rebind for a Handle-backed Member.
 
 This Profile does not define:
 
@@ -32,6 +33,7 @@ This Profile does not define:
 - `group_join_info` and `group.e2ee.get_join_info`;
 - `accept_welcome` protocol method;
 - The second set of business member status models.
+- Recovery or redistribution of lost historical MLS epoch secrets.
 
 ---
 
@@ -57,6 +59,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **State Coupling**: P4 and P6 do not do method-by-method mapping, but a coupling method that triggers cryptographic state advancement through business state changes.
 - **E2EE Notice**: P6's self-defined independent encryption notification object, used to deliver cryptographic results such as `commit` and `welcome`.
 - **Fork**: An irreconcilable sequence of `epoch` / `epoch_authenticator` / status advancement was observed by different members for the same `group_did`.
+- **MLS Member Credential Rebind**: After P4 accepts a DID rebind for the same Handle member, the cryptographic orchestration that replaces the MLS leaf through two ordered Commits: `group.e2ee.add(new DID)` followed by `group.e2ee.remove(old DID)`.
 
 ---
 
@@ -75,7 +78,7 @@ The four MUST NOT be mechanically equivalent; but there MUST be a verifiable bin
 
 ### 3.2 An Agent = an external group member
 
-Within the external interworking boundary of this Profile, a group member is always represented by an `agent_did`. The protocol layer does not introduce the concept of devices, terminals, or internal replica members.
+Within the external interoperability boundary of this Profile, an MLS member is always represented by its current `agent_did`. P4's optional `member_handle` is a stable business-membership anchor, but it **MUST NOT** replace the current DID in MLS `credential.identity`. The protocol layer does not introduce devices, terminals, local User IDs, or internal replica members.
 
 If there are multiple execution copies within an Agent, how they share or synchronize the MLS group state belongs to the internal implementation of the Agent and does not belong to the interoperability semantics of this Profile.
 
@@ -103,6 +106,7 @@ For example:
 - A group is successfully created in P4, and the creator has become `owner` → owner automatically executes `group.e2ee.create`
 - A member becomes `active` in P4 and has not yet entered the MLS membership set → owner automatically executes `group.e2ee.add`
 - A member becomes `left` or `removed` in P4 and is still in the MLS membership set → owner automatically executes `group.e2ee.remove`
+- A Handle-backed Member produces `member-credential-rebound` in P4 while the old-DID leaf remains in the MLS membership set → owner automatically executes `group.e2ee.add(new DID)` and, after it succeeds, `group.e2ee.remove(old DID)`
 
 ### 3.5 owner is the only MLS controller
 
@@ -110,9 +114,10 @@ In v1, only the owner assumes the MLS controller role.
 
 owner is responsible for:
 
--Create MLS group;
+- Create MLS group;
 - Execute `add`;
 - Execute `remove`;
+- Execute member credential rebinds through an ordered `add(new DID)` and `remove(old DID)`;
 - Generate `commit` corresponding to member changes;
 - Generate `welcome` for new members;
 - Advance `epoch` after member change.
@@ -121,12 +126,14 @@ The core idea of P6 is not to put MLS objects into P4 method bodies, but to let 
 
 ```mermaid
 flowchart TB
-P4[P4 business-state changes<br/>group.create / member active / member left or removed]
+P4[P4 business-state changes<br/>group.create / member active / member left or removed / credential rebound]
 OBS[owner observes business state]
 
 CREATE[group.e2ee.create]
 ADD[group.e2ee.add]
 REMOVE[group.e2ee.remove]
+REBIND_ADD[group.e2ee.add(new DID)]
+REBIND_REMOVE[group.e2ee.remove(old DID)]
 
 HOST[Group Host]
 NOTICE[group.e2ee.notice]
@@ -135,10 +142,14 @@ P4 --> OBS
 OBS -->|group created and has no crypto_group_id yet| CREATE
 OBS -->|member active and not yet in MLS| ADD
 OBS -->|member left or removed and still in MLS| REMOVE
+OBS -->|Handle member rebound and old leaf still in MLS| REBIND_ADD
 
 CREATE --> HOST
 ADD --> HOST
 REMOVE --> HOST
+REBIND_ADD --> HOST
+REBIND_ADD -->|execute after rebind Add is accepted| REBIND_REMOVE
+REBIND_REMOVE --> HOST
 
 HOST --> NOTICE
 ```
@@ -196,7 +207,7 @@ All group entry paths are eventually unified into MLS `add` initiated by the own
 In v1:
 
 - Only the application message content of `group.e2ee.send` enters MLS `PrivateMessage` and is encrypted;
-- `group.e2ee.create`, `group.e2ee.add`, and `group.e2ee.remove` all continue to use plaintext JSON-RPC request bodies;
+- `group.e2ee.create`, `group.e2ee.add`, and `group.e2ee.remove` all continue to use plaintext JSON-RPC request bodies; rebind orchestration reuses `add` and `remove` and defines no new request method;
 - Objects such as `commit` and `welcome` appear as method inputs or Notice payloads instead of being embedded in the P4 business method body.
 
 ---
@@ -290,6 +301,8 @@ v1 mainline includes at least:
 - PrivateMessage
 - Epoch advancement
 
+A Handle-backed Member credential rebind introduces neither a new P6 method nor a new MLS primitive. It first uses `group.e2ee.add` to Commit the new-DID leaf, then uses `group.e2ee.remove` to Commit removal of the old-DID leaf.
+
 Among them:
 
 - `commit_b64u` **MUST** be represented as raw bytes of the complete MLS `MLSMessage` (`mls-public-message`) serialized by TLS;
@@ -334,7 +347,7 @@ This Profile requires the following MLS elements to be bound to `agent_did`:
 
 ### 6.2 Credential Identity Rules
 
-For this Profile, `credential.identity` **MUST** in the MLS member credential is equal to the UTF-8 byte string of `agent_did`.
+For this Profile, `credential.identity` in an MLS member credential **MUST** equal the UTF-8 byte string of that leaf's current `agent_did`. A Handle **MUST NOT** be written into or replace `credential.identity`.
 
 Implementation **MUST NOT** replace `credential.identity` with a local account ID, device ID, numeric user ID, or other non-DID string.
 
@@ -582,6 +595,7 @@ The recommended structure is as follows:
   "crypto_group_id_b64u": "BASE64URL_GROUPID",
   "epoch": "8",
   "subject_did": "did:wba:b.example:agents:bob:e1_<fingerprint>",
+  "subject_status": "active | removed",
   "commit_b64u": "BASE64URL_MLSMESSAGE",
   "welcome_b64u": "BASE64URL_WELCOME",
   "ratchet_tree_b64u": "BASE64URL_RATCHET_TREE",
@@ -599,6 +613,8 @@ Rules:
 - `epoch` **MUST** exist;
 - `commit_b64u` **MUST** exist when `notice_type = "commit-delivery"` is present;
 - When `notice_type = "welcome-delivery"`, `welcome_b64u` and `ratchet_tree_b64u` **MUST** exist at the same time;
+- For a notice produced by credential-rebind orchestration, `group_state_ref` **MUST** exactly reference the accepted P4 `member-credential-rebound` event used by both P6 operations. The receiver **MUST** obtain the Handle, binding generation, previous DID, and new DID from that P4 event rather than from duplicated P6 continuity fields;
+- `subject_did` and `subject_status` describe the leaf affected by this specific P6 operation: Add uses the new DID with `active`, while Remove uses the previous DID with `removed`;
 - `ratchet_tree_b64u` **MUST** be no-padding base64url of raw bytes for TLS serialization of the ratchet tree;
 - `group_receipt` **MAY** exist to associate cryptographic results with the location of business ordering.
 
@@ -679,8 +695,8 @@ A successful response **MUST** contain at least:
 
 - **SHOULD** return KeyPackage that has not expired, not been revoked and not consumed;
 - The server **MAY** mark it as `reserved`, or assign an equivalent status after return, to avoid concurrent re-issuance;
-- When the corresponding `group.e2ee.add` is successfully accepted by the Group Host and the cryptographic membership change is completed, **MUST** mark it as `consumed` or delete it from the publishing set;
-- If the corresponding process fails, is canceled or times out, whether to release the reserved KeyPackage is determined by the deployment strategy, but **SHOULD NOT** will cause the same KeyPackage to be concurrently reused by both `group.e2ee.add`s that will succeed;
+- When the corresponding `group.e2ee.add`, including the Add step of a rebind orchestration, is successfully accepted by the Group Host and the cryptographic membership change is completed, the service **MUST** mark it as `consumed` or delete it from the publishing set;
+- If the corresponding process fails, is canceled, or times out, release of the reserved KeyPackage is deployment-specific, but it **SHOULD NOT** allow the same KeyPackage to be concurrently reused by two successful `group.e2ee.add` operations;
 - Caller identity, rate limiting and anti-abuse policies **MUST** be implemented based on hop/service level authentication.
 
 ---
@@ -693,9 +709,9 @@ The methods in this chapter are independent JSON-RPC methods. They are not "addi
 
 Among them:
 
-- `group.e2ee.create`, `group.e2ee.add`, `group.e2ee.remove` are **member change control methods**
+- `group.e2ee.create`, `group.e2ee.add`, and `group.e2ee.remove` are **member change control methods**
 - `group.e2ee.send` is the **message sending method**
-- `group.e2ee.create/add/remove` is bound to the existing business state of P4, but **will not create a new P4 business member state**
+- `group.e2ee.create/add/remove` is bound to existing P4 business state, but **does not create new P4 business member state**
 - `group.e2ee.send` is directly used as the online delivery method, without secondary packaging by `group.send`
 
 ### 9.2 `group.e2ee.create`
@@ -789,6 +805,9 @@ Rules:
 - `welcome_b64u` **MUST** be no-padding base64url for the MLS `Welcome` object after serialization by TLS
 - `ratchet_tree_b64u` **MUST** be no-padding base64url of raw bytes for TLS serialization of the ratchet tree
 - `epoch` **MUST** indicate the new `epoch` after this `add`
+- On an ordinary join path, `member_did` **MUST** be a P4 `active` DID that has not yet entered the MLS membership set;
+- On a rebind path, `group_state_ref` **MUST** exactly reference an accepted P4 `member-credential-rebound` event, `member_did` **MUST** equal that event's `subject_did`, and the new KeyPackage **MUST** bind that new DID;
+- The rebind-path `group.e2ee.add(new DID)` **MUST** succeed before the corresponding `group.e2ee.remove(old DID)`.
 
 #### 9.3.4 Successful Response
 
@@ -812,7 +831,7 @@ Notes:
 
 #### 9.4.1 Semantics
 
-The owner executes MLS `remove` to remove a member who has become `removed` or `left` at the business layer from the cryptography group.
+The owner executes MLS `remove` to remove a member who has become `removed` or `left` at the business layer from the cryptographic group, or to remove the old-DID leaf in an accepted Handle rebind orchestration.
 
 #### 9.4.2 Caller
 
@@ -840,6 +859,9 @@ Rules:
 
 - `commit_b64u` **MUST** be no-padding base64url for the complete MLS `MLSMessage` object serialized by TLS
 - `epoch` **MUST** indicate the new `epoch` after this `remove`
+- On an ordinary removal path, the P4 membership status corresponding to `member_did` **MUST** already be `removed` or `left`;
+- The rebind path is the only exception: `member_did` **MUST** equal `previous_subject_did` in the referenced P4 `member-credential-rebound` event, `group_state_ref` **MUST** exactly match the previously successful `group.e2ee.add(new DID)`, and that Add must already have added the event's `subject_did`;
+- The rebind exception **MUST NOT** be used to remove an arbitrary member whose status remains `active`.
 
 #### 9.4.4 Successful Response
 
@@ -916,7 +938,8 @@ owner **MUST** be known via trusted state observation:
 
 - A certain group has been created at the business layer;
 - A member has become `active` at the business level;
-- A member has become `left` or `removed` at the business level.
+- A member has become `left` or `removed` at the business level;
+- A Handle-backed Member has produced `member-credential-rebound`.
 
 The status observation method **MAY** be:
 
@@ -962,7 +985,25 @@ When the owner observes that the following business states are simultaneously tr
 
 owner **SHOULD** trigger `group.e2ee.remove` once.
 
-### 10.5 Message sending rules
+### 10.5 Member Credential Rebind Coupling Rules
+
+When the owner observes a P4 `member-credential-rebound` event, its `subject_did` identifies the new DID and its `previous_subject_did` identifies the old DID. If the old-DID leaf remains in the MLS membership set, the owner **MUST** orchestrate the existing methods in this order:
+
+1. Call `group.e2ee.add` with the event's `subject_did` and a new KeyPackage;
+2. After Add succeeds and advances one epoch, call `group.e2ee.remove` with the event's `previous_subject_did`;
+3. Complete the cryptographic rebind after Remove succeeds and advances the epoch again.
+
+Both requests **MUST** exactly reference the same P4 `member-credential-rebound` `group_state_ref`. Add **MUST** succeed before Remove. Remove may delete only the event's `previous_subject_did` and **MUST NOT** use the rebind workflow to remove another member.
+
+During rebind orchestration, the Group Host **MUST** serialize P6 member-change control actions. Except for an idempotent retry of the current step and the matching Remove immediately after Add succeeds, the Group Host **MUST NOT** accept an unrelated `group.e2ee.add` or `group.e2ee.remove` until the rebind completes.
+
+From acceptance of the P4 rebind event until Remove succeeds, the Group Host **MUST** pause acceptance of new `group.e2ee.send` operations for the group. The intermediate epoch produced by Add **MUST NOT** carry application messages. If Add fails, the implementation **MUST** remain paused and retry Add. If Add succeeds but Remove fails, the old and new leaves may temporarily coexist, but the implementation **MUST** remain paused and retry Remove.
+
+A P6 failure **MUST NOT** roll back the P4 rebind, restore the old DID's P4 authority, or create a new P6 business-membership state. P4 membership, role, status, join time, and member count remain determined by the original rebind event.
+
+If the rebind target is the owner, the new DID **MUST** initiate Add as the current P4 owner using its own `origin_proof`. The transitional Add Commit **MAY** be generated from the retained MLS state of the old-owner leaf. After the new-owner leaf joins, the Remove(old DID) Commit **MUST** be generated by the new-owner leaf. If the owner has lost current MLS state and no other authorized controller can continue, the system **MUST** fail closed and keep the E2EE message plane paused.
+
+### 10.6 Message sending rules
 
 `group.e2ee.send` is **not** a method that triggers state coupling.
 It is an online sending method explicitly initiated by members.
@@ -990,7 +1031,7 @@ The goal of this chapter is not to rewrite the MLS standards, but to provide:
 
 Implement **MUST NOT** to modify the core algorithm semantics of MLS; but when the default degrees of freedom of the MLS standard library conflict with the v1 restricted rules of this Profile, **MUST** shall prevail.
 
-### Subset of MLS allowed in 11.2 v1
+### 11.2 MLS Subset Allowed in v1
 
 The MLS mainline of this Profile v1 only allows the following objects and actions to enter the interoperability boundary:
 
@@ -1066,7 +1107,7 @@ When executing `group.e2ee.add`, owner's local MLS runtime **MUST**:
 
 1. Obtain and verify the `group_key_package` of the target member
 2. Verify `KeyPackage` and `did_wba_binding`
-3. Verify that the target member has become `active` at the business layer
+3. Verify that the target DID is either a P4 `active` member on an ordinary join path or the `subject_did` in the referenced P4 `member-credential-rebound` event
 4. Execute MLS `Add` based on current group state
 5. Generate new `Commit`
 6. Generate `Welcome` for new members
@@ -1092,11 +1133,13 @@ To reduce implementation ambiguity, v1 stipulates:
 - `ratchet_tree_b64u` **MUST** be provided explicitly, and only to new members;
 - `welcome-delivery` **MUST NOT** rely on the library-level optional behavior "Welcome may come with ratchet tree internally".
 
+In credential-rebind orchestration, the Add in this section is the first step. It **MUST** reference the P4 rebind event's `group_state_ref`, add a leaf bound to the new DID, and deliver the Welcome to that new DID. It does not itself remove the old-DID leaf.
+
 ### 11.6 MLS Semantics of `group.e2ee.remove`
 
 When executing `group.e2ee.remove`, owner's local MLS runtime **MUST**:
 
-1. Verify that the target member has entered `removed` or `left` at the business layer
+1. Verify that the target member has entered `removed` or `left` on an ordinary path, or is exactly the referenced P4 event's `previous_subject_did` on a rebind path
 2. Verify that the member is still in the MLS membership set
 3. Execute MLS `Remove` based on the current group state
 4. Generate new `Commit`
@@ -1110,6 +1153,8 @@ The line protocol output for `group.e2ee.remove` **MUST** contain at least:
 - `crypto_group_id_b64u`
 - `epoch`
 - `group_state_ref`
+
+In credential-rebind orchestration, the Remove in this section is the second step. It may execute only after Add(new DID) has succeeded with the same `group_state_ref`, and it may remove only the old-DID leaf identified by that P4 event.
 
 ### 11.7 Encryption semantics of `group.e2ee.send`
 
@@ -1180,7 +1225,7 @@ owner **SHOULD** be at least persistent:
 - Current `epoch`
 - Current MLS group state
 - The synchronized member set view of the current business layer
-- `add/remove` result reference from the most recent successful application
+- Reference to the most recently accepted `add/remove` result, including both steps of credential-rebind orchestration
 
 #### 11.10.2 active member
 
@@ -1200,10 +1245,12 @@ The Group Host **SHOULD** persist at least:
 - `group_event_seq`
 - `group_receipt`
 - Outer binding reference to `crypto_group_id`, `epoch`
+- The current public DID-to-leaf projection derived from accepted `create/add/remove` operations; this projection **MUST NOT** contain MLS private keys or epoch secrets
+- Internal progress indicating whether credential-rebind orchestration is at Add or Remove; this progress is not a new protocol-level membership state
 
 By default, the Group Host is **not required** to persist MLS private state capable of decrypting group messages.
 
-### MLS capabilities not supported in 11.11 v1
+### 11.11 MLS Capabilities Not Supported in v1
 
 In addition to the exclusions listed in Section 11.2, this Profile v1 does not support:
 
@@ -1212,6 +1259,23 @@ In addition to the exclusions listed in Section 11.2, this Profile v1 does not s
 - Rely on MLS library to implicitly and automatically restore missing tree material
 - Let non-owner members submit `Commit` that changes the membership set
 - Let the Group Host complete the final MLS validity judgment on behalf of the members
+
+### 11.12 Handle-backed Member Rebind MLS Orchestration
+
+The owner's local MLS runtime **MUST**:
+
+1. Verify the corresponding P4 `member-credential-rebound` state event and confirm its old DID, new DID, and `group_state_ref`;
+2. Verify that the old DID currently corresponds to exactly one MLS leaf;
+3. Obtain and fully verify the new DID's `group_key_package` and `did_wba_binding`;
+4. Generate the first Commit, using `group.e2ee.add` to add the new-DID leaf and advance to epoch N+1;
+5. Deliver the corresponding `Welcome` and explicit ratchet tree to the new DID, and deliver the Add Commit to current members;
+6. Generate the second Commit, using `group.e2ee.remove` to remove the old-DID leaf and advance to epoch N+2;
+7. Deliver the Remove Commit to retained members;
+8. Resume application messages only after Remove succeeds, and ensure the old leaf cannot derive or decrypt epoch N+2 or later application messages.
+
+Both Commits **MUST** bind the same P4 `group_state_ref`. Epoch N+1 is an intermediate epoch used only to complete the rebind and **MUST NOT** carry application messages. The new DID obtains only current and subsequent state through this Welcome; this Profile **MUST NOT** restore lost historical epoch secrets to it.
+
+If the rebind target is the owner, the transitional Add Commit **MAY** be generated using the retained MLS state of the old-owner leaf. After the new-owner leaf joins, the Remove Commit **MUST** be generated by the new-owner leaf. If the owner has lost current MLS state and v1 has no other authorized MLS Controller, the implementation **MUST** fail closed. This Profile provides no automatic owner MLS recovery, and the Group Host **MUST NOT** release current or historical epoch secrets to the new DID.
 
 ---
 
@@ -1268,6 +1332,7 @@ The rules are as follows:
 - `ratchet_tree_b64u` **MUST** be the TLS-serialized raw bytes of the ratchet tree;
 - This notice **MUST NOT** be sent to a recipient other than the intended new member;
 - The new member **MUST** use `welcome_b64u + ratchet_tree_b64u` to complete local bootstrap.
+- For the Add step of credential-rebind orchestration, the notice target **MUST** be the new DID identified by the event's `subject_did`; a Welcome **MUST NOT** be sent to `previous_subject_did`.
 
 ### 12.5 Relationship to P4 Notifications
 
@@ -1293,7 +1358,7 @@ The following fields **MUST** enter the authenticated binding scope:
 - `meta.message_id` / `meta.operation_id`
 - `meta.security_profile = group-e2ee`
 
-### 13.1.1 `authenticated_data` of `authenticated_data`
+### 13.1.1 `authenticated_data` for `group.e2ee.send`
 
 `group.e2ee.send` When using MLS `PrivateMessage`, its `authenticated_data` **MUST** be the UTF-8 + RFC 8785 JCS encoded byte string of the following JSON object:
 
@@ -1310,9 +1375,9 @@ The following fields **MUST** enter the authenticated binding scope:
 }
 ```
 
-### 13.1.2 Submission binding of `group.e2ee.add/remove`
+### 13.1.2 Submission Binding of `group.e2ee.add/remove`
 
-When owner generates `commit_b64u` locally, **SHOULD** put at least the following semantics into its authenticated binding scope (such as MLS `authenticated_data` or equivalent context):
+When the owner generates `commit_b64u` locally for `group.e2ee.add/remove`, it **SHOULD** put at least the following semantics into the authenticated binding scope, for example through MLS `authenticated_data` or equivalent context:
 
 ```json
 {
@@ -1328,7 +1393,9 @@ When owner generates `commit_b64u` locally, **SHOULD** put at least the followin
 }
 ```
 
-All default optional fields **MUST** be omitted directly, **MUST NOT** use `null`, empty string or other placeholder values ​​to replace the omitted fields.
+All default optional fields **MUST** be omitted directly and **MUST NOT** be represented by `null`, an empty string, or another placeholder. `member_did` **MUST** always identify the target DID of the actual Add or Remove operation.
+
+For credential-rebind orchestration, both Commits **MUST** use the binding above and reference the same P4 `group_state_ref`: Add's `member_did` **MUST** equal the event's `subject_did`, and Remove's `member_did` **MUST** equal the event's `previous_subject_did`. P6 requests add no `member_handle`, `handle_binding_generation`, `previous_member_did`, or `new_member_did` fields; those continuity fields are provided by the referenced P4 event.
 
 ### 13.2 KeyPackage verification
 
@@ -1343,7 +1410,7 @@ Before the receiver accepts a KeyPackage for joining the group, **MUST**:
 7. Verify `did_wba_binding`
 8. Verify that the leaf signature public key is consistent with `did_wba_binding.leaf_signature_key_b64u`
 
-If a KeyPackage has been successfully used once for `group.e2ee.add` and accepted by the Group Host, implementations **MUST NOT** will then treat it as valid join material for reuse, unless the deployment explicitly declares a last-resort exception.
+If a KeyPackage has been successfully used for `group.e2ee.add`, including the Add step of rebind orchestration, and accepted by the Group Host, implementations **MUST NOT** treat it as reusable valid join material unless the deployment explicitly declares a last-resort exception.
 
 ### 13.3 `group.e2ee.send` Request Verification
 
@@ -1367,6 +1434,16 @@ Before the Group Host accepts an `group.e2ee.add` or `group.e2ee.remove`, **MUST
 5. `member_did` is semantically consistent with the request target
 6. The `commit_b64u` (and `welcome_b64u`, if present) field format is legal
 
+In addition:
+
+- An ordinary Add **MUST** target a current P4 `active` DID that is not yet in MLS. A rebind Add **MUST** exactly reference a P4 `member-credential-rebound`, target its `subject_did`, and verify that the new KeyPackage binds that DID;
+- An ordinary Remove **MUST** target a DID whose P4 status is already `removed` or `left`. A rebind Remove **MUST** target the same event's `previous_subject_did`, reference exactly the same `group_state_ref` as Add, and confirm that Add(new DID) has succeeded;
+- The Group Host **MUST** reject a rebind Remove that precedes its corresponding Add and **MUST** reject use of the rebind exception to remove another `active` member;
+- After Add succeeds, the Group Host **MUST** make the corresponding Remove the next acceptable member-change control action and reject or defer unrelated Add/Remove operations;
+- Add and Remove retries for the same P4 rebind event **MUST** have idempotent semantics.
+
+These Group Host checks **MUST NOT** replace final Commit and Welcome validation by member MLS runtimes.
+
 ### 13.5 `group.e2ee.create` Request Verification
 
 Before accepting an `group.e2ee.create`, the Group Host **MUST** verify at least:
@@ -1384,7 +1461,7 @@ Before accepting an `group.e2ee.create`, the Group Host **MUST** verify at least
 ### 14.1 ordering Responsibilities
 
 - P4 business operation and `group.e2ee.send` enter the group event ordering link from the Group Host;
-- `group.e2ee.create/add/remove` is a cryptographic control action bound to the existing business state, **MUST NOT** create a new P4 `group_state_version` independently;
+- `group.e2ee.create/add/remove` is a cryptographic control action bound to existing business state and **MUST NOT** independently create a new P4 `group_state_version`;
 - Relevant cryptographic results are delivered via `group.e2ee.notice`.
 
 ### 14.2 `epoch` processing
@@ -1407,7 +1484,7 @@ Expose this value so that members can do consistency checks.
 
 - `group_receipt` continues to be generated by Group Host;
 - For `group.e2ee.send`, `group_receipt` is still the standard return field;
-- For `group.e2ee.add/remove/create`, `group_receipt` **MAY** appear as additional information of `group.e2ee.notice`, which is used to anchor the cryptographic results to the corresponding business state;
+- For `group.e2ee.add/remove/create`, `group_receipt` **MAY** appear as additional information in `group.e2ee.notice` to anchor cryptographic results to the corresponding business state;
 - If `group_receipt` carries `proof`, its proof syntax, protected document and verification steps **MUST** reuse the shared Object Proof Profile of P4 Section 7.9 and P1 Appendix B.
 
 ### 14.5 Fork detection
@@ -1500,6 +1577,27 @@ sequenceDiagram
     H-->>M: group.incoming
 ```
 
+### 15.6 Handle-backed Member Credential Rebind Process
+
+```mermaid
+sequenceDiagram
+    participant N as New DID
+    participant H as Group Host
+    participant O as owner / MLS Controller
+    participant M as Retained Members
+
+    N->>H: P4 group.rebind_member
+    H-->>O: group.state_changed(member-credential-rebound)
+    Note over H: Pause new E2EE messages
+    O->>H: group.e2ee.add(new DID, epoch N+1)
+    H-->>N: group.e2ee.notice(welcome-delivery)
+    H-->>M: group.e2ee.notice(commit-delivery, Add)
+    Note over H: No application messages in the intermediate epoch
+    O->>H: group.e2ee.remove(old DID, epoch N+2)
+    H-->>M: group.e2ee.notice(commit-delivery, Remove)
+    Note over H: Resume E2EE messages after Remove succeeds
+```
+
 ---
 
 ## 16. Security and Policy Requirements
@@ -1536,6 +1634,14 @@ As long as v1 is not extended to the multi-controller model, then:
 - admin cannot call these methods directly
 - The business layer actions of admin only affect the P4 status, and are eventually implemented to MLS by owner
 
+### 16.6 Future Secrecy and Historical Boundary After Rebind
+
+- After the `group.e2ee.remove(old DID)` Commit is accepted, the old-DID leaf **MUST NOT** decrypt messages from that new epoch or later epochs;
+- The intermediate epoch between Add(new DID) and Remove(old DID) **MUST NOT** carry application messages;
+- The new DID receives only the new epoch and later state through this Welcome. This Profile **MUST NOT** redistribute lost historical epoch secrets;
+- Historical ciphertext, sender DIDs, MLS credentials, and receipts **MUST NOT** be rewritten because of a rebind;
+- Applications that require historical plaintext recovery need an explicit encrypted backup mechanism outside this Profile.
+
 ---
 
 ## 17. Profile specific errors (recommended)
@@ -1558,6 +1664,8 @@ On the premise of following the ANP Core public error model, this Profile recomm
 | 5011 | `group.e2ee.notice_type_unsupported` | Unsupported E2EE Notice type |
 | 5012 | `group.e2ee.key_package_consumed` | KeyPackage has been consumed and cannot be reused |
 
+Credential-rebind orchestration defines no dedicated error codes. If state is not ready, a Commit is invalid, an epoch conflicts, or the caller is not the controller, implementations reuse `group.e2ee.state_not_ready`, `group.e2ee.commit_invalid`, `group.e2ee.epoch_conflict`, and `group.e2ee.controller_required`, respectively.
+
 ---
 
 ## 18. Minimum Interoperability Requirements
@@ -1574,16 +1682,19 @@ An implementation conforming to this Profile MUST support at least:
 8. `group.e2ee.send`
 9. did:wba binding verification
 10. Service-scoped target model of `group.e2ee.create`
-11. `group.e2ee.add/remove/send`’s group-addressed target model
+11. Group-addressed target model of `group.e2ee.add/remove/send`
 12. Agent-addressed notification model of `group.e2ee.notice`
 13. owner as sole MLS controller
 14. Drive `create/add/remove` through P4 business state
-15. `group.e2ee.send` directly sends MLS ciphertext without being packaged by `group.send`
-16. `group.e2ee.notice` is used for `welcome-delivery` and `commit-delivery`
-17. Explicit delivery of `ratchet_tree_b64u` in `welcome-delivery`
-18. `group.incoming` continues to receive notifications as group messages
-19. Only the message side enters `PrivateMessage`
-20. The business semantics of `group_receipt`, `group_state_version`, and `group_event_seq` are consistent with P4
+15. Drive `add(new DID)` followed by `remove(old DID)` from P4 `member-credential-rebound`, with both steps bound to the same `group_state_ref`
+16. Pause application messages from acceptance of the P4 rebind until Remove completes, and serialize member-change control actions between Add and Remove
+17. `group.e2ee.send` directly sends MLS ciphertext without being packaged by `group.send`
+18. `group.e2ee.notice` is used for `welcome-delivery` and `commit-delivery`
+19. Explicit delivery of `ratchet_tree_b64u` in `welcome-delivery`
+20. `group.incoming` continues to receive notifications as group messages
+21. Only the message side enters `PrivateMessage`
+22. The business semantics of `group_receipt`, `group_state_version`, and `group_event_seq` are consistent with P4
+23. Prevent the old leaf from decrypting future messages after Remove(old DID) succeeds
 
 This Profile v1 does **not** require:
 
@@ -1831,6 +1942,105 @@ This Profile v1 does **not** require:
 }
 ```
 
+### 19.6 Handle-backed Member Rebind Orchestration Example
+
+After P4 `member-credential-rebound` is accepted and the message plane is paused, the owner first submits Add(new DID):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-ger-add-001",
+  "method": "group.e2ee.add",
+  "params": {
+    "meta": {
+      "anp_version": "1.0",
+      "profile": "anp.group.e2ee.v1",
+      "security_profile": "group-e2ee",
+      "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
+      "target": {
+        "kind": "group",
+        "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
+      },
+      "operation_id": "op-ger-add-001",
+      "created_at": "2026-03-29T16:25:00Z"
+    },
+    "auth": {
+      "scheme": "anp-rfc9421-origin-proof-v1",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_DIGEST:",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797900;expires=1774797960;nonce=\"n-rebind-add\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
+        "signature": "sig1=:BASE64_SIGNATURE:"
+      }
+    },
+    "body": {
+      "member_did": "did:wba:b.example:agents:bob:e1_<new-fingerprint>",
+      "group_state_ref": {
+        "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+        "group_state_version": "3",
+        "policy_hash": "sha-256:efgh"
+      },
+      "group_key_package": {
+        "key_package_id": "kp-bob-002",
+        "owner_did": "did:wba:b.example:agents:bob:e1_<new-fingerprint>",
+        "suite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+        "mls_key_package_b64u": "BASE64URL_NEW_KEYPACKAGE",
+        "did_wba_binding": {
+          "agent_did": "did:wba:b.example:agents:bob:e1_<new-fingerprint>"
+        }
+      },
+      "crypto_group_id_b64u": "BASE64URL_GROUPID",
+      "epoch": "2",
+      "commit_b64u": "BASE64URL_ADD_NEW_DID_COMMIT",
+      "welcome_b64u": "BASE64URL_NEW_DID_WELCOME",
+      "ratchet_tree_b64u": "BASE64URL_RATCHET_TREE"
+    }
+  }
+}
+```
+
+After Add is accepted and advances to epoch 2, the Group Host keeps application messages paused and the owner submits Remove(old DID). Both requests use exactly the same `group_state_ref`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-ger-remove-001",
+  "method": "group.e2ee.remove",
+  "params": {
+    "meta": {
+      "anp_version": "1.0",
+      "profile": "anp.group.e2ee.v1",
+      "security_profile": "group-e2ee",
+      "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
+      "target": {
+        "kind": "group",
+        "did": "did:wba:groups.example:team:dev:e1_<fingerprint>"
+      },
+      "operation_id": "op-ger-remove-001",
+      "created_at": "2026-03-29T16:26:00Z"
+    },
+    "auth": {
+      "scheme": "anp-rfc9421-origin-proof-v1",
+      "origin_proof": {
+        "contentDigest": "sha-256=:BASE64_DIGEST:",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797960;expires=1774798020;nonce=\"n-rebind-remove\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#key-1\"",
+        "signature": "sig1=:BASE64_SIGNATURE:"
+      }
+    },
+    "body": {
+      "member_did": "did:wba:b.example:agents:bob:e1_<old-fingerprint>",
+      "group_state_ref": {
+        "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+        "group_state_version": "3",
+        "policy_hash": "sha-256:efgh"
+      },
+      "crypto_group_id_b64u": "BASE64URL_GROUPID",
+      "epoch": "3",
+      "commit_b64u": "BASE64URL_REMOVE_OLD_DID_COMMIT"
+    }
+  }
+}
+```
+
 ---
 
 ## 20. Registry Placeholder
@@ -1851,6 +2061,7 @@ When implementing this Profile, the implementer should regard it as:
 - MLS control layer that works closely with `anp.group.base.v1`;
 - A group E2EE model in which the owner is responsible for member change control and members are responsible for sending ordinary messages;
 - Convergent scheme that drives `create/add/remove` through state changes;
+- An ordered two-Commit workflow of add(new DID) followed by remove(old DID), driven by the P4 `member-credential-rebound` event;
 - The solution to complete the delivery of `commit` and `welcome` through independent `group.e2ee.notice`.
 
 For future versions, further consideration may be given to:

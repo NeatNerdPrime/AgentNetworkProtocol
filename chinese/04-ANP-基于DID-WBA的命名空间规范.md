@@ -15,6 +15,8 @@
 
 Handle 解决了 DID 标识符对人类不友好的问题——`did:wba:example.com:user:alice:e1_<fingerprint>` 这样的标识符对机器友好但难以记忆和传播。尤其在最新 did:wba 规范中，路径型 DID 默认会携带绑定公钥指纹，并且当绑定密钥或绑定 profile 变化时，路径型 DID 可能发生轮换。WNS 因而不仅提供类似 email 地址或社交平台用户名的体验，也承担“稳定的人类可读名称层”角色：Handle 可以保持稳定，而底层 did:wba 可以随着绑定密钥变化而轮换。
 
+为了使该稳定名称可被跨域协议安全地用作身份连续性锚点，本规范强制要求：Handle 一旦分配即永久归属于同一主体，不得转让、撤销后不得复用；所有合规 Handle Provider 都必须作出并执行这一协议承诺。
+
 本规范关于handle相关功能，也可以和原生的did:web方法兼容，兼容方案参考附录A。
 
 ## 1. 背景与动机
@@ -41,7 +43,7 @@ WNS 的设计目标包括：
 1. **人类可读**：提供简短、易记、易输入的别名，如 `alice.example.com`
 2. **域名无关**：任何拥有域名和 TLS 证书的实体都可以托管 Handle 服务，不依赖特定中心化平台
 3. **确定性解析**：Handle 到 DID 的映射关系明确，解析过程标准化
-4. **稳定引用**：Handle 作为稳定名称层，允许底层路径型 did:wba 随绑定密钥变化而轮换
+4. **稳定引用**：Handle 作为永久不可转让、不可复用的稳定名称层，允许底层路径型 did:wba 随绑定密钥变化而轮换
 5. **双向绑定**：Handle 和 DID 之间支持双向验证，防止单方面篡改
 6. **协议集成**：与现有 ANP 协议栈（03/07/08/09 规范）无缝集成
 7. **最小化设计**：仅定义命名和解析的核心机制，不规定 Handle 的注册、管理等业务流程
@@ -64,6 +66,8 @@ WNS 的设计目标包括：
 | **DID Binding** | Handle 到 DID 的一对一映射关系 |
 | **Handle Resolution** | 将 Handle 解析为 DID 的过程 |
 | **DID Rotation** | 对于路径型 did:wba，因绑定密钥或绑定 profile 变化导致 DID 发生变化的过程 |
+| **Binding Generation** | Handle 绑定状态的单调递增代次，用于检测 DID 换绑、状态变更与回滚攻击 |
+| **Handle Tombstone** | Handle 被撤销后永久保留的占用记录，用于阻止同名 Handle 被重新分配 |
 | **WNS** | WBA Name Space，本规范定义的命名空间体系 |
 | **Handle Resolution Document** | Handle 解析端点返回的 JSON 文档，包含 Handle 到 DID 的映射信息 |
 | **DID Confirmation Endpoint** | Handle Provider 域下的确认端点，用于确认某个 DID 确实由该 Provider 负责解析，而无需在 DID Document 中公开具体 Handle |
@@ -187,6 +191,7 @@ Handle Resolution Endpoint 返回的 JSON 文档格式如下：
   "handle": "alice.example.com",
   "did": "did:wba:example.com:user:alice:e1_<fingerprint>",
   "status": "active",
+  "binding_generation": "8",
   "updated": "2025-01-01T00:00:00Z",
   "versionId": "42",
   "ttl": 300,
@@ -214,6 +219,7 @@ Handle Resolution Endpoint 返回的 JSON 文档格式如下：
 | `handle` | 必须 | 完整的 Handle 标识符 |
 | `did` | 必须 | 该 Handle 当前绑定的 did:wba DID |
 | `status` | 必须 | Handle 当前状态，取值见 4.7 节 |
+| `binding_generation` | 必须 | 十进制字符串；Handle 绑定或状态每次变更时必须严格递增 |
 | `updated` | 可选 | 最后更新时间，ISO 8601 格式 |
 | `versionId` | 可选 | 映射版本标识，用于缓存和排障 |
 | `ttl` | 可选 | 建议缓存秒数 |
@@ -331,7 +337,7 @@ Handle Resolution Document 可以（MAY）包含 `profile` 对象。
 
 外层 `ttl` 约束 Handle Resolution Document 的缓存，尤其是 `handle` → `did` 映射。`profile.ttl` 约束 profile 缓存。如果 `profile.ttl` 缺失，客户端可以（MAY）使用外层 `ttl` 作为 profile 缓存上限。除非本地策略明确允许，客户端不应（SHOULD NOT）把 `profile` 缓存得比 Handle Resolution Document 更久。当外层 `did` 发生变化时，客户端必须（MUST）失效旧 DID 关联的 profile 缓存。
 
-外层 `updated` 与 `versionId` 表示 Handle 映射版本；`profile.updated` 与 `profile.versionId` 表示 profile 版本。两者可以（MAY）独立变化。
+外层 `binding_generation` 是安全关键的单调绑定代次；`updated` 与 `versionId` 是用于缓存、调试和对账的补充版本信息。`profile.updated` 与 `profile.versionId` 表示 profile 版本。Handle 绑定与 profile 版本可以（MAY）独立变化；验证者不得（MUST NOT）使用 `updated` 或 `versionId` 替代 `binding_generation` 的防回滚语义。
 
 **Proof 语义：**
 
@@ -372,6 +378,8 @@ Handle 与 DID 之间存在唯一对应关系，由 Handle Provider 维护。映
 2. **唯一绑定**：一个 Handle 必须（MUST）只绑定一个 DID
 3. **local-part 唯一**：同一 domain 内的 local-part 必须（MUST）唯一
 4. **不重复定义 did:wba 绑定指纹**：如果 Handle 指向采用默认路径方案的路径型 did:wba，则 DID 路径最后一个绑定指纹段的生成、校验和 profile 语义完全由 03 规范定义，WNS 不重新定义也不覆盖该规则
+5. **永久保留**：Handle 一旦被分配，Handle Provider 必须（MUST）永久保留其所有权记录；不得（MUST NOT）将其转让或重新分配给其他主体
+6. **单调代次**：初次分配时 `binding_generation` 必须（MUST）为正整数字符串；当前 DID 或 Handle 状态变更时必须（MUST）严格递增，不得（MUST NOT）回退或复用旧代次
 
 **映射示例：**
 
@@ -397,6 +405,8 @@ DID:     did:wba:example.com%3A8800:user:alice:e1_<fingerprint>
 
 - 一个 Handle 必须（MUST）只绑定一个 DID
 - 同一 domain 内 local-part 必须（MUST）唯一
+- Handle 一旦分配必须（MUST）永久占用，撤销后必须（MUST）保留 tombstone
+- Handle 不得（MUST NOT）转让，也不得（MUST NOT）通过普通注册流程重新分配
 - 不同 domain 可以有相同的 local-part（去中心化模型）
 
 例如 `alice.example.com` 和 `alice.other.com` 是两个不同的 Handle，指向不同的 DID。
@@ -409,7 +419,7 @@ Handle 有以下三种状态：
 |------|------|
 | `active` | 正常状态，Handle 可被解析 |
 | `suspended` | 暂停状态，暂时不可解析，可恢复 |
-| `revoked` | 已撤销，不可恢复 |
+| `revoked` | 已撤销，不可恢复；Provider 必须永久保留 tombstone，不得重新分配 |
 
 ### 4.8 错误响应
 
@@ -683,14 +693,20 @@ Handle Provider 必须（MUST）满足以下要求：
 - Handle Provider 负责 Handle 的分配和生命周期管理
 - Handle 的注册流程、身份验证方式、长度策略等由 Handle Provider 自行定义
 - Handle Provider 必须（MUST）保证同一 domain 下 Handle 的唯一性
+- Handle Provider 必须（MUST）将已分配 Handle 视为永久不可转让的主体标识，不得（MUST NOT）将其转移给另一主体
+- Handle 撤销后，Provider 必须（MUST）保留永久 tombstone，任何普通注册、恢复或管理流程都不得（MUST NOT）将同名 Handle 分配给任何主体
+- Handle Provider 必须（MUST）持久化并单调递增 `binding_generation`，以便验证者拒绝旧绑定回放
 
 ### 8.3 Handle Provider 迁移
 
 用户可能需要将 Handle 从一个 Handle Provider 迁移到另一个。在迁移过程中：
 
-- 旧 Handle Provider 可以（MAY）返回 `301 Moved Permanently` 或 `308 Permanent Redirect`，`Location` 头指向新 Handle Provider 的 Resolution Endpoint
+- 本版本的 Provider 迁移仅表示在完整 Handle 与其 domain 不变的前提下迁移运营或基础设施；迁移到不同 domain 会产生不同 Handle，不具备本规范定义的自动身份连续性
+- Provider 迁移必须（MUST）保持同一个完整 Handle 与同一个 Handle 主体，不得（MUST NOT）被用于转让 Handle 或替换主体
+- 新 Provider 必须（MUST）继承已接受的最大 `binding_generation`、绑定历史与永久 tombstone 义务；迁移后的下一份状态代次必须（MUST）严格更大，不得（MUST NOT）因迁移重置或回滚
+- 旧 Handle Provider 可以（MAY）返回 `301 Moved Permanently` 或 `308 Permanent Redirect`，但 `Location` 指向的 Resolution Endpoint 必须（MUST）仍满足输入 Handle domain 的验证规则
 - 迁移期间应当（SHOULD）同时维持新旧 Handle Provider 的解析能力
-- DID 持有者需要更新 DID Document 中的 `ANPHandleService`，使其继续指向新 Handle Provider 域下的公开 Handle Resolution Endpoint 或 DID Confirmation Endpoint
+- DID 持有者需要更新 DID Document 中的 `ANPHandleService`，使其继续指向同一 Handle domain 下可验证的公开 Handle Resolution Endpoint 或 DID Confirmation Endpoint
 - 客户端在新地址解析到结果后，必须（MUST）重新执行双向绑定验证，不得仅凭重定向接受新的绑定关系
 - 如果未来需要在不改变当前互操作模式的前提下表达更强的 provider 身份，可在后续版本引入 `providerDid` 机制
 
@@ -699,7 +715,8 @@ Handle Provider 必须（MUST）满足以下要求：
 对于采用默认路径方案的路径型 did:wba，当绑定密钥变化，或者 binding profile 在 `e1_` / `k1_` 之间切换时，底层 DID 会发生轮换。WNS 在此场景下的要求如下：
 
 - Handle 可以（MAY）保持不变，以提供稳定的人类可读名称
-- Handle Provider 应当（SHOULD）在新的 DID Document 可用后，尽快将 Handle 映射更新到新的 DID
+- Handle Provider 必须（MUST）在新的 DID Document 可用且其独立恢复或身份验证策略完成后，将 Handle 映射更新到新 DID，并严格递增 `binding_generation`
+- DID 换绑必须（MUST）表示同一 Handle 主体的凭证更新，不得（MUST NOT）被用于转让 Handle 或更换 Handle 主体
 - 在轮换窗口中，Handle Provider 应当（SHOULD）降低缓存 TTL，以减少客户端使用旧映射的时间
 - 客户端不得（MUST NOT）假定 Handle 永远绑定同一个 DID；当前解析结果才是该 Handle 的权威当前 DID
 - 对于安全敏感操作，客户端在使用 Handle 获得新的 DID 后，必须（MUST）重新执行双向绑定验证
@@ -801,9 +818,10 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 在该过程中：
 
 1. Alice 的 Handle `alice.example.com` 保持不变
-2. Handle Provider 将该 Handle 的映射更新为新的 DID
+2. Handle Provider 将该 Handle 的映射更新为新的 DID，并将 `binding_generation` 从旧值严格递增
 3. Alice 更新新 DID Document 中的 `ANPHandleService`
 4. 解析者重新执行双向绑定验证后，继续通过同一个 Handle 找到 Alice 的当前 DID
+5. 若 Alice 撤销 Handle 本身，Provider 永久保留 tombstone，而不是将同名 Handle 交给新主体
 
 ## 11. 规范性要求摘要
 
@@ -837,6 +855,14 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 24. 如果 `subject_type` 缺失或未知，客户端必须按 `unknown` 处理
 25. 如果 `profile.proof` 不存在，客户端必须把 profile 视为 provider-supplied UI metadata
 26. 当外层 `did` 发生变化时，客户端必须失效旧 DID 关联的 profile 缓存
+27. Handle Resolution Document 必须包含十进制字符串 `binding_generation`
+28. Handle 当前 DID 或状态变更时，`binding_generation` 必须严格递增且不得回退或复用
+29. Handle 一旦分配必须永久保留给同一主体，不得转让或重新分配
+30. Handle 撤销后必须保留永久 tombstone，不得通过普通注册或恢复流程重新激活
+31. Handle 的 DID 换绑必须表示同一主体的凭证更新，不得被用于身份转让
+32. Handle Provider 迁移必须保持同一个 Handle 主体，不得被用于身份转让
+33. 新 Provider 必须继承最大绑定代次、绑定历史与 tombstone 义务，不得重置或回滚 `binding_generation`
+34. Provider 迁移必须保持完整 Handle 及其 domain 不变；迁移到不同 domain 不具有自动身份连续性
 
 ### SHOULD（应当）
 
@@ -853,7 +879,7 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 11. 使用 DID Confirmation Endpoint 时，响应文档应不直接返回具体 `handle`
 12. 实现者应区分 `exact-handle`、`provider-confirmed` 与 `unverified` 三种结果
 13. DID 持有者在 Handle Provider 迁移后应更新 DID Document 中的 `ANPHandleService`
-14. 当底层路径型 DID 轮换时，Handle Provider 应尽快将 Handle 映射更新到新的 DID
+14. 当底层路径型 DID 轮换时，Handle Provider 应缩短旧映射的缓存时间，并在完成强恢复验证后发布新映射
 15. `profile.type` 应为 `DIDSubjectProfile`
 16. 新协议输出应使用 `profile.display_name`，而不是 legacy `name`
 17. `avatar_uri` 和 `profile_uri` 存在时，应使用 HTTPS 绝对 URI

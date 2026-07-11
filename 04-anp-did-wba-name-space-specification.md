@@ -15,6 +15,8 @@ This specification defines WNS (WBA Name Space), a human-readable namespace base
 
 Handles solve the problem that DID identifiers are not human-friendly. Identifiers such as `did:wba:example.com:user:alice:e1_<fingerprint>` are machine-friendly but difficult to remember and share. In particular, under the latest did:wba specification, path-type DIDs carry a bound public key fingerprint by default, and the path-type DID itself may rotate when the binding key or binding profile changes. Therefore, WNS not only provides an experience similar to email addresses or social platform usernames, but also serves as a stable human-readable naming layer: the Handle can remain stable while the underlying did:wba may rotate as the binding key changes.
 
+To let cross-domain protocols safely use that stable name as an identity-continuity anchor, this specification requires every conforming Handle Provider to make and enforce the following protocol commitment: once allocated, a Handle permanently belongs to the same subject, is non-transferable, and cannot be reused after revocation.
+
 The Handle-related functionality defined by this specification can also be compatible with the native `did:web` method. See Appendix A for the compatibility entry.
 
 ## 1. Background and Motivation
@@ -42,7 +44,7 @@ The design goals of WNS include:
 1. **Human-readable**: Provide short, memorable, and easy-to-type aliases such as `alice.example.com`.
 2. **Domain-independent**: Any entity with a domain name and TLS certificate can host a Handle service without depending on a specific centralized platform.
 3. **Deterministic resolution**: The mapping from Handle to DID is explicit, and the resolution process is standardized.
-4. **Stable reference**: Handle serves as a stable naming layer, allowing the underlying path-type did:wba to rotate as the binding key changes.
+4. **Stable reference**: A Handle is a permanent, non-transferable, and non-reusable stable naming layer, allowing the underlying path-type did:wba to rotate as the binding key changes.
 5. **Bidirectional binding**: Handles and DIDs support bidirectional verification to prevent unilateral tampering.
 6. **Protocol integration**: Seamless integration with the existing ANP protocol stack (Specifications 03/07/08/09).
 7. **Minimal design**: Define only the core naming and resolution mechanisms without specifying Handle registration, management, or other business processes.
@@ -65,6 +67,8 @@ The design goals of WNS include:
 | **DID Binding** | The one-to-one mapping relationship from a Handle to a DID |
 | **Handle Resolution** | The process of resolving a Handle to a DID |
 | **DID Rotation** | For path-type did:wba, the process in which the DID changes because the binding key or binding profile changes |
+| **Binding Generation** | A monotonically increasing generation of Handle binding state used to detect DID rebinding, status changes, and rollback attacks |
+| **Handle Tombstone** | A permanent reservation retained after Handle revocation to prevent the same Handle from being allocated again |
 | **WNS** | WBA Name Space, the namespace system defined by this specification |
 | **Handle Resolution Document** | The JSON document returned by the Handle Resolution Endpoint, containing Handle-to-DID mapping information |
 | **DID Confirmation Endpoint** | A confirmation endpoint under the Handle Provider's domain, used to confirm that a DID is indeed resolved by that Provider without disclosing a specific Handle in the DID Document |
@@ -188,6 +192,7 @@ The JSON document returned by the Handle Resolution Endpoint has the following f
   "handle": "alice.example.com",
   "did": "did:wba:example.com:user:alice:e1_<fingerprint>",
   "status": "active",
+  "binding_generation": "8",
   "updated": "2025-01-01T00:00:00Z",
   "versionId": "42",
   "ttl": 300,
@@ -215,6 +220,7 @@ The JSON document returned by the Handle Resolution Endpoint has the following f
 | `handle` | Required | The complete Handle identifier |
 | `did` | Required | The did:wba DID currently bound to the Handle |
 | `status` | Required | The current Handle status; see Section 4.7 |
+| `binding_generation` | Required | Decimal string that MUST strictly increase whenever the Handle binding or status changes |
 | `updated` | Optional | Last update time in ISO 8601 format |
 | `versionId` | Optional | Mapping version identifier used for caching and troubleshooting |
 | `ttl` | Optional | Suggested cache lifetime in seconds |
@@ -332,7 +338,7 @@ If `avatar_uri` or `profile_uri` is present, it SHOULD be an absolute HTTPS URI.
 
 The top-level `ttl` constrains the Handle Resolution Document cache, especially the `handle` → `did` mapping. `profile.ttl` constrains the profile cache. If `profile.ttl` is absent, clients MAY use the top-level `ttl` as the maximum profile cache lifetime. Clients SHOULD NOT cache `profile` longer than the Handle Resolution Document unless local policy explicitly allows that. If the top-level `did` changes, clients MUST invalidate profile cache entries associated with the old DID.
 
-Top-level `updated` and `versionId` describe the Handle mapping version. `profile.updated` and `profile.versionId` describe the profile version. These versions MAY change independently.
+Top-level `binding_generation` is the security-critical monotonic binding generation. `updated` and `versionId` are supplemental version information for caching, diagnostics, and reconciliation. `profile.updated` and `profile.versionId` describe the profile version. Handle bindings and profile versions MAY change independently. Verifiers MUST NOT use `updated` or `versionId` as a substitute for the rollback-protection semantics of `binding_generation`.
 
 **Proof Semantics:**
 
@@ -373,6 +379,8 @@ Handles and DIDs have a one-to-one correspondence maintained by the Handle Provi
 2. **Unique binding**: A Handle MUST be bound to exactly one DID.
 3. **Local-part uniqueness**: The local-part MUST be unique within the same domain.
 4. **No redefinition of did:wba binding fingerprints**: If a Handle points to a path-type did:wba using the default path profile, the generation, validation, and profile semantics of the final binding fingerprint segment in the DID path are defined entirely by Specification 03. WNS does not redefine or override those rules.
+5. **Permanent reservation**: Once a Handle is allocated, the Handle Provider MUST permanently retain its ownership record and MUST NOT transfer or reallocate it to another subject.
+6. **Monotonic generation**: On initial allocation, `binding_generation` MUST be a positive decimal string. Whenever the current DID or Handle status changes, it MUST strictly increase and MUST NOT roll back or reuse an earlier generation.
 
 **Mapping Examples:**
 
@@ -398,6 +406,8 @@ Implementers MUST NOT bypass the DID Document and directly infer service endpoin
 
 - A Handle MUST be bound to exactly one DID.
 - The local-part MUST be unique within the same domain.
+- Once allocated, a Handle MUST remain permanently reserved, and a revoked Handle MUST retain a tombstone.
+- A Handle MUST NOT be transferred or reallocated through an ordinary registration flow.
 - Different domains MAY have the same local-part (decentralized model).
 
 For example, `alice.example.com` and `alice.other.com` are two different Handles that point to different DIDs.
@@ -410,7 +420,7 @@ Handles have the following three states:
 |--------|-------------|
 | `active` | Normal state; the Handle can be resolved |
 | `suspended` | Temporarily unresolvable but recoverable |
-| `revoked` | Permanently revoked and not recoverable |
+| `revoked` | Permanently revoked and not recoverable; the Provider MUST retain a permanent tombstone and MUST NOT reallocate it |
 
 ### 4.8 Error Responses
 
@@ -684,14 +694,20 @@ Handle Providers MUST satisfy the following requirements:
 - Handle Providers are responsible for Handle allocation and lifecycle management.
 - Handle registration flows, identity verification methods, length policies, and similar operational rules are defined by each Handle Provider.
 - Handle Providers MUST ensure Handle uniqueness within the same domain.
+- Handle Providers MUST treat an allocated Handle as a permanent, non-transferable subject identifier and MUST NOT transfer it to another subject.
+- After Handle revocation, the Provider MUST retain a permanent tombstone. No ordinary registration, recovery, or administrative flow may reallocate the same Handle to any subject.
+- Handle Providers MUST persist and monotonically increase `binding_generation` so that verifiers can reject replayed historical bindings.
 
 ### 8.3 Handle Provider Migration
 
 Users may need to migrate a Handle from one Handle Provider to another. During migration:
 
-- The old Handle Provider MAY return `301 Moved Permanently` or `308 Permanent Redirect`, with the `Location` header pointing to the new Handle Provider's Resolution Endpoint.
+- In this version, Provider migration means moving operations or infrastructure while the complete Handle and its domain remain unchanged. Moving to a different domain creates a different Handle and has no automatic identity continuity under this specification.
+- Provider migration **MUST** preserve the same complete Handle and the same Handle subject, and **MUST NOT** be used to transfer the Handle or replace its subject.
+- The new Provider **MUST** inherit the highest accepted `binding_generation`, binding history, and permanent tombstone obligation. The next state after migration **MUST** use a strictly greater generation and **MUST NOT** reset or roll back because of migration.
+- The old Handle Provider MAY return `301 Moved Permanently` or `308 Permanent Redirect`, but the Resolution Endpoint identified by `Location` **MUST** still satisfy verification rules for the input Handle domain.
 - During the migration period, the old and new Handle Providers SHOULD both maintain resolution capability.
-- The DID holder needs to update `ANPHandleService` in the DID Document so that it continues to point to the Public Handle Resolution Endpoint or DID Confirmation Endpoint under the new Handle Provider's domain.
+- The DID holder needs to update `ANPHandleService` in the DID Document so that it continues to point to a verifiable public Handle Resolution Endpoint or DID Confirmation Endpoint under the same Handle domain.
 - After resolving the result at the new address, the client MUST re-run bidirectional binding verification and MUST NOT accept the new binding solely based on the redirect.
 - If stronger provider identity needs to be expressed in the future without breaking the current interoperability model, a `providerDid` mechanism may be introduced in a later version.
 
@@ -700,7 +716,8 @@ Users may need to migrate a Handle from one Handle Provider to another. During m
 For path-type did:wba using the default path profile, the underlying DID rotates when the binding key changes or when the binding profile switches between `e1_` and `k1_`. In this scenario, WNS has the following requirements:
 
 - The Handle MAY remain unchanged to provide a stable human-readable name.
-- The Handle Provider SHOULD update the Handle mapping to the new DID as soon as the new DID Document is available.
+- Once the new DID Document is available and the Provider's independent recovery or identity-verification policy has succeeded, the Handle Provider MUST update the Handle mapping to the new DID and strictly increase `binding_generation`.
+- DID rebinding MUST represent a credential update for the same Handle subject and MUST NOT be used to transfer the Handle or replace its subject.
 - During the rotation window, the Handle Provider SHOULD reduce the cache TTL to reduce the time during which clients may use an outdated mapping.
 - Clients MUST NOT assume that a Handle is always bound to the same DID; the current resolution result is the authoritative current DID for that Handle.
 - For security-sensitive operations, after obtaining a new DID through a Handle, the client MUST re-run bidirectional binding verification.
@@ -802,9 +819,10 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 During this process:
 
 1. Alice's Handle `alice.example.com` remains unchanged.
-2. The Handle Provider updates the mapping of the Handle to the new DID.
+2. The Handle Provider updates the mapping of the Handle to the new DID and strictly increases `binding_generation` from its previous value.
 3. Alice updates `ANPHandleService` in the new DID Document.
 4. After re-running bidirectional binding verification, resolvers continue to find Alice's current DID through the same Handle.
+5. If Alice revokes the Handle itself, the Provider permanently retains its tombstone rather than assigning the same Handle to a new subject.
 
 ## 11. Normative Requirements Summary
 
@@ -838,6 +856,14 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 24. If `subject_type` is absent or unknown, clients MUST treat it as `unknown`.
 25. If `profile.proof` is absent, clients MUST treat the profile as provider-supplied UI metadata.
 26. When the top-level `did` changes, clients MUST invalidate profile cache entries associated with the old DID.
+27. A Handle Resolution Document MUST contain decimal-string `binding_generation`.
+28. Whenever the current DID or status of a Handle changes, `binding_generation` MUST strictly increase and MUST NOT roll back or reuse an earlier value.
+29. Once allocated, a Handle MUST remain permanently reserved to the same subject and MUST NOT be transferred or reallocated.
+30. After revocation, a Handle MUST retain a permanent tombstone and MUST NOT be reactivated through ordinary registration or recovery.
+31. Handle-to-DID rebinding MUST represent a credential update for the same subject and MUST NOT be used for identity transfer.
+32. Handle Provider migration MUST preserve the same Handle subject and MUST NOT be used for identity transfer.
+33. A new Provider MUST inherit the maximum binding generation, binding history, and tombstone obligation, and MUST NOT reset or roll back `binding_generation`.
+34. Provider migration MUST preserve the complete Handle and its domain; moving to a different domain has no automatic identity continuity.
 
 ### SHOULD
 
@@ -854,7 +880,7 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 11. When a DID Confirmation Endpoint is used, the response document SHOULD NOT directly return a specific `handle`.
 12. Implementers SHOULD distinguish among `exact-handle`, `provider-confirmed`, and `unverified`.
 13. After Handle Provider migration, the DID holder SHOULD update `ANPHandleService` in the DID Document.
-14. When the underlying path-type DID rotates, the Handle Provider SHOULD update the Handle mapping to the new DID as soon as possible.
+14. When the underlying path-type DID rotates, the Handle Provider SHOULD shorten the old mapping's cache lifetime and publish the new mapping after strong recovery verification succeeds.
 15. `profile.type` SHOULD be `DIDSubjectProfile`.
 16. New protocol output SHOULD use `profile.display_name` rather than legacy `name`.
 17. `avatar_uri` and `profile_uri`, when present, SHOULD be absolute HTTPS URIs.
