@@ -1,0 +1,94 @@
+{
+  "logical_message_id": "logical-20260718-001",
+  "note": "This outer object is only an example collection and is not sent on the wire. Each direct.send is an independent P5 Direct E2EE delivery whose encrypted Application Plaintext contains the same logical_message_id; each response accepts only its exact recipient device ciphertext.",
+  "separate_requests": [
+    {
+      "jsonrpc": "2.0",
+      "id": "req-bob-b1",
+      "method": "direct.send",
+      "params": {
+        "meta": {
+          "profile": "anp.direct.e2ee.v2",
+          "security_profile": "direct-e2ee",
+          "sender_did": "did:example:alice",
+          "sender_device_id": "dev-a-7N3KQ2",
+          "target": {
+            "kind": "agent",
+            "did": "did:example:bob"
+          },
+          "recipient_device_id": "dev-b-4M8P1X",
+          "operation_id": "op-bob-b1-001",
+          "message_id": "delivery-bob-b1-001",
+          "created_at": "2026-07-18T10:00:00Z",
+          "content_type": "application/anp-direct-cipher+json"
+        },
+        "body": {
+          "session_id": "BASE64URL_SESSION_B1",
+          "ratchet_header": {
+            "dh_pub_b64u": "BASE64URL_DH_PUB_B1",
+            "pn": "4",
+            "n": "1"
+          },
+          "ciphertext_b64u": "BASE64URL_CIPHERTEXT_WITH_LOGICAL_ID_B1"
+        }
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": "req-bob-b2",
+      "method": "direct.send",
+      "params": {
+        "meta": {
+          "profile": "anp.direct.e2ee.v2",
+          "security_profile": "direct-e2ee",
+          "sender_did": "did:example:alice",
+          "sender_device_id": "dev-a-7N3KQ2",
+          "target": {
+            "kind": "agent",
+            "did": "did:example:bob"
+          },
+          "recipient_device_id": "dev-b2-6VQ9RS",
+          "operation_id": "op-bob-b2-001",
+          "message_id": "delivery-bob-b2-001",
+          "created_at": "2026-07-18T10:00:00Z",
+          "content_type": "application/anp-direct-cipher+json"
+        },
+        "body": {
+          "session_id": "BASE64URL_SESSION_B2",
+          "ratchet_header": {
+            "dh_pub_b64u": "BASE64URL_DH_PUB_B2",
+            "pn": "9",
+            "n": "2"
+          },
+          "ciphertext_b64u": "BASE64URL_CIPHERTEXT_WITH_LOGICAL_ID_B2"
+        }
+      }
+    }
+  ],
+  "expected_success_responses": [
+    {
+      "jsonrpc": "2.0",
+      "id": "req-bob-b1",
+      "result": {
+        "accepted": true,
+        "message_id": "delivery-bob-b1-001",
+        "operation_id": "op-bob-b1-001",
+        "target_did": "did:example:bob",
+        "recipient_device_id": "dev-b-4M8P1X",
+        "accepted_at": "2026-07-18T10:00:01Z"
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": "req-bob-b2",
+      "result": {
+        "accepted": true,
+        "message_id": "delivery-bob-b2-001",
+        "operation_id": "op-bob-b2-001",
+        "target_did": "did:example:bob",
+        "recipient_device_id": "dev-b2-6VQ9RS",
+        "accepted_at": "2026-07-18T10:00:01Z"
+      }
+    }
+  ]
+}

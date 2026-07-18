@@ -1,10 +1,12 @@
 # ANP Profile 8: Federation and Cross-Domain
 
-- Document ID: ANP-P8
+- Document ID: ANP-P8-vNext
 - Title: Federation and Cross-Domain
-- Status: Released
-- Version: 1.1
+- Status: Draft
+- Version: 2.0-draft
 - Language: English
+- Profile: `anp.federation.relay.v2`
+- Dependencies: `anp.core.binding.v2`, `anp.identity.discovery.v2`, `anp.direct.base.v2`, `anp.group.base.v2`
 - Applicability: This profile applies to ANP cross-domain service discovery, service-to-service invocation, group-event distribution, and cross-domain invocation of the object control plane.
 
 ---
@@ -94,6 +96,12 @@ In other words:
 - `meta.sender_did` and `auth.origin_proof` answer "**Which business entity initiated this action**";
 - Two levels of identity can be related, but semantically **MUST NOT** be confused.
 
+### 3.7 Preserve only Profile-declared device selectors
+
+Federation does not change the addressing model of the original business Profile. When P5 or P6 explicitly declares a device selector, every federated hop **MUST** preserve it unchanged, and the final service **MUST** validate it under P2 and the owning security Overlay. A gateway **MUST NOT** remove, replace, or infer that selector.
+
+P3, P4, and ordinary P7 Base operations remain DID- or Group-DID-addressed. P8 **MUST NOT** synthesize a device selector for them from a DID document, local device state, or recipient-domain fan-out.
+
 P8 does not redefine business protocols. Instead, it explains how existing business objects flow between services across domains. The following overview places business subjects, outer service identities, the Group Host, and the Object Service into one view.
 
 ```mermaid
@@ -130,24 +138,24 @@ When reading the subsequent sections, treat this diagram as P8's premise: busine
 
 The standard name of this Profile is:
 
-`anp.federation.relay.v1`
+`anp.federation.relay.v2`
 
-> Note: For compatibility with existing documents and implementations, this revision retains the original profile name. Its scope, however, is now limited to federation and cross-domain service-invocation principles rather than a standalone relay encapsulation protocol.
+> Note: `anp.federation.relay.v2` is the vNext identifier for this draft.
 
 ### 4.2 Dependencies
 
 This Profile **MUST** depend on the following Profiles:
 
-- `anp.core.binding.v1`
-- `anp.identity.discovery.v1`
-- `anp.direct.base.v1`
-- `anp.group.base.v1`
+- `anp.core.binding.v2`
+- `anp.identity.discovery.v2`
+- `anp.direct.base.v2`
+- `anp.group.base.v2`
 
 This Profile **MAY** be used with the following overlays/extensions:
 
-- `anp.direct.e2ee.v1`
-- `anp.group.e2ee.v1`
-- `anp.attachment.v1`
+- `anp.direct.e2ee.v2`
+- `anp.group.e2ee.v2`
+- `anp.attachment.v2`
 
 ### 4.3 Security Profile
 
@@ -221,7 +229,7 @@ Applicable methods include but are not limited to:
 - `group.e2ee.remove`
 - `group.e2ee.send`
 
-For `group.join` and `group.add` in the current P4 v1 core, the cross-domain Success Semantics is subject to the business results returned by the Group Host; under the current v1 mainline, success means that the corresponding business member status has been established. If the deployer introduces additional out-of-band credentials, approval flow or other governance intermediate states, it is an expansion path and does not belong to the v1 core Success Semantics of this Profile.
+For `group.join` and `group.add` in the current P4 v2 core, the cross-domain Success Semantics is subject to the business results returned by the Group Host; under the current v2 mainline, success means that the corresponding business member status has been established. If the deployer introduces additional out-of-band credentials, approval flow or other governance intermediate states, it is an expansion path and does not belong to the v2 core Success Semantics of this Profile.
 
 
 ### 5.3 For Object Service
@@ -241,17 +249,19 @@ When implemented in combination with P5/P6, the following service-scoped getter/
 
 - `direct.e2ee.get_prekey_bundle`
   1. Parse `body.target_did`
-  2. Find the `ANPMessageService` exposed by the target Agent
-  3. Call the service directly
+  2. Preserve and validate `body.target_device_id` as required by P5
+  3. Find the `ANPMessageService` exposed by the target Agent
+  4. Call the service directly without substituting another device
 
 - `group.e2ee.get_key_package`
   1. Parse `body.target_did`
-  2. Find the `ANPMessageService` exposed by the target Agent
-  3. Call the service directly
+  2. Preserve and validate `body.target_device_id` as required by P6
+  3. Find the `ANPMessageService` exposed by the target Agent
+  4. Call the service directly without substituting another device
 
-These methods do not assume anonymous access in the v1 minimum-interoperability baseline; caller identity, rate limiting, and anti-abuse controls **MUST** be enforced using hop- and service-level authentication.
+These methods do not assume anonymous access in the v2 minimum-interoperability baseline; caller identity, rate limiting, and anti-abuse controls **MUST** be enforced using hop- and service-level authentication.
 
-Cryptographic results such as `welcome` / `ratchet_tree` required for group E2EE onboarding are delivered by `group.e2ee.notice`; v1 does not define independent `group.e2ee.get_join_info` standard cross-domain routing.
+Cryptographic results such as `welcome` / `ratchet_tree` required for group E2EE onboarding are delivered by `group.e2ee.notice`; v2 does not define independent `group.e2ee.get_join_info` standard cross-domain routing.
 
 ### 5.4 Group event distribution
 
@@ -262,7 +272,9 @@ When the Group Host actively distributes ordered group events to member domains,
 - For distribution of cryptographic results to group E2EE, **SHOULD** use `group.e2ee.notice`;
 - If the deployer adopts an equivalent mechanism, the mechanism **MUST** retain the original group semantics and carries at least `group_did`, `group_event_seq`, `group_state_version` and the corresponding event payload.
 
-`group.e2ee.notice` can deliver `welcome-delivery` to target Agents that have not yet completed MLS bootstrap, or deliver `commit-delivery` to existing members; this belongs to P6's cryptographic result distribution, rather than P4's group member broadcast. out-of-band Invitation credentials or other non-member governance messages, if present, are deployment extensions and do not constitute a v1 standard cross-domain path.
+`group.e2ee.notice` can deliver `welcome-delivery` to target Agents that have not yet completed MLS bootstrap, or deliver `commit-delivery` to existing members; this belongs to P6's cryptographic result distribution, rather than P4's group member broadcast. out-of-band Invitation credentials or other non-member governance messages, if present, are deployment extensions and do not constitute a v2 standard cross-domain path.
+
+P4 `group.incoming` and `group.state_changed` remain addressed to a member DID and **MUST NOT** gain a device selector during federation. P6 encrypted delivery and `group.e2ee.notice` preserve the exact recipient-device selector required by P6 and **MUST NOT** broadcast one device-bound cryptographic result to sibling devices.
 
 P8 does not require the Group Host to design a new protocol for group events. Instead, it encourages direct reuse of existing notification methods. The following diagram shows the three paths for message distribution, business-state changes, and cryptographic result delivery side by side so that readers can distinguish their semantic boundaries.
 
@@ -404,6 +416,8 @@ The implementer **MAY** maintain multiple verification methods that can be used 
 
 When service-to-service invocation is applied, the `method`, `params.meta`, and `params.body` of the original service request **SHOULD** remain equivalent to those received by the target domain service. If an implementation must re-encode JSON for serialization or gateway conversion, object semantics **MUST** remain unchanged.
 
+This includes preserving a device selector only when the original P5/P6 method declares it. For Base operations, equivalence means that no selector is added.
+
 
 ### 6.4 Preserve the Origin Proof
 
@@ -411,7 +425,7 @@ If the original business request carries `auth.origin_proof`, the cross-domain s
 
 The outer HTTP authentication for the federated service DID **MUST NOT** replace this origin proof; the sending domain service also **MUST NOT** rewrite `auth.origin_proof` to its own federated service DID.
 
-For `attachment.*` Control-Plane Methods under the current P7 v1 mainline, the terminal service `auth.origin_proof` usually does not exist; the outer `serviceDid` hop authentication **MUST NOT** be mistaken for the service origin proof.
+For `attachment.*` Control-Plane Methods under the current P7 v2 mainline, the terminal service `auth.origin_proof` usually does not exist; the outer `serviceDid` hop authentication **MUST NOT** be mistaken for the service origin proof.
 
 ### 6.5 Minimum visibility of outer layer
 
@@ -424,6 +438,7 @@ For business requests sent across domains, fields visible to the intermediate se
 - `meta.operation_id`
 - `meta.message_id` (if present)
 - `meta.content_type`
+- `meta.sender_device_id` and `meta.recipient_device_id` only when declared by the enclosing P5/P6 Profile
 
 Any other fields, especially E2EE-protected business content, that the intermediary service **MUST NOT** rely on, modify, or rewrite without authorization.
 
@@ -451,6 +466,7 @@ When a network failure, timeout, or indeterminate result occurs, the sending dom
 - If message semantics exist, **MUST** keep the original `message_id` unchanged;
 - If called for object control, **SHOULD** keep the original `attachment_id` and related context unchanged;
 - The business payload **MUST** remain semantically equivalent.
+- For a P5/P6 operation, every declared device selector **MUST** remain unchanged; Base retries remain DID-scoped.
 
 ### 7.3 Implementation-Internal Tracking Fields
 
@@ -477,7 +493,7 @@ For cross-domain `direct.send`:
 For P4 control operations such as `group.join`, `group.add`, `group.remove`, `group.update_profile`, `group.update_policy`:
 
 - When the final Group Host Service accepts ordering, the sender domain service **MAY** return success to the local caller;
-- For the current P4 v1 core, the success of `group.join`/`group.add` means that the corresponding business member status has been established;
+- For the current P4 v2 core, the success of `group.join`/`group.add` means that the corresponding business member status has been established;
 - Member domain synchronization and cryptographic implementation with P6 are subsequent asynchronous stages.
 
 ### 8.3 P6 Cryptographic Control Operations
@@ -528,9 +544,9 @@ In a group scenario, the caller **MUST** use the DID of the original group-messa
 
 ### 9.2 Who initiates the ticket request?
 
-v1 standard interworking path **MUST** take "domain service proxy mode" as the main line:
+v2 standard interworking path **MUST** take "domain service proxy mode" as the main line:
 
-#### Mode A: Domain service proxy mode (v1 standard path)
+#### Mode A: Domain service proxy mode (v2 standard path)
 
 The requesting agent submits `attachment.get_download_ticket` to the local `ANPMessageService` or equivalent domain service, which serves as an outbound proxy to initiate cross-domain requests.
 
@@ -546,7 +562,7 @@ In this mode, the local domain service **MUST** resolve the original attachment 
 
 The requesting agent directly parses the original attachment message sender DID and calls its public `ANPMessageService`.
 
-This mode **is not part of v1 MTI**; if enabled by deployment, you must resolve it yourself:
+This mode **is not part of v2 MTI**; if enabled by deployment, you must resolve it yourself:
 
 - How the Agent obtains and verifies the target `serviceDid` based on the original attachment message sender DID
 - How the client performs outer service authentication
@@ -617,6 +633,7 @@ An implementation conforming to this Profile MUST support at least:
 10. Support at least one mechanism for distributing ordering group events to member domains; when used in combination with P6, **MUST** support cross-domain distribution of `group.e2ee.notice`;
 11. Declare `serviceDid` for `ANPMessageService` participating in cross-domain calls, and verify the outer HTTP Message Signatures according to the method-level caller anchor;
 12. For `did:wba` deployment, support using bare-domain DID as domain-level federation service DID.
+13. Preserve and validate device selectors only for P5/P6 operations that declare them, and never synthesize selectors for P3/P4/P7 Base operations.
 
 ## 11. Reference Implementation Notes (Non-Normative)
 

@@ -1,0 +1,70 @@
+{
+  "group_did": "did:example:group-team",
+  "business_member": {
+    "member_did": "did:example:bob",
+    "p4_role": "member",
+    "p4_member_count_contribution": 1
+  },
+  "device_leaves": [
+    {
+      "member_did": "did:example:bob",
+      "member_device_id": "dev-b-4M8P1X",
+      "leaf_index": "7",
+      "group_key_package": {
+        "key_package_id": "kp-b-001",
+        "owner_did": "did:example:bob",
+        "owner_device_id": "dev-b-4M8P1X",
+        "suite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+        "mls_key_package_b64u": "BASE64URL_KEYPACKAGE_B",
+        "did_wba_binding": {
+          "agent_did": "did:example:bob",
+          "device_id": "dev-b-4M8P1X",
+          "verification_method": "did:example:bob#dev-b-sign",
+          "leaf_signature_key_b64u": "BASE64URL_LEAF_SIGNATURE_KEY_B",
+          "issued_at": "2026-07-18T12:00:00Z",
+          "expires_at": "2026-08-18T12:00:00Z",
+          "proof": {
+            "type": "DataIntegrityProof",
+            "cryptosuite": "eddsa-jcs-2022",
+            "verificationMethod": "did:example:bob#dev-b-sign",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "zDEVICE_B_BINDING_PROOF",
+            "created": "2026-07-18T12:00:00Z"
+          }
+        },
+        "expires_at": "2026-08-18T12:00:00Z"
+      }
+    },
+    {
+      "member_did": "did:example:bob",
+      "member_device_id": "dev-b2-6VQ9RS",
+      "leaf_index": "11",
+      "group_key_package": {
+        "key_package_id": "kp-b2-001",
+        "owner_did": "did:example:bob",
+        "owner_device_id": "dev-b2-6VQ9RS",
+        "suite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+        "mls_key_package_b64u": "BASE64URL_KEYPACKAGE_B2",
+        "did_wba_binding": {
+          "agent_did": "did:example:bob",
+          "device_id": "dev-b2-6VQ9RS",
+          "verification_method": "did:example:bob#dev-b2-sign",
+          "leaf_signature_key_b64u": "BASE64URL_LEAF_SIGNATURE_KEY_B2",
+          "issued_at": "2026-07-18T12:05:00Z",
+          "expires_at": "2026-08-18T12:05:00Z",
+          "proof": {
+            "type": "DataIntegrityProof",
+            "cryptosuite": "eddsa-jcs-2022",
+            "verificationMethod": "did:example:bob#dev-b2-sign",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "zDEVICE_B2_BINDING_PROOF",
+            "created": "2026-07-18T12:05:00Z"
+          }
+        },
+        "expires_at": "2026-08-18T12:05:00Z"
+      }
+    }
+  ],
+  "invariant": "Both leaves have credential.identity = UTF8(did:example:bob), but distinct authenticated device_id values and independent MLS private state.",
+  "binding_invariant": "Each mls_key_package_b64u encodes a LeafNode with the provisional ANP v2 extension type 0xF0A1; its extension_data exactly matches the JCS bytes of did_wba_binding, LeafNode.capabilities.extensions lists 0xF0A1, and GroupContext.required_capabilities.extension_types includes 0xF0A1."
+}

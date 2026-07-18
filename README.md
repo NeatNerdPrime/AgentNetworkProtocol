@@ -10,6 +10,8 @@
 
 **Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
 
+**Messaging vNext draft:** the released v1.1 messaging Profiles remain unchanged. A separately versioned [vNext draft suite](message/vnext/README.md) defines multi-device cryptographic endpoints under one DID; P1–P8 use `.v2` Profile IDs, while P9 is only a vNext binding for the unchanged Mention payload. Draft presence does not imply implementation support or public capability advertisement.
+
 **Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
 **Note:** This project has not issued any digital currency on any platform or blockchain.
@@ -59,12 +61,12 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 | Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Optional semantic meta-protocol negotiation, `MetaProtocolInterface` declaration, `anp.negotiate`, and interface / Profile / security profile / schema selection |
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
 | Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
-| Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 | Profile index for direct messaging, group messaging, E2EE, attachments, federation, and mentions |
+| Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 + vNext Draft | Profile index for direct messaging, group messaging, E2EE, attachments, federation, mentions, and the separately versioned multi-device draft |
 | Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | Released v1.1 (EN); CN draft available | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
 
 ### Instant Messaging Profiles
 
-The ANP end-to-end instant messaging suite is split into focused profiles:
+The released ANP 1.1 end-to-end instant messaging suite is split into focused profiles:
 
 1. [P1 Core Binding](message/01-core-binding.md): JSON-RPC 2.0 binding, request/response/error conventions.
 2. [P2 Identity and Discovery](message/02-identity-and-discovery.md): DID-based service discovery and endpoint capability discovery.
@@ -75,6 +77,8 @@ The ANP end-to-end instant messaging suite is split into focused profiles:
 7. [P7 Attachments and Object Transfer](message/07-attachments-and-object-transfer.md): manifests, object services, and large-object transfer.
 8. [P8 Federation and Cross-Domain](message/08-federation-and-cross-domain.md): cross-domain routing, relaying, and result witnessing.
 9. [P9 Message Mentions Extension](message/09-message-mentions.md): group-message mention payloads and selector semantics.
+
+The [vNext draft index](message/vnext/README.md) and its [Chinese mirror](chinese/message/vnext/README.md) contain the P1–P8 `.v2` Profiles and the P9 vNext binding. vNext keeps ordinary Direct, Group, Mention, and Attachment operations addressed only by business DID or Group DID; their device fan-out remains local to the receiving domain. It adds `device_id` only where Direct E2EE or Group E2EE requires a cryptographic endpoint, including independent Direct sessions and multiple MLS leaves, and P8 preserves device selectors only for such enclosing Profiles. Implementations **MUST NOT** reinterpret a v1 Profile as v2 or silently downgrade a v2 operation to v1.
 
 ### DID Compatibility Appendices
 
@@ -101,11 +105,11 @@ AgentConnect focuses on practical SDK support for `did:wba`, authentication, age
 
 - `01-*.md`, `03-*.md`, `04-*.md`, `06-*.md`, `07-*.md`, `08-*.md`, `09-*.md`: core English protocol documents.
 - `application/`: application-layer protocols such as AP2.
-- `message/`: the ANP end-to-end instant messaging profile suite.
+- `message/`: the released ANP 1.1 end-to-end instant messaging Profile suite; `message/vnext/` contains separately versioned v2 drafts.
 - `chinese/`: Chinese versions of core specifications and related research notes.
 - `docs/`: guides, extended reading, and community operations documents.
 - `blogs/`: articles and protocol analysis.
-- `examples/`: sample ADP assets and API interface examples.
+- `examples/`: sample ADP assets, API interface examples, and [messaging vNext multi-device JSON examples](examples/message-vnext/README.md).
 - `images/` and `standard/`: shared figures and standardization references.
 
 ## Further Reading
@@ -122,6 +126,7 @@ AgentConnect focuses on practical SDK support for `did:wba`, authentication, age
 - [x] Release the Agent Description Protocol and Agent Discovery Protocol.
 - [ ] Release the meta-protocol after the draft is stabilized.
 - [x] Split end-to-end instant messaging into an overview plus nine interoperable profiles.
+- [ ] Stabilize and review the separately versioned multi-device messaging vNext draft.
 - [x] Add the AP2 agent payment protocol to the application layer.
 - [ ] Continue aligning SDK implementations and examples with the 1.1 specification set.
 - [ ] Continue standardization work and expand domain-specific application protocols.

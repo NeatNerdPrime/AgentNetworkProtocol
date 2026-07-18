@@ -1,0 +1,62 @@
+{
+  "before": {
+    "id": "did:example:alice",
+    "verificationMethod": [
+      {"id": "did:example:alice#root", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a-sign", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a-e2ee", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a2-sign", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a2-e2ee", "controller": "did:example:alice"}
+    ],
+    "authentication": ["did:example:alice#dev-a-sign", "did:example:alice#dev-a2-sign"],
+    "assertionMethod": ["did:example:alice#root", "did:example:alice#dev-a-sign", "did:example:alice#dev-a2-sign"],
+    "keyAgreement": ["did:example:alice#dev-a-e2ee", "did:example:alice#dev-a2-e2ee"],
+    "deviceManifest": {
+      "type": "ANPDeviceManifest",
+      "devices": [
+        {
+          "device_id": "dev-a-7N3KQ2",
+          "signing_key_id": "did:example:alice#dev-a-sign",
+          "e2ee_key_id": "did:example:alice#dev-a-e2ee",
+          "profiles": ["anp.core.binding.v2", "anp.identity.discovery.v2", "anp.direct.base.v2", "anp.direct.e2ee.v2", "anp.group.base.v2", "anp.group.e2ee.v2"]
+        },
+        {
+          "device_id": "dev-a2-9R5TLM",
+          "signing_key_id": "did:example:alice#dev-a2-sign",
+          "e2ee_key_id": "did:example:alice#dev-a2-e2ee",
+          "profiles": ["anp.core.binding.v2", "anp.identity.discovery.v2", "anp.direct.base.v2", "anp.direct.e2ee.v2", "anp.group.base.v2", "anp.group.e2ee.v2"]
+        }
+      ]
+    },
+    "proof": {"verificationMethod": "did:example:alice#root", "proofValue": "zBEFORE_ROOT_PROOF"}
+  },
+  "after": {
+    "id": "did:example:alice",
+    "verificationMethod": [
+      {"id": "did:example:alice#root", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a-sign", "controller": "did:example:alice"},
+      {"id": "did:example:alice#dev-a-e2ee", "controller": "did:example:alice"}
+    ],
+    "authentication": ["did:example:alice#dev-a-sign"],
+    "assertionMethod": ["did:example:alice#root", "did:example:alice#dev-a-sign"],
+    "keyAgreement": ["did:example:alice#dev-a-e2ee"],
+    "deviceManifest": {
+      "type": "ANPDeviceManifest",
+      "devices": [
+        {
+          "device_id": "dev-a-7N3KQ2",
+          "signing_key_id": "did:example:alice#dev-a-sign",
+          "e2ee_key_id": "did:example:alice#dev-a-e2ee",
+          "profiles": ["anp.core.binding.v2", "anp.identity.discovery.v2", "anp.direct.base.v2", "anp.direct.e2ee.v2", "anp.group.base.v2", "anp.group.e2ee.v2"]
+        }
+      ]
+    },
+    "proof": {"verificationMethod": "did:example:alice#root", "proofValue": "zAFTER_ROOT_PROOF"}
+  },
+  "required_follow_up": [
+    "stop future PreKey and Mailbox use for dev-a2-9R5TLM",
+    "invalidate unconsumed KeyPackages for dev-a2-9R5TLM",
+    "remove the device leaf from each MLS group and commit a new epoch",
+    "never reuse the removed device_id or device keys"
+  ]
+}

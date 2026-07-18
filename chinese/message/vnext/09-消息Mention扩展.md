@@ -1,15 +1,15 @@
 # ANP Profile 9：消息 Mention 扩展
 
-- Document ID: ANP-P9
+- Document ID: ANP-P9-vNext
 - Title: Message Mentions Extension
 - Status: draft
-- Version: 1.1
+- Version: 2.0-draft
 - Language: Chinese
-- Applicability: 本 Profile 定义 ANP 群消息中的 mention 应用载荷扩展，用于同时表达人类可读和机器可读的 mention。它适用于 `anp.group.base.v1` 和 `anp.group.e2ee.v1` 中承载结构化 JSON 应用载荷的场景。
+- Applicability: 本 Profile 定义 ANP 群消息中的 mention 应用载荷扩展，用于同时表达人类可读和机器可读的 mention。它适用于 `anp.group.base.v2` 和 `anp.group.e2ee.v2` 中承载结构化 JSON 应用载荷的场景。
 - Dependencies:
-  - `anp.core.binding.v1`
-  - 使用非 E2EE 群消息时依赖 `anp.group.base.v1`
-  - 使用群 E2EE 消息时依赖 `anp.group.e2ee.v1`
+  - `anp.core.binding.v2`
+  - 使用非 E2EE 群消息时依赖 `anp.group.base.v2`
+  - 使用群 E2EE 消息时依赖 `anp.group.e2ee.v2`
 
 ---
 
@@ -69,7 +69,7 @@ Mention 是一个结构化应用层对象，用于把人类可见的界面表达
 - **Mention Target**：mention 的机器可读目标。它可以是 human DID、agent DID 或群选择器。
 - **Group Selector Mention**：目标为群范围选择器的 mention，例如 `all`、`agents` 或 `humans`。
 - **Terminal-side Validation**：接收客户端、用户代理或 Agent runtime 在收到或解密应用载荷之后执行的本地校验和处理。该术语不引入设备级或终端级协议身份。
-- **Group Host Service**：`anp.group.base.v1` 中定义的群服务。在本 Profile 中，它不校验 mention 语义。
+- **Group Host Service**：`anp.group.base.v2` 中定义的群服务。在本 Profile 中，它不校验 mention 语义。
 
 ---
 
@@ -118,9 +118,9 @@ mention 对象 **MUST NOT** 包含 `proof`、`signature`、`auth`、`origin_proo
 
 对于 Group E2EE，带 mention 的载荷 **MUST** 位于加密前对应的 inner plaintext 对象内。
 
-### 3.4 v1 不定义服务端 mention 授权
+### 3.4 v2 不定义服务端 mention 授权
 
-本 Profile v1 不定义 mention 专属权限策略。
+本 Profile v2 不定义 mention 专属权限策略。
 
 如果发送者根据适用的基础 Profile 有权发送外层群消息，则在 mention 层默认允许发送者包含任意受支持的 mention 目标：
 
@@ -148,6 +148,12 @@ member
 
 本 Profile 的 group selector 是 mention target，不是授权角色。
 
+### 3.6 Mention target 不是设备 target
+
+单目标 Mention 标识一个 human 或 Agent DID，group-selector Mention 标识一组 P4 业务成员。两种形式都不标识设备或 MLS Leaf。同一 DID 下的多个设备或 Leaf 仍是一个 Mention 主体。
+
+P6 独占拥有承载 Group E2EE 消息中的发送或接收设备绑定。Mention 对象 **MUST NOT** 复制、推断或覆盖这些外层设备 selector。
+
 ---
 
 ## 4. Profile 绑定模型
@@ -168,8 +174,8 @@ member
 
 外层群消息操作保持原有 Profile 名称，例如：
 
-- 非 Group E2EE 的 `group.send` 使用 `anp.group.base.v1`；
-- `group.e2ee.send` 使用 `anp.group.e2ee.v1`。
+- 非 Group E2EE 的 `group.send` 使用 `anp.group.base.v2`；
+- `group.e2ee.send` 使用 `anp.group.e2ee.v2`。
 
 ### 4.3 Content type
 
@@ -284,7 +290,10 @@ mention 对象 **MUST NOT** 包含：
 - `auth`；
 - `origin_proof`；
 - `proof`；
-- `signature`。
+- `signature`；
+- `sender_device_id`；
+- `recipient_device_id`；
+- `device_id` 或 MLS Leaf 标识符。
 
 ---
 
@@ -306,14 +315,14 @@ range 对象如下：
 |---|---:|---|---|
 | `start` | **MUST** | non-negative integer | `text` 中的闭区间起始偏移。 |
 | `end` | **MUST** | non-negative integer | `text` 中的开区间结束偏移。 |
-| `unit` | **MUST** | string | v1 中 **MUST** 为 `unicode_code_point`。 |
+| `unit` | **MUST** | string | v2 中 **MUST** 为 `unicode_code_point`。 |
 
 规则：
 
 1. `start` **MUST** 小于 `end`。
 2. `end` **MUST NOT** 超过 `text` 中 Unicode code point 的数量。
 3. range 基于 JSON 解析后的 `text` 字符串精确值计算，在任何 UI 归一化、转写或 Markdown 渲染之前计算。
-4. `range` 标识的子串就是 mention surface。v1 中故意不在 mention 对象里重复 surface 字符串。
+4. `range` 标识的子串就是 mention surface。v2 中故意不在 mention 对象里重复 surface 字符串。
 5. 如果终端无法校验 range，终端 **MUST** 在 mention 触发层面忽略该 mention 对象，但 **MAY** 继续展示原始 `text`。
 
 ---
@@ -380,7 +389,7 @@ range 对象如下：
 
 `mention_role` 字段是可选字段。
 
-v1 允许的取值：
+v2 允许的取值：
 
 | 值 | 语义 |
 |---|---|
@@ -477,11 +486,12 @@ v1 允许的取值：
 
 ### 7.1 非 E2EE Group Base
 
-对于 `anp.group.base.v1` 下的 `group.send`：
+对于 `anp.group.base.v2` 下的 `group.send`：
 
 - `params.meta.content_type` **MUST** 为 `application/json`；
 - `params.body.payload` **MUST** 承载带 mention 的消息对象；
 - `params.auth.origin_proof` 是 Group Base 要求的发送者证明；
+- `params.meta.sender_device_id` 与 `params.meta.recipient_device_id` **MUST NOT** 出现；
 - Group Host 执行现有 Group Base 校验；
 - Group Host **MUST NOT** 执行 mention 专属授权或 selector 展开。
 
@@ -494,7 +504,7 @@ v1 允许的取值：
   "method": "group.send",
   "params": {
     "meta": {
-      "profile": "anp.group.base.v1",
+      "profile": "anp.group.base.v2",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:example.com:user:alice",
       "target": {
@@ -540,12 +550,14 @@ v1 允许的取值：
 
 ### 7.2 Group E2EE
 
-对于 `anp.group.e2ee.v1` 下的 `group.e2ee.send`：
+对于 `anp.group.e2ee.v2` 下的 `group.e2ee.send`：
 
 - 外层 `params.meta.content_type` 保持为 `application/anp-group-cipher+json`；
 - 外层 `params.body` 承载 `group_cipher_object`；
 - 带 mention 的对象 **MUST** 在 MLS `PrivateMessage` 加密前放入 inner `Group Application Plaintext.payload`；
 - inner `application_content_type` **MUST** 为 `application/json`。
+
+该加密投递所需的任何发送或接收设备字段都保留在 P6 外层 envelope 中，不属于 Mention payload。
 
 加密前 inner plaintext 示例：
 
@@ -582,6 +594,7 @@ Group Host 看到的是外层 ciphertext object。它按照 Group E2EE 和 Group
 - 推送载荷 **MUST** 与已接受的原始消息语义等价；
 - 如果外层 Profile 允许把原始 `auth.origin_proof` 复制到 notification 中，service **SHOULD** 包含无损复制，以便终端侧把 mention 载荷绑定到原始发送者；
 - 中间服务在转发或推送消息时 **MUST NOT** 重写 `mentions`。
+- Group Base 投递仍以 DID 寻址，Group E2EE 设备投递仅遵循承载 P6 的 selector 字段。
 
 ---
 
@@ -607,7 +620,7 @@ params.meta.sender_did
 
 ### 8.3 无 mention 本地 proof
 
-v1 中 verifier **MUST NOT** 要求 mention 本地 signature 或 proof。
+v2 中 verifier **MUST NOT** 要求 mention 本地 signature 或 proof。
 
 接收方 **MUST** 将嵌入 mention 对象内的任何 `proof`、`signature`、`origin_proof` 或 `auth` 字段视为不符合本 Profile。
 
@@ -652,7 +665,7 @@ v1 中 verifier **MUST NOT** 要求 mention 本地 signature 或 proof。
 
 ### 9.3 Mention 权限解释
 
-v1 不存在 mention 专属权限策略。
+v2 不存在 mention 专属权限策略。
 
 如果满足以下条件，终端 **MUST** 在 wire-protocol 层把 mention 视为允许：
 
@@ -753,7 +766,7 @@ v1 不存在 mention 专属权限策略。
 
 ### 11.3 无服务端 mention 授权
 
-由于 v1 的 mention 校验位于终端侧，服务器可能接受并投递一个后来无法通过终端侧 mention 校验的消息。
+由于 v2 的 mention 校验位于终端侧，服务器可能接受并投递一个后来无法通过终端侧 mention 校验的消息。
 
 终端和 Agent runtime **MUST** 避免由无效 mention 对象触发特权行为。
 
@@ -763,7 +776,7 @@ v1 不存在 mention 专属权限策略。
 
 服务器和 Group Host Service 不应期望检查或索引 mention target，除非未来扩展显式引入加密或隐私保护的通知 hint。
 
-本 Profile v1 不定义此类 hint。
+本 Profile v2 不定义此类 hint。
 
 ### 11.5 Replay 和重复处理
 
@@ -804,7 +817,8 @@ Mention target 可能暴露社交注意力模式。
 9. 非 E2EE `application/json` 群消息中，带 mention 的载荷位于 `params.body.payload`；
 10. Group E2EE 消息中，带 mention 的载荷位于 inner `Group Application Plaintext.payload`；
 11. 保留外层 ANP Message Profile 的发送者证明和发送权限语义；
-12. v1 不做服务端 mention 授权或 selector 展开。
+12. v2 不做服务端 mention 授权或 selector 展开；
+13. Mention target 使用 DID 或 group selector，设备绑定交由承载 P6 消息。
 
 ---
 
@@ -821,4 +835,4 @@ Mention target 可能暴露社交注意力模式。
 - 跨群或外部 mention 引用；
 - human / agent 分类的标准 roster 字段。
 
-这些能力都刻意不放入 v1。
+这些能力都刻意不放入 v2。

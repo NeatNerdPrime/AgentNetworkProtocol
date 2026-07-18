@@ -1,10 +1,12 @@
 # ANP Profile 2: Identity and Discovery
 
-- Document ID: ANP-P2
+- Document ID: ANP-P2-vNext
 - Title: Identity and Discovery
-- Status: Released
-- Version: 1.1
+- Status: Draft
+- Version: 2.0-draft
 - Language: English
+- Profile: `anp.identity.discovery.v2`
+- Dependencies: `anp.core.binding.v2`
 - Applicability: This Profile applies to Agent identity, Group identity, service discovery and service endpoint interpretation in ANP.
 
 ---
@@ -17,13 +19,14 @@ This Profile defines the identification model and discovery model of ANP, stipul
 2. Which attributes in the DID document have normative significance for ANP;
 3. How to express ANP service endpoint in DID document;
 4. How the caller discovers the interactive ANP service based on the DID document;
-5. Which dynamic states must not be put into DID documents.
+5. Which dynamic states must not be put into DID documents;
+6. How a device-addressed E2EE Profile discovers the minimum cryptographic endpoint information without changing DID-level business addressing.
 
 This Profile does not define:
 
 - The DID method itself;
 - DID parsing protocol itself;
-- Equipment identification;
+- Hardware or equipment identity, product-facing device names, or device enrollment workflows;
 - Internal copy synchronization;
 - Specific E2EE algorithm details;
 - Specific group state machine details.
@@ -44,6 +47,9 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **ANPMessageService**: The unified ANP service entrance for DID documents to be exposed to the outside world.
 - **Federated Service DID**: The service DID used by the deployer in cross-domain service-to-service HTTP authentication, typically asserted by `ANPMessageService.serviceDid`.
 - **Discovery**: The process of parsing a DID document based on its DID document and selecting the appropriate service endpoint to complete subsequent interactions.
+- **Device Endpoint**: A cryptographic endpoint under an Agent DID, identified by an opaque `device_id` only for a device-addressed E2EE Profile. It is not a DID or a business participant.
+- **Device Manifest**: The optional `deviceManifest` structure in an Agent DID document. It becomes required only when that DID advertises a device-addressed E2EE Profile.
+- **Eligible Device**: A Device Manifest entry whose key references and declared Profile set satisfy the owning E2EE Profile at the time of use.
 
 ---
 
@@ -56,8 +62,9 @@ ANP adopts the following first class designations:
 - **Agent DID**
 - **Group DID**
 
-The ANP protocol layer does not define device DIDs, terminal DIDs, session DIDs, or replica DIDs.
-If there are multiple running copies, multiple devices, and multiple executors within an implementation, these entities belong to the internal implementation issues of the Agent and do not belong to the ANP interoperability boundary.
+The ANP protocol layer does not define device DIDs, terminal DIDs, session DIDs, or replica DIDs. Business addressing, contacts, membership, authorization roles, and ordinary message delivery remain attached to the Agent DID or Group DID.
+
+A device-addressed E2EE Profile **MAY** select a cryptographic Device Endpoint under an Agent DID by opaque `device_id`. This selector is not a first-class identity, member, or `target.kind`, and Base Profiles **MUST NOT** require or carry it. Multiple runtime copies and ordinary non-E2EE device fan-out remain implementation-internal.
 
 ### 3.2 Agent DID
 
@@ -139,7 +146,8 @@ For the ANP, the DID document has the following responsibilities:
 1. Provide a stable identity entrance;
 2. Declare authentication relationships and trusted key materials;
 3. Exposure service endpoint;
-4. Provide clues to service discovery.
+4. Provide clues to service discovery;
+5. When a device-addressed E2EE Profile is advertised, publish the minimum current Device Manifest needed to validate its cryptographic endpoints.
 
 DID documents **MUST NOT** be treated as:
 
@@ -159,7 +167,8 @@ For DID documents used by ANP:
 - `authentication` **MUST** exist for a DID that would appear in the request as the business originator DID;
 - If declarative signature objects are supported, `assertionMethod` **SHOULD** exist;
 - If encryption Overlay is supported, `keyAgreement` **SHOULD** exist;
-- `capabilityInvocation` is optional expansion capability, **MAY** exist, but is not part of v1 Minimum Interoperability Requirements.
+- `capabilityInvocation` is optional expansion capability, **MAY** exist, but is not part of v2 Minimum Interoperability Requirements.
+- If an Agent DID advertises a device-addressed E2EE Profile, `deviceManifest` **MUST** exist and satisfy Section 5.5; a DID that supports only Base Profiles does not require it.
 
 ### 4.3 DID document minimization principle
 
@@ -213,6 +222,45 @@ If the deployer internally splits these capabilities into multiple components, t
 
 Publicly available attachments Control-Plane Methods **MUST** be still accessed through the unified `ANPMessageService` exposed in the DID document. Whether the deployer internally routes requests to independent Object Service, Key Service or Group Host subcomponents is an implementation detail and does not change the external standard service discovery model.
 
+### 5.5 Device Manifest for device-addressed E2EE Profiles
+
+`deviceManifest` is a top-level Agent DID document extension used only by security Profiles that address cryptographic device endpoints, such as Direct E2EE and Group E2EE. It does not change the Agent DID into a collection of business identities and is not used by ordinary Base messaging.
+
+The standard shape is:
+
+```json
+{
+  "deviceManifest": {
+    "type": "ANPDeviceManifest",
+    "devices": [
+      {
+        "device_id": "dev-a-7N3KQ2",
+        "signing_key_id": "did:example:agent-a#dev-a-sign",
+        "e2ee_key_id": "did:example:agent-a#dev-a-e2ee",
+        "profiles": [
+          "anp.core.binding.v2",
+          "anp.identity.discovery.v2",
+          "anp.direct.base.v2",
+          "anp.direct.e2ee.v2"
+        ]
+      }
+    ]
+  }
+}
+```
+
+The following rules apply:
+
+1. An Agent DID that advertises or invokes a device-addressed E2EE Profile **MUST** publish a current `deviceManifest`; an Agent DID that supports only Base Profiles **MAY** omit it.
+2. `deviceManifest.type` **MUST** equal `ANPDeviceManifest`. `devices` **MUST** be an array. Each standard device entry **MUST** contain exactly `device_id`, `signing_key_id`, `e2ee_key_id`, and `profiles`.
+3. `device_id` **MUST** be an opaque string, unique within the current Agent DID Manifest, and **MUST NOT** be reused after removal. It is not a DID, hardware serial number, display name, or role.
+4. `signing_key_id` and `e2ee_key_id` **MUST** be DID URLs that reference verification methods in the same Agent DID document. `signing_key_id` **MUST** be authorized by the verification relationship required by the owning E2EE Profile; when an Origin Proof is used, it is `authentication`, and when an Object Proof is used, it is `assertionMethod`. `e2ee_key_id` **MUST** be authorized by `keyAgreement`.
+5. `profiles` **MUST** be a non-empty string array containing the complete dependency set that this device supports. A P5 entry therefore includes P1, P2, P3, and P5; a P6 entry includes P1, P2, P4, and P6. Listing a Base Profile as a dependency does not make Base operations device-addressed.
+6. P3 Direct Base, P4 Group Base, P7 ordinary Attachment, and other non-E2EE flows **MUST NOT** consult the Manifest to require selectors, expose per-device results, or change DID-level delivery semantics.
+7. Removing a device means publishing an updated DID document without that entry and without its active device-key references. Future device-addressed operations selecting it **MUST** be rejected. Re-enrollment uses a new `device_id` and new keys.
+8. The Manifest is protected and updated as part of the DID document under its DID method. This Profile defines no separate Manifest endpoint, proof, epoch, hash, checkpoint, or compare-and-swap protocol.
+9. A Manifest **MUST NOT** contain private keys, product-local roles or tokens, human-readable device names, hardware identifiers, online state, recovery state, or internal replica topology.
+
 ---
 
 ## 6. Group DID specification
@@ -236,7 +284,7 @@ If there are multiple controllers, the internal collaboration mechanism between 
 
 ### 6.3 Group governance verification relationship
 
-For Group DID documents that support `anp.group.base.v1`:
+For Group DID documents that support `anp.group.base.v2`:
 
 - `assertionMethod` **MUST** exist;
 - `capabilityInvocation` **MAY** exist as an additional governance capability delegation relationship, but does not replace `assertionMethod`.
@@ -283,7 +331,7 @@ All ANP service endpoint objects **MUST** have:
 - `type`
 - `serviceEndpoint`
 
-The service endpoint object **MAY** carry a small number of static hints, but v1 standard interoperability only requires:
+The service endpoint object **MAY** carry a small number of static hints, but v2 standard interoperability only requires:
 
 - `profiles`
 - `securityProfiles`
@@ -321,7 +369,7 @@ Externally exposed attachment Control-Plane Methods **MUST** be still entered th
 - If there are multiple components within the implementation, the DID document **MUST** only exposes a unified entry and returns finer-grained capability boundaries through runtime capability negotiation.
 - Externally exposed service-scoped methods, including key material methods and attachments Control-Plane Methods, **MUST** use the `serviceDid` of the unified entrance as the target service identity anchor, unless the corresponding Profile is explicitly declared as endpoint-local
 
-To reduce cross-domain service-selection ambiguity, v1 encourages exposing only one unified `ANPMessageService` to the outside. The following diagram places that unified entry together with common internal logical roles, helping readers distinguish between a public service type and implementation-internal division of labor.
+To reduce cross-domain service-selection ambiguity, v2 encourages exposing only one unified `ANPMessageService` to the outside. The following diagram places that unified entry together with common internal logical roles, helping readers distinguish between a public service type and implementation-internal division of labor.
 
 ```mermaid
 flowchart TB
@@ -343,7 +391,7 @@ The roles in this diagram are only an illustration of internal capability bounda
 
 ### 7.3 Logical role of `ANPMessageService`
 
-This section is only used for **non-normative explanation** of the common capability boundaries behind unified entry; they are not independent standard service types in DID documents, nor are they service selection fields in v1.
+This section is only used for **non-normative explanation** of the common capability boundaries behind unified entry; they are not independent standard service types in DID documents, nor are they service selection fields in v2.
 
 #### 7.3.1 Home Role
 
@@ -392,7 +440,7 @@ If the deployer supports directory transparency, transparent logs or audit index
 
 ## 8. ANP Service Endpoint Extension Fields
 
-In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v1 static hints; the remaining capability information **SHOULD** sink to `anp.get_capabilities`.
+In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v2 static hints; the remaining capability information **SHOULD** sink to `anp.get_capabilities`.
 
 ### 8.1 `profiles`
 
@@ -412,7 +460,7 @@ In order to facilitate cross-implementation discovery, this Profile only uses a 
 
 - Type: string array
 - Semantics: Set of acceptable message content types for the service endpoint
-- Requirements: **Not a standard v1 DID hint**
+- Requirements: **Not a standard v2 DID hint**
 - Description:
   - If you need to expose such information, **SHOULD** return through `anp.get_capabilities`;
   - If this field appears in a DID document, the recipient **MAY** treat it as an implementation extension.
@@ -421,23 +469,23 @@ In order to facilitate cross-implementation discovery, this Profile only uses a 
 
 - Type: string array
 - Semantics: Set of acceptable control-plane object types for the service endpoint
-- Requirements: **Not a standard v1 DID hint**
+- Requirements: **Not a standard v2 DID hint**
 - Description: This information is RECOMMENDED as a runtime capability rather than a static DID-document hint.
 
 ### 8.5 `priority`
 
 - Type: Integer
 - Semantics: endpoint priority
-- Requirements: **Not a standard v1 DID hint**
+- Requirements: **Not a standard v2 DID hint**
 - Description:
-  - The v1 specification does not rely on `priority` in the DID document for service selection;
+  - The v2 specification does not rely on `priority` in the DID document for service selection;
   - If the deployment customizes this field, it should be treated as a private extension.
 
 ### 8.6 `authSchemes`
 
 - Type: string array
 - Semantics: caller → service caller authentication method supported by this endpoint
-- Requirements: **Not a standard v1 DID hint**
+- Requirements: **Not a standard v2 DID hint**
 - Description:
   - This capability typically changes with the runtime gateway configuration;
   - More suitable for exposure via `anp.get_capabilities`;
@@ -496,7 +544,9 @@ The discovery process for `agent_did` is as follows:
 3. Select the only cross-domain `ANPMessageService`;
 4. If cross-domain service-to-service invocation will be used later, read the `serviceDid` declared in the selected service entry;
 5. Combine `profiles`, `securityProfiles`, runtime capability negotiation results and local policies to determine the specific capabilities available on the unified portal;
-6. For explicit negotiation capabilities, call `anp.get_capabilities` on the same entry.
+6. For an ordinary Base operation, use the Agent DID and selected service directly; do not require `deviceManifest`, select a device, or synthesize a default device;
+7. For a device-addressed E2EE operation, resolve the current `deviceManifest` and select only an Eligible Device according to the owning E2EE Profile;
+8. For explicit negotiation capabilities, call `anp.get_capabilities` on the same entry.
 
 ### 9.2 Group Discovery
 
@@ -530,7 +580,7 @@ If there are multiple candidate endpoints, the caller **MUST** first selects in 
 3. Then use the runtime capability negotiation results as authoritative verification;
 4. If there are still multiple results, select according to the local policy.
 
-The v1 specification does not rely on `supportedMethods`, `logicalRoles` or `priority` in the DID document for standard service selection.
+The v2 specification does not rely on `supportedMethods`, `logicalRoles` or `priority` in the DID document for standard service selection.
 
 ### 9.5 Caching
 
@@ -562,7 +612,15 @@ Among them, for requests using `auth.origin_proof`, the verifier **MUST** treat 
 
 - If the object is an authentication control action, the verifier **SHOULD** check `authentication`;
 - If the object is a declaration or a signature assertion behavior, the verifier **SHOULD** check `assertionMethod`;
-- If the object is a governance capability invocation action, the verifier **MAY** check for `capabilityInvocation`, but this is not v1 Minimum Interoperability Requirements.
+- If the object is a governance capability invocation action, the verifier **MAY** check for `capabilityInvocation`, but this is not v2 Minimum Interoperability Requirements.
+
+### 10.2.1 Device security binding
+
+Before using a device selector or device public key, a device-addressed E2EE Profile **MUST** validate the selected entry against the current Agent DID `deviceManifest`. The selected entry **MUST** declare the requested E2EE Profile and its dependencies, and its key references **MUST** match the keys actually used by that operation.
+
+If an operation uses `auth.origin_proof` together with `meta.sender_device_id`, the proof `keyid` **MUST** equal that entry's `signing_key_id`. If the operation uses `meta.recipient_device_id` for E2EE, the encryption or session-establishment key **MUST** be the selected entry's `e2ee_key_id`. The owning P5/P6-like E2EE Profile defines the exact authenticated context and rejection point.
+
+These checks do not apply to ordinary Base operations, because those operations neither carry selectors nor select device keys.
 
 ### 10.3 Dynamic security material external placement
 
@@ -618,6 +676,10 @@ Implementers **SHOULD** avoid:
 Information necessary for public discovery **MAY** be placed into the DID document;
 Information requiring access control **SHOULD** returned by restricted service endpoint.
 
+### 12.4 Device Manifest minimization
+
+When a Manifest is required for a device-addressed E2EE Profile, its public content **MUST** remain limited to the four device-entry fields in Section 5.5. Implementations should use opaque, non-user-facing `device_id` values and must keep device labels, hardware details, presence, local policy, and recovery data outside the DID document.
+
 ---
 
 ## 13. Minimum Interoperability Requirements
@@ -631,7 +693,9 @@ An implementation conforming to this Profile MUST at least:
 5. Static hint supports at least `profiles`, `securityProfiles`, and `serviceDid`;
 6. Runtime capabilities are authoritative with `anp.get_capabilities`;
 7. Do not embed dynamic group state in DID documents;
-8. Do not introduce the device/replica concept into the protocol layer.
+8. Keep ordinary Base discovery and delivery DID-level, without device selectors or a required Manifest;
+9. When advertising a device-addressed E2EE Profile, publish and validate the minimum `deviceManifest` defined in Section 5.5;
+10. Do not introduce Device DIDs, device business membership, or product-internal replica semantics.
 
 ---
 
@@ -639,12 +703,14 @@ An implementation conforming to this Profile MUST at least:
 
 ### 14.1 Agent DID document fragment example
 
+The following fragment shows one Agent DID with two cryptographic Device Endpoints for Direct E2EE. The two entries do not create two Agents, and the ordinary Base Profiles listed by the service remain DID-addressed.
+
 ```json
 {
   "id": "did:example:agent-a",
   "verificationMethod": [
     {
-      "id": "did:example:agent-a#sig-1",
+      "id": "did:example:agent-a#dev-a-sign",
       "type": "JsonWebKey2020",
       "controller": "did:example:agent-a",
       "publicKeyJwk": {
@@ -654,7 +720,27 @@ An implementation conforming to this Profile MUST at least:
       }
     },
     {
-      "id": "did:example:agent-a#ka-1",
+      "id": "did:example:agent-a#dev-a-e2ee",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:agent-a",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "X25519",
+        "x": "..."
+      }
+    },
+    {
+      "id": "did:example:agent-a#dev-a2-sign",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:agent-a",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "..."
+      }
+    },
+    {
+      "id": "did:example:agent-a#dev-a2-e2ee",
       "type": "JsonWebKey2020",
       "controller": "did:example:agent-a",
       "publicKeyJwk": {
@@ -665,13 +751,16 @@ An implementation conforming to this Profile MUST at least:
     }
   ],
   "authentication": [
-    "did:example:agent-a#sig-1"
+    "did:example:agent-a#dev-a-sign",
+    "did:example:agent-a#dev-a2-sign"
   ],
   "assertionMethod": [
-    "did:example:agent-a#sig-1"
+    "did:example:agent-a#dev-a-sign",
+    "did:example:agent-a#dev-a2-sign"
   ],
   "keyAgreement": [
-    "did:example:agent-a#ka-1"
+    "did:example:agent-a#dev-a-e2ee",
+    "did:example:agent-a#dev-a2-e2ee"
   ],
   "service": [
     {
@@ -680,17 +769,45 @@ An implementation conforming to this Profile MUST at least:
       "serviceEndpoint": "https://agent-a.example.com/anp",
       "serviceDid": "did:example:domain-a",
       "profiles": [
-        "anp.core.binding.v1",
-        "anp.direct.base.v1",
-        "anp.direct.e2ee.v1",
-        "anp.attachment.v1"
+        "anp.core.binding.v2",
+        "anp.identity.discovery.v2",
+        "anp.direct.base.v2",
+        "anp.direct.e2ee.v2",
+        "anp.attachment.v2"
       ],
       "securityProfiles": [
         "transport-protected",
         "direct-e2ee"
       ]
     }
-  ]
+  ],
+  "deviceManifest": {
+    "type": "ANPDeviceManifest",
+    "devices": [
+      {
+        "device_id": "dev-a-7N3KQ2",
+        "signing_key_id": "did:example:agent-a#dev-a-sign",
+        "e2ee_key_id": "did:example:agent-a#dev-a-e2ee",
+        "profiles": [
+          "anp.core.binding.v2",
+          "anp.identity.discovery.v2",
+          "anp.direct.base.v2",
+          "anp.direct.e2ee.v2"
+        ]
+      },
+      {
+        "device_id": "dev-a2-9R5TLM",
+        "signing_key_id": "did:example:agent-a#dev-a2-sign",
+        "e2ee_key_id": "did:example:agent-a#dev-a2-e2ee",
+        "profiles": [
+          "anp.core.binding.v2",
+          "anp.identity.discovery.v2",
+          "anp.direct.base.v2",
+          "anp.direct.e2ee.v2"
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -725,9 +842,10 @@ An implementation conforming to this Profile MUST at least:
       "serviceEndpoint": "https://group-host.example.com/anp/groups/group-123",
       "serviceDid": "did:example:group-host-domain",
       "profiles": [
-        "anp.core.binding.v1",
-        "anp.group.base.v1",
-        "anp.group.e2ee.v1"
+        "anp.core.binding.v2",
+        "anp.identity.discovery.v2",
+        "anp.group.base.v2",
+        "anp.group.e2ee.v2"
       ],
       "securityProfiles": [
         "transport-protected",
@@ -737,6 +855,8 @@ An implementation conforming to this Profile MUST at least:
   ]
 }
 ```
+
+The Group DID remains the group business identity and therefore has no `deviceManifest`. When P6 needs a member device endpoint, it resolves that member's Agent DID Manifest; ordinary Group Base discovery does not do so.
 
 ---
 
@@ -759,4 +879,5 @@ Implementers should adopt the following principles when implementing this Profil
 - service endpoint is "discovery anchor point", not "all data containers";
 - Dynamic capabilities should be returned through `anp.get_capabilities` as much as possible instead of being piled in the DID document;
 - Group DID is an "application layer group identifier", not a "unique serialization of all cryptographic internal states";
-- Concepts such as devices, replicas, and internal executors remain inside the Agent and do not enter the wire protocol.
+- Base-message device fan-out, enrollment state, product-local device registry state, replicas, and internal executors remain inside the Agent and do not enter the wire protocol;
+- A device-addressed E2EE Profile determines current eligibility only from the current `deviceManifest`, its referenced keys, advertised capabilities, and that Profile's own rules; it must not depend on an undeclared registry version or checkpoint.

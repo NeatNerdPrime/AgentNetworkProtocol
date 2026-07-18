@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "id": "req-direct-e2ee-bob-b2",
+  "error": {
+    "code": 1018,
+    "message": "Device eligibility may have changed",
+    "data": {
+      "anp_code": "anp.device_state_changed",
+      "retryable": true,
+      "details": {
+        "affected_did": "did:example:bob",
+        "affected_device_id": "dev-b2-6VQ9RS",
+        "affected_role": "recipient",
+        "resolution_required": true
+      }
+    }
+  }
+}

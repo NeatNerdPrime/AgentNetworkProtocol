@@ -2,10 +2,10 @@
 
 - 文档编号：ANP-09
 - 标题：ANP-端到端即时消息协议规范总纲
-- 状态：已发布
-- 版本：1.1
+- 状态：v1.1 已发布基线；vNext 多设备草案
+- 版本：1.1 / vNext Draft
 - 语言：中文
-- 适用范围：本文档适用于 ANP 端到端即时消息规范集的总体说明、分层说明与 Profile 索引。
+- 适用范围：本文档同时索引已发布的 ANP 1.1 消息 Profile 与独立版本化的 vNext 多设备草案。
 
 > 本文是 ANP端到端即时消息规范集的总纲性说明，用于帮助读者快速理解整套协议的目标、分层、核心理念与关键技术路线。本文**不是**逐条规范性条文，规范性要求以各 Profile 原文为准。
 
@@ -23,7 +23,7 @@ ANP端到端即时消息是一套面向 **Agent 与 Agent 跨域即时消息通�
 - 如何传输附件与大对象；
 - 如何在跨域场景下完成路由、中继、排序与结果见证。
 
-ANP 的协议终点是 **Agent**，不是设备、终端或内部副本。一个 Agent 内部是否有多个执行器、多个工作节点或多个设备实例，不属于 ANP 的互通边界，而是 Agent 自身的实现问题。
+ANP 的业务身份和授权主体仍是 **Agent DID**。在已发布的 v1.1 Profile 中，设备和内部副本仍不属于互通边界。独立版本化的 vNext Profile 使普通非 E2EE 私聊、群聊、Mention 和附件操作保持 DID 定址，端点 fan-out 留在接收域内部。只有 E2EE Profile 公开安全跨域密码学通信必需的最小设备语义：`device_id` 表示同一 DID 下的一个密码学端点，它不是新的业务身份、群成员或 `target.kind`。
 
 ---
 
@@ -50,6 +50,8 @@ ANP 的一等标识不是用户名或设备号，而是：
 - `group_did`
 
 ANP 通过 DID 文档发现可交互的服务端点，并以此建立后续的消息发送、密钥发现、群服务发现和对象服务发现路径。当前版本中，DID 文档对外公开的 ANP 服务入口统一收敛为 `ANPMessageService`；私聊、群聊、密钥材料访问和对象控制等能力由该统一入口承载。
+
+在 vNext 中，宣告设备定址 E2EE Profile 的 DID 还可以在其根签名 DID Document 中携带完整 `deviceManifest`。条目只公开当前设备端点标识、签名 key 引用、E2EE key 引用及支持的 v2 Profile；仅 Base 发现不要求 Manifest。产品域内角色、token、恢复状态、Registry 版本和文档 checkpoint 都不是 ANP wire 语义。
 
 ### 2.3 分层设计，而不是“大一统协议”
 
@@ -118,6 +120,8 @@ ANP 没有把“消息”做成一个模糊的大对象，而是明确区分：
 
 这使得群治理、群状态和群加密可以自然衔接。
 
+vNext 不创建设备级业务成员。P3 Direct Base 投递，以及 P4 的成员、角色、策略、发送和通知都仍按 DID 管理。只有 Direct E2EE 投递和 MLS 密码学 Leaf 按设备管理。
+
 ### 3.3 明文与 E2EE 并存
 
 ANP 允许：
@@ -160,6 +164,8 @@ ANP 的私聊 E2EE 采用如下技术路线：
 - Prekey Bundle 用于异步离线建链；
 - Ratchet 用于后续每消息密钥滚动、乱序容忍与重放防护。
 
+在 vNext 中，PreKey Bundle、异步 Session、Ratchet State、AAD、重放状态和 Mailbox 都绑定到双方具体的 `(DID, device_id)`。同一逻辑消息为每台合法接收设备分别加密和提交，设备之间不得共享私有状态。
+
 这条路线适合 Agent 异步通信，而且保留了向更强套件升级的空间。
 
 ### 4.3 群组端到端加密：MLS + did:wba 绑定
@@ -177,6 +183,8 @@ ANP 的群组 E2EE 主线采用：
 - `group_did`、`group_state_version`、`policy_hash` 与密码学群状态建立绑定；
 - `group_receipt` 负责证明“群已接受并排序了该操作/消息”。
 
+在 vNext 中，一个业务成员 DID 可以拥有多个经过认证的 MLS Leaf；每个 Leaf 使用独立的设备绑定 KeyPackage 和私有状态。增加或移除一个设备 Leaf 本身不等于增加或移除 DID 级群成员。
+
 这种做法比自己发明一套群密码学状态机更适合成为长期标准。
 
 ### 4.4 附件与对象：Manifest + 独立 HTTPS 下载 + 可选对象级加密
@@ -192,6 +200,8 @@ ANP 的群组 E2EE 主线采用：
 - 大对象不通过跨域服务调用链路传输；
 - 下载链接可以做成 locator 而不是长期直链；
 - 即使链接泄露，也可以通过对象级加密确保第三方拿不到明文。
+
+在 vNext Direct E2EE 中，同一份已上传对象和 `object_key` 可以由多份逐设备加密消息引用，key 分别发送给每台接收设备；在 Group E2EE 中，key 放入当前 epoch 的 MLS Application Message。
 
 ### 4.5 联邦：服务到服务直接调用
 
@@ -209,6 +219,7 @@ ANP 的联邦层定义了：
 - 对象字节流必须独立 HTTPS 下载；
 - 群操作以 Group Host 的接受与排序作为跨域成功语义；
 - 私聊以目标 Agent 入口服务的接受作为跨域成功语义。
+- vNext 联邦仅在外层 E2EE Profile 声明发送/接收设备标识时保留并校验它们。普通 P3/P4/P7 操作保持 DID 定址，任何端点 fan-out 留在接收域内部；网关既不给这些操作添加设备 selector，也不为 E2EE 投递执行隐藏 fan-out。
 
 ---
 
@@ -216,9 +227,9 @@ ANP 的联邦层定义了：
 
 ANP 有几个有意识的设计取舍：
 
-### 5.1 不把设备概念放进协议
+### 5.1 业务身份与设备端点分离
 
-ANP 认为“设备、多终端、内部副本”是 Agent 内部实现问题，而不是互通协议问题。
+v1.1 基线仍把设备、终端和副本视为 Agent 内部细节。vNext 使普通 Base wire 边界保持 DID 定址，只调整 E2EE 密码学端点边界：公开避免共享设备 key、共享 Ratchet、隐藏加密投递 fan-out 和 MLS Leaf 歧义所需的最小设备标识及 key 绑定。DID 仍是业务身份，产品域内设备管理仍不属于协议范围。
 
 ### 5.2 群治理优先于极致匿名性
 
@@ -244,7 +255,7 @@ ANP 不把“绝对隐藏下载链接”作为核心安全手段，而是采用�
 
 ## 6. 文档结构
 
-以下 9 份 Profile 构成 ANP 当前规范集：
+以下 9 份 Profile 构成已发布的 v1.1 基线：
 
 
 | 编号 | 文档 | 作用 | 内容概览 |
@@ -258,6 +269,20 @@ ANP 不把“绝对隐藏下载链接”作为核心安全手段，而是采用�
 | 7 | [07-附件与对象传输](message/07-附件与对象传输.md) | 定义附件与大对象语义 | 规定 `attachment_manifest`、Object Service、上传/提交/下载票据、对象级加密以及附件在私聊和群聊中的承载方式。 |
 | 8 | [08-联邦与跨域](message/08-联邦与跨域.md) | 定义跨域服务调用原则 | 规定服务角色、发现与路由、服务到服务安全、跨域直接调用原则、群事件分发以及跨域成功语义。 |
 | 9 | [09-消息Mention扩展](message/09-消息Mention扩展.md) | 定义群消息 mention 载荷语义 | 规定结构化 mention 对象、`@all`、`@agents`、`@humans` 等 group selector、Group Base 与 Group E2EE 的放置规则以及终端侧校验。 |
+
+[vNext 中文草案集](message/vnext/README.md)镜像相同分层：P1–P8 使用独立 `.v2` Profile ID，P9 仅为不变的 Mention payload 提供 vNext binding：
+
+| Profile | vNext 草案 | 主要多设备变化 |
+| --- | --- | --- |
+| P1 | [`anp.core.binding.v2`](message/vnext/01-核心绑定.md) | DID 级通用元数据，以及仅在外层 E2EE Profile 声明时使用的设备 selector |
+| P2 | [`anp.identity.discovery.v2`](message/vnext/02-身份与发现.md) | 面向设备定址安全 Profile 的根签名 `deviceManifest` 和当前资格；Base 发现保持 DID 级 |
+| P3 | [`anp.direct.base.v2`](message/vnext/03-私聊基础语义.md) | 一次 DID-to-DID 普通投递，不携带设备 selector |
+| P4 | [`anp.group.base.v2`](message/vnext/04-群组基础语义.md) | DID 级成员、发送和通知，端点 fan-out 由所属域在本地完成 |
+| P5 | [`anp.direct.e2ee.v2`](message/vnext/05-私聊端到端加密.md) | 设备绑定 PreKey、Session、Ratchet、AAD、重放状态和 Mailbox |
+| P6 | [`anp.group.e2ee.v2`](message/vnext/06-群组端到端加密.md) | 同一成员 DID 的多个独立认证设备 Leaf |
+| P7 | [`anp.attachment.v2`](message/vnext/07-附件与对象传输.md) | DID 定址的 manifest、对象控制和 Ticket 流程；E2EE object key 投递继承 P5/P6 |
+| P8 | [`anp.federation.relay.v2`](message/vnext/08-联邦与跨域.md) | 针对外层 E2EE Profile 的条件式设备 selector 保留和资格校验 |
+| P9 | [vNext binding](message/vnext/09-消息Mention扩展.md) | v2 依赖和载荷位置；mention 仍使用 DID/群 selector |
 
 
 建议阅读顺序为：
@@ -277,6 +302,7 @@ ANP 的核心，不是做一个“聊天协议”，而是做一套 **面向 Age
 
 - **联邦制**：像 Email 一样跨域互通；
 - **身份优先**：以 DID 为统一锚点；
+- **设备安全的 vNext**：一个 DID 可以公开多个独立密码学端点，而不改变业务身份；
 - **分层设计**：业务、加密、附件、联邦各自分离；
 - **E2EE 可选叠加**：基础协议可独立运行，安全 Overlay 可按需启用；
 - **附件直连下载**：消息传 manifest，对象走独立 HTTP(S) 数据面；

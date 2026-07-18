@@ -1,0 +1,20 @@
+{
+  "bundle_id": "bundle-b2-001",
+  "owner_did": "did:example:bob",
+  "owner_device_id": "dev-b2-6VQ9RS",
+  "suite": "ANP-DIRECT-E2EE-X3DH-25519-CHACHA20POLY1305-SHA256-V1",
+  "static_key_agreement_id": "did:example:bob#dev-b2-e2ee",
+  "signed_prekey": {
+    "key_id": "spk-b2-001",
+    "public_key_b64u": "BASE64URL_X25519_SPK",
+    "expires_at": "2026-08-18T00:00:00Z"
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:example:bob#dev-b2-sign",
+    "proofPurpose": "assertionMethod",
+    "created": "2026-07-18T00:00:00Z",
+    "proofValue": "zDEVICE_BOUND_BUNDLE_PROOF"
+  }
+}

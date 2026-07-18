@@ -10,6 +10,8 @@
 
 **当前规范集：** 核心协议文档已经围绕 ANP 1.1 版本线整理。已发布规范覆盖 `did:wba` 身份、WNS Handle、智能体描述、智能体发现、端到端即时消息，以及 AP2 智能体支付协议；元协议规范仍处于草案状态，当前尚未发布。
 
+**消息 vNext 草案：** 已发布的 v1.1 消息 Profile 保持不变；独立版本化的 [vNext 草案集](chinese/message/vnext/README.md)定义同一 DID 下的多设备密码学端点，其中 P1–P8 使用 `.v2` Profile ID，P9 仅为不变的 Mention payload 提供 vNext binding。草案存在不表示实现已经支持或可以公开宣告相应能力。
+
 **版本说明：** `版本：1.1` 表示规范/文档发布版本；它不改变 ANP 载荷字段 `protocolVersion`。本次发布未修改协议字段、流程或安全要求，因此示例与协议字段中的 `"protocolVersion": "1.0.0"` 保持不变。
 
 **备注：** 本项目未在任何平台、任何区块链发布数字货币。
@@ -59,12 +61,12 @@ ANP 构建在现有互联网基础设施之上，将已发布的协议能力组�
 | 元协议 | [ANP-06：智能体通信元协议规范](chinese/06-ANP-智能体通信元协议规范.md) | Draft / 未发布 | 可选的语义元协议协商、`MetaProtocolInterface` 声明、`anp.negotiate`，以及接口 / Profile / 安全模式 / Schema 选择 |
 | 描述 | [ANP-07：智能体描述协议规范](chinese/07-ANP-智能体描述协议规范.md) | 已发布 v1.1 | 智能体描述文档、接口描述和能力发布 |
 | 发现 | [ANP-08：智能体发现协议规范](chinese/08-ANP-智能体发现协议规范.md) | 已发布 v1.1 | 基于 `.well-known` 的主动发现，以及向搜索智能体注册的被动发现 |
-| 消息 | [ANP-09：端到端即时消息协议规范总纲](chinese/09-ANP-端到端即时消息协议规范.md) | 已发布 v1.1 | 私聊、群聊、端到端加密、附件、联邦和 mention 场景的 Profile 索引 |
+| 消息 | [ANP-09：端到端即时消息协议规范总纲](chinese/09-ANP-端到端即时消息协议规范.md) | 已发布 v1.1 + vNext 草案 | 私聊、群聊、端到端加密、附件、联邦、mention 及独立版本化多设备草案的 Profile 索引 |
 | 支付 | [ANP-10：智能体支付协议规范（AP2）](chinese/application/10-ANP-智能体支付协议规范.md) | 中文草案 v0.1；英文 v1.1 | 智能体支付、授权凭证、收据、基于 DID 的签名和交易流程 |
 
 ### 即时消息 Profile
 
-ANP 端到端即时消息规范集拆分为多个独立 Profile：
+已发布的 ANP 1.1 端到端即时消息规范集拆分为多个独立 Profile：
 
 1. [P1 核心绑定](chinese/message/01-核心绑定.md)：JSON-RPC 2.0 绑定、请求/响应/错误约定。
 2. [P2 身份与发现](chinese/message/02-身份与发现.md)：基于 DID 的服务发现和端点能力发现。
@@ -75,6 +77,8 @@ ANP 端到端即时消息规范集拆分为多个独立 Profile：
 7. [P7 附件与对象传输](chinese/message/07-附件与对象传输.md)：Manifest、对象服务和大对象传输。
 8. [P8 联邦与跨域](chinese/message/08-联邦与跨域.md)：跨域路由、转发和结果见证。
 9. [P9 消息 Mention 扩展](chinese/message/09-消息Mention扩展.md)：群消息 mention 载荷和 selector 语义。
+
+[vNext 中文草案索引](chinese/message/vnext/README.md)及其[英文镜像](message/vnext/README.md)包含 P1–P8 `.v2` Profile 与 P9 vNext binding。vNext 使普通私聊、群聊、Mention 和附件操作只使用业务 DID 或 Group DID 定址，设备 fan-out 保留在接收域内部。它只在 Direct E2EE 或 Group E2EE 要求密码学端点时引入 `device_id`，包括独立 Direct Session 和同 DID 多 MLS Leaf；P8 也只对这类外层 Profile 保留设备 selector。实现不得把 v1 Profile 重新解释成 v2，也不得把 v2 操作静默降级为 v1。
 
 ### DID 兼容性附录
 
@@ -101,11 +105,11 @@ AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协
 
 - `01-*.md`、`03-*.md`、`04-*.md`、`06-*.md`、`07-*.md`、`08-*.md`、`09-*.md`：英文核心协议文档。
 - `application/`：AP2 等应用层协议。
-- `message/`：ANP 端到端即时消息 Profile 规范集。
+- `message/`：已发布的 ANP 1.1 端到端即时消息 Profile 规范集；`chinese/message/vnext/` 与 `message/vnext/` 保存独立版本化的 v2 草案。
 - `chinese/`：核心规范中文版及相关研究笔记。
 - `docs/`：指南、扩展阅读和社区运营文档。
 - `blogs/`：技术文章和协议分析。
-- `examples/`：ADP 示例资产和 API 接口示例。
+- `examples/`：ADP 示例资产、API 接口示例及[消息 vNext 多设备 JSON 示例](examples/message-vnext/README.cn.md)。
 - `images/`、`standard/`：共享图和标准化参考资料。
 
 ## 深入阅读
@@ -122,6 +126,7 @@ AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协
 - [x] 发布智能体描述协议和智能体发现协议。
 - [ ] 元协议仍为草案，待稳定后发布。
 - [x] 将端到端即时消息拆分为总纲和九个可互操作 Profile。
+- [ ] 稳定并评审独立版本化的多设备消息 vNext 草案。
 - [x] 在应用层加入 AP2 智能体支付协议。
 - [ ] 持续推进 SDK 实现与示例对齐 ANP 1.1 规范集。
 - [ ] 持续推进标准化工作，并扩展更多领域应用协议。

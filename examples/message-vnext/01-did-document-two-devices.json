@@ -1,0 +1,130 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    {
+      "deviceManifest": "https://agentnetworkprotocol.com/ns/message/v2#deviceManifest",
+      "ANPDeviceManifest": "https://agentnetworkprotocol.com/ns/message/v2#ANPDeviceManifest",
+      "devices": {
+        "@id": "https://agentnetworkprotocol.com/ns/message/v2#devices",
+        "@container": "@set"
+      },
+      "device_id": "https://agentnetworkprotocol.com/ns/message/v2#deviceId",
+      "signing_key_id": {
+        "@id": "https://agentnetworkprotocol.com/ns/message/v2#signingKey",
+        "@type": "@id"
+      },
+      "e2ee_key_id": {
+        "@id": "https://agentnetworkprotocol.com/ns/message/v2#e2eeKey",
+        "@type": "@id"
+      },
+      "profiles": {
+        "@id": "https://agentnetworkprotocol.com/ns/message/v2#profile",
+        "@container": "@set"
+      }
+    }
+  ],
+  "id": "did:example:alice",
+  "verificationMethod": [
+    {
+      "id": "did:example:alice#root",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:alice",
+      "publicKeyJwk": {"kty": "OKP", "crv": "Ed25519", "x": "ROOT_PUBLIC_KEY"}
+    },
+    {
+      "id": "did:example:alice#dev-a-sign",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:alice",
+      "publicKeyJwk": {"kty": "OKP", "crv": "Ed25519", "x": "DEVICE_A_SIGNING_KEY"}
+    },
+    {
+      "id": "did:example:alice#dev-a-e2ee",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:alice",
+      "publicKeyJwk": {"kty": "OKP", "crv": "X25519", "x": "DEVICE_A_E2EE_KEY"}
+    },
+    {
+      "id": "did:example:alice#dev-a2-sign",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:alice",
+      "publicKeyJwk": {"kty": "OKP", "crv": "Ed25519", "x": "DEVICE_A2_SIGNING_KEY"}
+    },
+    {
+      "id": "did:example:alice#dev-a2-e2ee",
+      "type": "JsonWebKey2020",
+      "controller": "did:example:alice",
+      "publicKeyJwk": {"kty": "OKP", "crv": "X25519", "x": "DEVICE_A2_E2EE_KEY"}
+    }
+  ],
+  "authentication": [
+    "did:example:alice#dev-a-sign",
+    "did:example:alice#dev-a2-sign"
+  ],
+  "assertionMethod": [
+    "did:example:alice#root",
+    "did:example:alice#dev-a-sign",
+    "did:example:alice#dev-a2-sign"
+  ],
+  "keyAgreement": [
+    "did:example:alice#dev-a-e2ee",
+    "did:example:alice#dev-a2-e2ee"
+  ],
+  "service": [
+    {
+      "id": "did:example:alice#message",
+      "type": "ANPMessageService",
+      "serviceEndpoint": "https://alice.example/anp",
+      "serviceDid": "did:example:alice-domain",
+      "profiles": [
+        "anp.core.binding.v2",
+        "anp.identity.discovery.v2",
+        "anp.direct.base.v2",
+        "anp.direct.e2ee.v2",
+        "anp.group.base.v2",
+        "anp.group.e2ee.v2",
+        "anp.attachment.v2",
+        "anp.federation.relay.v2"
+      ],
+      "securityProfiles": ["transport-protected", "direct-e2ee", "group-e2ee"]
+    }
+  ],
+  "deviceManifest": {
+    "type": "ANPDeviceManifest",
+    "devices": [
+      {
+        "device_id": "dev-a-7N3KQ2",
+        "signing_key_id": "did:example:alice#dev-a-sign",
+        "e2ee_key_id": "did:example:alice#dev-a-e2ee",
+        "profiles": [
+          "anp.core.binding.v2",
+          "anp.identity.discovery.v2",
+          "anp.direct.base.v2",
+          "anp.direct.e2ee.v2",
+          "anp.group.base.v2",
+          "anp.group.e2ee.v2"
+        ]
+      },
+      {
+        "device_id": "dev-a2-9R5TLM",
+        "signing_key_id": "did:example:alice#dev-a2-sign",
+        "e2ee_key_id": "did:example:alice#dev-a2-e2ee",
+        "profiles": [
+          "anp.core.binding.v2",
+          "anp.identity.discovery.v2",
+          "anp.direct.base.v2",
+          "anp.direct.e2ee.v2",
+          "anp.group.base.v2",
+          "anp.group.e2ee.v2"
+        ]
+      }
+    ]
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:example:alice#root",
+    "proofPurpose": "assertionMethod",
+    "created": "2026-07-18T09:00:00Z",
+    "proofValue": "zROOT_PROOF_OVER_COMPLETE_DOCUMENT"
+  }
+}
