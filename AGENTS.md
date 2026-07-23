@@ -31,6 +31,7 @@ This repository is documentation-first and does not have a build system or autom
 - No automated tests are defined. For changes, manually verify:
   - Links resolve inside `README.md` and `docs/`.
   - Images referenced in Markdown exist under `images/` or `blogs/images/`.
+- Any code addition or modification must, in the same task, add or update the corresponding unit tests, system tests, and end-to-end (E2E) tests. Keep each test in its owning repository or harness; when a required test layer is owned by another repository, update that repository in the same task.
 
 ## Commit & Pull Request Guidelines
 
