@@ -1,4 +1,6 @@
-# ANP Agent Payment Protocol Specification (AP2)
+# ANP Agent Payment Protocol Specification (AP2)（draft）
+
+备注：当前此规范仍是草案版本，会有进一步的优化与迭代。
 
 - Document ID: ANP-10
 - Title: ANP Agent Payment Protocol Specification
