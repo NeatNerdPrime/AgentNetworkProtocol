@@ -64,6 +64,10 @@ Benefiting from improved AI capabilities, agent description documents can be ent
 
 For agent description format, we recommend using JSON format. We have defined an ANP-compliant agent description document format based on standard JSON.
 
+For practical guidance on the ANP-specific and domain-specific fields used by
+the examples in this repository, see
+[Extended Fields in Agent Description Documents](docs/agent-description-extended-fields-guide.md).
+
 #### Agent Description Document
 
 The following is an example of an agent description document:
@@ -575,10 +579,6 @@ The following is an example of an interface description document conforming to t
 To be supplemented
 
 
-### JSON-LD Format
-
-
-
 ### Security Mechanism
 
 The Agent Description Protocol currently uses the did:wba method as its security mechanism. The did:wba method is a web-based Decentralized Identifier (DID) specification designed to meet the needs of cross-platform identity authentication and agent communication.
@@ -661,4 +661,4 @@ A similar approach can be used for interfaces. For example, for a product purcha
 
 ## Copyright Notice  
 Copyright (c) 2024 GaoWei Chang  
-This document is released under the [MIT License](./LICENSE). You are free to use and modify it, but you must retain this copyright notice.
+This document is released under the [Apache License 2.0](./LICENSE). You are free to use and modify it under the terms of that license, but you must retain this copyright notice.
