@@ -3,10 +3,10 @@
 - Document ID: ANP-P2-vNext
 - Title: Identity and Discovery
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
-- Profile: `anp.identity.discovery.v2`
-- Dependencies: `anp.core.binding.v2`
+- Profile: `anp.identity.discovery.v1`
+- Dependencies: `anp.core.binding.v1`
 - Applicability: This Profile applies to Agent identity, Group identity, service discovery and service endpoint interpretation in ANP.
 
 ---
@@ -167,7 +167,7 @@ For DID documents used by ANP:
 - `authentication` **MUST** exist for a DID that would appear in the request as the business originator DID;
 - If declarative signature objects are supported, `assertionMethod` **SHOULD** exist;
 - If encryption Overlay is supported, `keyAgreement` **SHOULD** exist;
-- `capabilityInvocation` is optional expansion capability, **MAY** exist, but is not part of v2 Minimum Interoperability Requirements.
+- `capabilityInvocation` is optional expansion capability, **MAY** exist, but is not part of v1 Minimum Interoperability Requirements.
 - If an Agent DID advertises a device-addressed E2EE Profile, `deviceManifest` **MUST** exist and satisfy Section 5.5; a DID that supports only Base Profiles does not require it.
 
 ### 4.3 DID document minimization principle
@@ -238,9 +238,9 @@ The standard shape is:
         "signing_key_id": "did:example:agent-a#dev-a-sign",
         "e2ee_key_id": "did:example:agent-a#dev-a-e2ee",
         "profiles": [
-          "anp.core.binding.v2",
-          "anp.identity.discovery.v2",
-          "anp.direct.base.v2",
+          "anp.core.binding.v1",
+          "anp.identity.discovery.v1",
+          "anp.direct.base.v1",
           "anp.direct.e2ee.v2"
         ]
       }
@@ -284,7 +284,7 @@ If there are multiple controllers, the internal collaboration mechanism between 
 
 ### 6.3 Group governance verification relationship
 
-For Group DID documents that support `anp.group.base.v2`:
+For Group DID documents that support `anp.group.base.v1`:
 
 - `assertionMethod` **MUST** exist;
 - `capabilityInvocation` **MAY** exist as an additional governance capability delegation relationship, but does not replace `assertionMethod`.
@@ -331,7 +331,7 @@ All ANP service endpoint objects **MUST** have:
 - `type`
 - `serviceEndpoint`
 
-The service endpoint object **MAY** carry a small number of static hints, but v2 standard interoperability only requires:
+The service endpoint object **MAY** carry a small number of static hints, but v1 standard interoperability only requires:
 
 - `profiles`
 - `securityProfiles`
@@ -369,7 +369,7 @@ Externally exposed attachment Control-Plane Methods **MUST** be still entered th
 - If there are multiple components within the implementation, the DID document **MUST** only exposes a unified entry and returns finer-grained capability boundaries through runtime capability negotiation.
 - Externally exposed service-scoped methods, including key material methods and attachments Control-Plane Methods, **MUST** use the `serviceDid` of the unified entrance as the target service identity anchor, unless the corresponding Profile is explicitly declared as endpoint-local
 
-To reduce cross-domain service-selection ambiguity, v2 encourages exposing only one unified `ANPMessageService` to the outside. The following diagram places that unified entry together with common internal logical roles, helping readers distinguish between a public service type and implementation-internal division of labor.
+To reduce cross-domain service-selection ambiguity, v1 encourages exposing only one unified `ANPMessageService` to the outside. The following diagram places that unified entry together with common internal logical roles, helping readers distinguish between a public service type and implementation-internal division of labor.
 
 ```mermaid
 flowchart TB
@@ -391,7 +391,7 @@ The roles in this diagram are only an illustration of internal capability bounda
 
 ### 7.3 Logical role of `ANPMessageService`
 
-This section is only used for **non-normative explanation** of the common capability boundaries behind unified entry; they are not independent standard service types in DID documents, nor are they service selection fields in v2.
+This section is only used for **non-normative explanation** of the common capability boundaries behind unified entry; they are not independent standard service types in DID documents, nor are they service selection fields in v1.
 
 #### 7.3.1 Home Role
 
@@ -440,7 +440,7 @@ If the deployer supports directory transparency, transparent logs or audit index
 
 ## 8. ANP Service Endpoint Extension Fields
 
-In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v2 static hints; the remaining capability information **SHOULD** sink to `anp.get_capabilities`.
+In order to facilitate cross-implementation discovery, this Profile only uses a few fields as v1 static hints; the remaining capability information **SHOULD** sink to `anp.get_capabilities`.
 
 ### 8.1 `profiles`
 
@@ -460,7 +460,7 @@ In order to facilitate cross-implementation discovery, this Profile only uses a 
 
 - Type: string array
 - Semantics: Set of acceptable message content types for the service endpoint
-- Requirements: **Not a standard v2 DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description:
   - If you need to expose such information, **SHOULD** return through `anp.get_capabilities`;
   - If this field appears in a DID document, the recipient **MAY** treat it as an implementation extension.
@@ -469,23 +469,23 @@ In order to facilitate cross-implementation discovery, this Profile only uses a 
 
 - Type: string array
 - Semantics: Set of acceptable control-plane object types for the service endpoint
-- Requirements: **Not a standard v2 DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description: This information is RECOMMENDED as a runtime capability rather than a static DID-document hint.
 
 ### 8.5 `priority`
 
 - Type: Integer
 - Semantics: endpoint priority
-- Requirements: **Not a standard v2 DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description:
-  - The v2 specification does not rely on `priority` in the DID document for service selection;
+  - The v1 specification does not rely on `priority` in the DID document for service selection;
   - If the deployment customizes this field, it should be treated as a private extension.
 
 ### 8.6 `authSchemes`
 
 - Type: string array
 - Semantics: caller → service caller authentication method supported by this endpoint
-- Requirements: **Not a standard v2 DID hint**
+- Requirements: **Not a standard v1 DID hint**
 - Description:
   - This capability typically changes with the runtime gateway configuration;
   - More suitable for exposure via `anp.get_capabilities`;
@@ -580,7 +580,7 @@ If there are multiple candidate endpoints, the caller **MUST** first selects in 
 3. Then use the runtime capability negotiation results as authoritative verification;
 4. If there are still multiple results, select according to the local policy.
 
-The v2 specification does not rely on `supportedMethods`, `logicalRoles` or `priority` in the DID document for standard service selection.
+The v1 specification does not rely on `supportedMethods`, `logicalRoles` or `priority` in the DID document for standard service selection.
 
 ### 9.5 Caching
 
@@ -612,7 +612,7 @@ Among them, for requests using `auth.origin_proof`, the verifier **MUST** treat 
 
 - If the object is an authentication control action, the verifier **SHOULD** check `authentication`;
 - If the object is a declaration or a signature assertion behavior, the verifier **SHOULD** check `assertionMethod`;
-- If the object is a governance capability invocation action, the verifier **MAY** check for `capabilityInvocation`, but this is not v2 Minimum Interoperability Requirements.
+- If the object is a governance capability invocation action, the verifier **MAY** check for `capabilityInvocation`, but this is not v1 Minimum Interoperability Requirements.
 
 ### 10.2.1 Device security binding
 
@@ -769,11 +769,11 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
       "serviceEndpoint": "https://agent-a.example.com/anp",
       "serviceDid": "did:example:domain-a",
       "profiles": [
-        "anp.core.binding.v2",
-        "anp.identity.discovery.v2",
-        "anp.direct.base.v2",
+        "anp.core.binding.v1",
+        "anp.identity.discovery.v1",
+        "anp.direct.base.v1",
         "anp.direct.e2ee.v2",
-        "anp.attachment.v2"
+        "anp.attachment.v1"
       ],
       "securityProfiles": [
         "transport-protected",
@@ -789,9 +789,9 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
         "signing_key_id": "did:example:agent-a#dev-a-sign",
         "e2ee_key_id": "did:example:agent-a#dev-a-e2ee",
         "profiles": [
-          "anp.core.binding.v2",
-          "anp.identity.discovery.v2",
-          "anp.direct.base.v2",
+          "anp.core.binding.v1",
+          "anp.identity.discovery.v1",
+          "anp.direct.base.v1",
           "anp.direct.e2ee.v2"
         ]
       },
@@ -800,9 +800,9 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
         "signing_key_id": "did:example:agent-a#dev-a2-sign",
         "e2ee_key_id": "did:example:agent-a#dev-a2-e2ee",
         "profiles": [
-          "anp.core.binding.v2",
-          "anp.identity.discovery.v2",
-          "anp.direct.base.v2",
+          "anp.core.binding.v1",
+          "anp.identity.discovery.v1",
+          "anp.direct.base.v1",
           "anp.direct.e2ee.v2"
         ]
       }
@@ -842,9 +842,9 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
       "serviceEndpoint": "https://group-host.example.com/anp/groups/group-123",
       "serviceDid": "did:example:group-host-domain",
       "profiles": [
-        "anp.core.binding.v2",
-        "anp.identity.discovery.v2",
-        "anp.group.base.v2",
+        "anp.core.binding.v1",
+        "anp.identity.discovery.v1",
+        "anp.group.base.v1",
         "anp.group.e2ee.v2"
       ],
       "securityProfiles": [

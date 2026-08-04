@@ -3,10 +3,10 @@
 - Document ID: ANP-P3-vNext
 - Title: Direct Messaging Base Semantics
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
-- Profile: `anp.direct.base.v2`
-- Dependencies: `anp.core.binding.v2`, `anp.identity.discovery.v2`
+- Profile: `anp.direct.base.v1`
+- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`
 - Applicability: This Profile applies to the basic direct messaging semantics between Agents and does not include the end-to-end encryption algorithm itself.
 
 ---
@@ -63,7 +63,7 @@ The protocol endpoint of ANP Direct Messaging is the Agent, not the device, term
 
 As long as the target Agent's portal service accepts the message, the delivery mission of this Profile will be completed. How the target Agent internally synchronizes to how many replicas, how many executors, or how many devices, does not fall within the interoperability scope of this Profile.
 
-Accordingly, transport-protected `anp.direct.base.v2` is addressed only by `meta.sender_did` and `meta.target.did`. It **MUST NOT** carry `meta.sender_device_id`, `meta.recipient_device_id`, a device list, or per-device acceptance results. Any target-domain device fan-out and its partial outcomes remain local implementation details.
+Accordingly, transport-protected `anp.direct.base.v1` is addressed only by `meta.sender_did` and `meta.target.did`. It **MUST NOT** carry `meta.sender_device_id`, `meta.recipient_device_id`, a device list, or per-device acceptance results. Any target-domain device fan-out and its partial outcomes remain local implementation details.
 
 ### 3.2 Separation of Base semantics and Security Overlay
 
@@ -136,20 +136,20 @@ This Profile requires:
 
 The standard name of this Profile is:
 
-`anp.direct.base.v2`
+`anp.direct.base.v1`
 
 ### 4.2 Dependencies
 
 This Profile **MUST** depend on the following Profiles:
 
-- `anp.core.binding.v2`
-- `anp.identity.discovery.v2`
+- `anp.core.binding.v1`
+- `anp.identity.discovery.v1`
 
 ### 4.3 Security Profile
 
 When this Profile is used as the basic direct messaging Profile running independently:
 
-- `meta.profile` **MUST** equal `anp.direct.base.v2`
+- `meta.profile` **MUST** equal `anp.direct.base.v1`
 - `meta.security_profile` **MUST** equal `transport-protected`
 
 If a subsequent Direct E2EE Overlay reuses the business actions and application semantics of this Profile, then:
@@ -159,7 +159,7 @@ If a subsequent Direct E2EE Overlay reuses the business actions and application 
 - When `meta.profile = "anp.direct.e2ee.v2"`, the mandatory requirements for `auth.origin_proof` in this Profile are overridden by the Direct E2EE Profile;
 - This coverage is deliberately designed: `direct-e2ee` gives priority to retaining stronger deniability. The sender identity authentication is mainly undertaken by the E2EE session establishment material, session binding and message AAD, and is no longer required to use P3's application layer `origin_proof` by default.
 
-At the message-field level, an ordinary transport-protected P3 v2 message retains the v1.1 DID-level request, result, content, and origin-proof fields. The explicit Profile and dependency identifiers change to v2; device selectors and per-device results belong exclusively to P5.
+At the message-field level, the Messaging 1.2 revision of P3 retains the v1.1 DID-level request, result, content, origin-proof fields, and `anp.direct.base.v1` identifier. The new text only makes the device boundary explicit: device selectors and per-device results belong exclusively to P5 v2.
 
 ---
 
@@ -277,7 +277,7 @@ Among `direct.send`, `text`, `payload` and `payload_b64u`:
 
 ### 6.4 `auth` object
 
-When `meta.profile = "anp.direct.base.v2"` and `meta.security_profile = "transport-protected"`, `direct.send`'s `params` **MUST** contain the `auth` object.
+When `meta.profile = "anp.direct.base.v1"` and `meta.security_profile = "transport-protected"`, `direct.send`'s `params` **MUST** contain the `auth` object.
 
 The proof bearer rules, Signed Request Object and signature component mapping in this section **MUST** reuse the unified definition in P1 Appendix A; P3 **no longer** defines independent proof field names, independent Signed Payload structures or local `@target-uri` mappings.
 
@@ -338,7 +338,7 @@ Therefore:
 A compliant `direct.send` request **MUST** satisfy:
 
 1. `method = "direct.send"`
-2. `meta.profile = "anp.direct.base.v2"`
+2. `meta.profile = "anp.direct.base.v1"`
 3. `meta.security_profile = "transport-protected"`
 4. `meta.sender_did` **MUST** exist
 5. `meta.target.kind = "agent"`
@@ -396,7 +396,7 @@ The receiver **MUST** reject `direct.send` under the following circumstances:
 
 - `direct.incoming` **MUST** sent as Notification;
 - The receiver **MUST NOT** return a JSON-RPC Response to it;
-- `params.meta.profile` **MUST** equal `anp.direct.base.v2`;
+- `params.meta.profile` **MUST** equal `anp.direct.base.v1`;
 - `params.meta.security_profile` **MUST** equal security profile when original `direct.send` is accepted;
 - `params.meta.target.kind` **MUST** be `"agent"`;
 - `params.meta.target.did` **MUST** be equal to the notification recipient DID;
@@ -495,7 +495,7 @@ This Profile, when run independently, **MUST** rely on a certified secure transp
 
 ### 9.2 Sender identity authentication of `direct.send`
 
-For any `direct.send` that declares `meta.sender_did` under `meta.profile = "anp.direct.base.v2"`:
+For any `direct.send` that declares `meta.sender_did` under `meta.profile = "anp.direct.base.v1"`:
 
 - Sender **MUST** provide `auth.origin_proof`;
 - Receiver portal service **MUST** validate `auth.origin_proof` according to did:wba specification;
@@ -616,7 +616,7 @@ An implementation conforming to this Profile MUST support at least:
 11. Operation mode based on secure transmission
 12. DID-level addressing without device selectors or per-device results
 
-`conversation_id`, `reply_to_message_id` and `annotations` are commonly used optional fields, but do not belong to the strong minimum interoperability constraints of v2.
+`conversation_id`, `reply_to_message_id` and `annotations` are commonly used optional fields, but do not belong to the strong minimum interoperability constraints of v1.
 
 ---
 
@@ -631,7 +631,7 @@ An implementation conforming to this Profile MUST support at least:
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -668,7 +668,7 @@ An implementation conforming to this Profile MUST support at least:
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -729,7 +729,7 @@ inside `payload` are application-defined and are not specified by ANP.
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -763,7 +763,7 @@ inside `payload` are application-defined and are not specified by ANP.
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
       "target": {

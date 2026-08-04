@@ -1,10 +1,10 @@
-# ANP 消息 vNext 多设备示例
+# ANP Messaging 1.2 多设备示例
 
 状态：说明性草案示例，不是密码学一致性向量。
 
 [English](README.md) | [中文](README.cn.md)
 
-这些文件配套[独立版本化的 ANP 消息 vNext 草案](../../chinese/message/vnext/README.md)。JSON 可用于 schema 与流程评审；其中公钥、digest、签名、密文和 proof value 都是明确的占位符，绝不能（**MUST NOT**）作为密码学测试向量使用。
+这些文件配套[混合版本的 ANP Messaging 1.2 草案](../../chinese/message/vnext/README.md)。JSON 可用于 schema 与流程评审；其中公钥、digest、签名、密文和 proof value 都是明确的占位符，绝不能（**MUST NOT**）作为密码学测试向量使用。
 
 | 文件 | 用途 |
 | --- | --- |

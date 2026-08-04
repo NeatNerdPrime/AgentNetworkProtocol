@@ -3,13 +3,14 @@
 - Document ID: ANP-P9-vNext
 - Title: Message Mentions Extension
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
-- Applicability: This Profile defines an application-payload extension for expressing human-readable and machine-readable mentions in ANP group messages. It applies to `anp.group.base.v2` and `anp.group.e2ee.v2` when the carried application payload is structured JSON.
+- Binding Version: v1 extension; it does not define an independent `meta.profile`
+- Applicability: This Profile defines an application-payload extension for expressing human-readable and machine-readable mentions in ANP group messages. It applies to `anp.group.base.v1`, `anp.group.e2ee.v1`, and `anp.group.e2ee.v2` when the carried application payload is structured JSON.
 - Dependencies:
-  - `anp.core.binding.v2`
-  - `anp.group.base.v2` when used with group non-E2EE messages
-  - `anp.group.e2ee.v2` when used with group E2EE messages
+  - `anp.core.binding.v1`
+  - `anp.group.base.v1` when used with group non-E2EE messages
+  - `anp.group.e2ee.v1` or `anp.group.e2ee.v2` when used with group E2EE messages
 
 ---
 
@@ -69,7 +70,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **Mention Target**: The machine-readable target of a mention. It may be a human DID, an agent DID, or a group selector.
 - **Group Selector Mention**: A mention whose target is a group-scoped selector, such as `all`, `agents`, or `humans`.
 - **Terminal-side Validation**: Local validation and processing performed by the receiving client, user agent, or Agent runtime after it receives or decrypts the application payload. This term does not introduce a device-level or terminal-level protocol identity.
-- **Group Host Service**: The group service defined by `anp.group.base.v2`. In this Profile, it does not validate mention semantics.
+- **Group Host Service**: The group service defined by `anp.group.base.v1`. In this Profile, it does not validate mention semantics.
 
 ---
 
@@ -118,9 +119,9 @@ For non-E2EE Group Base, the mention-bearing payload **MUST** be located inside 
 
 For Group E2EE, the mention-bearing payload **MUST** be located inside the corresponding inner plaintext object before encryption.
 
-### 3.4 Mention authorization is not a v2 server-side concern
+### 3.4 Mention authorization is not a v1 server-side concern
 
-This Profile defines no mention-specific permission policy in v2.
+This Profile defines no mention-specific permission policy in v1.
 
 If the sender is allowed to send the enclosing group message under the applicable base Profile, the sender is allowed at the mention layer to include any supported mention target:
 
@@ -174,8 +175,8 @@ This Profile **MUST NOT** replace the outer `params.meta.profile` of the enclosi
 
 The enclosing group message operation keeps its original Profile name, for example:
 
-- `anp.group.base.v2` for `group.send` without Group E2EE;
-- `anp.group.e2ee.v2` for `group.e2ee.send`.
+- `anp.group.base.v1` for `group.send` without Group E2EE;
+- `anp.group.e2ee.v1` or `anp.group.e2ee.v2` for `group.e2ee.send`, according to the negotiated enclosing E2EE Profile.
 
 ### 4.3 Content type
 
@@ -315,14 +316,14 @@ Field requirements:
 |---|---:|---|---|
 | `start` | **MUST** | non-negative integer | Inclusive start offset in `text`. |
 | `end` | **MUST** | non-negative integer | Exclusive end offset in `text`. |
-| `unit` | **MUST** | string | In v2, it **MUST** be `unicode_code_point`. |
+| `unit` | **MUST** | string | In v1, it **MUST** be `unicode_code_point`. |
 
 Rules:
 
 1. `start` **MUST** be less than `end`.
 2. `end` **MUST NOT** exceed the number of Unicode code points in `text`.
 3. The range is calculated over the exact JSON string value of `text` after JSON parsing and before any UI normalization, transliteration, or Markdown rendering.
-4. The substring identified by `range` is the mention surface. The surface string is intentionally not duplicated in the mention object in v2.
+4. The substring identified by `range` is the mention surface. The surface string is intentionally not duplicated in the mention object in v1.
 5. If a terminal cannot validate the range, it **MUST** ignore that mention object for mention-triggering purposes, but it **MAY** still display the original `text`.
 
 ---
@@ -389,7 +390,7 @@ Rules:
 
 The `mention_role` field is optional.
 
-Allowed values in v2:
+Allowed values in v1:
 
 | Value | Semantics |
 |---|---|
@@ -486,7 +487,7 @@ Implementations **MUST NOT** infer `human` or `agent` solely from a P4 governanc
 
 ### 7.1 Group Base without E2EE
 
-For `group.send` under `anp.group.base.v2`:
+For `group.send` under `anp.group.base.v1`:
 
 - `params.meta.content_type` **MUST** be `application/json`;
 - `params.body.payload` **MUST** carry the mention-bearing message object;
@@ -504,7 +505,7 @@ Example:
   "method": "group.send",
   "params": {
     "meta": {
-      "profile": "anp.group.base.v2",
+      "profile": "anp.group.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:example.com:user:alice",
       "target": {
@@ -620,7 +621,7 @@ The `mentions` array is inside the MLS-protected inner `Group Application Plaint
 
 ### 8.3 No mention-local proof
 
-A verifier **MUST NOT** require a mention-local signature or proof in v2.
+A verifier **MUST NOT** require a mention-local signature or proof in v1.
 
 A receiver **MUST** treat any `proof`, `signature`, `origin_proof`, or `auth` field embedded inside a mention object as invalid for this Profile.
 
@@ -665,7 +666,7 @@ If a mention object fails terminal-side validation, the terminal **SHOULD** igno
 
 ### 9.3 Mention permission interpretation
 
-In v2, there is no mention-specific permission policy.
+In v1, there is no mention-specific permission policy.
 
 A terminal **MUST** treat a mention as allowed at the wire-protocol layer if:
 
@@ -766,7 +767,7 @@ Identity decisions **MUST** be based on DID for single-target mentions or on sel
 
 ### 11.3 No server-side mention authorization
 
-Because mention validation is terminal-side in v2, a server may accept and deliver a message whose mention objects later fail terminal-side validation.
+Because mention validation is terminal-side in v1, a server may accept and deliver a message whose mention objects later fail terminal-side validation.
 
 Terminals and Agent runtimes **MUST** avoid triggering privileged behavior from invalid mention objects.
 
@@ -776,7 +777,7 @@ In Group E2EE mode, mention objects are inside encrypted plaintext.
 
 Servers and Group Host Services should not expect to inspect or index mention targets unless an explicit future extension introduces encrypted or privacy-preserving notification hints.
 
-This Profile does not define such hints in v2.
+This Profile does not define such hints in v1.
 
 ### 11.5 Replay and duplicate handling
 
@@ -817,7 +818,7 @@ An implementation conforming to this Profile MUST support at least:
 9. placement of mention-bearing payloads inside `params.body.payload` for non-E2EE `application/json` group messages;
 10. placement of mention-bearing payloads inside inner `Group Application Plaintext.payload` for Group E2EE messages;
 11. preservation of existing sender-proof and send-permission semantics from the enclosing ANP Message Profile;
-12. no server-side mention authorization or selector expansion in v2;
+12. no server-side mention authorization or selector expansion in v1;
 13. DID and group-selector Mention targets with device binding left to the enclosing P6 message.
 
 ---
@@ -835,4 +836,4 @@ Future versions may define:
 - Cross-group or external mention references;
 - Standard roster fields for human / agent classification.
 
-These features are intentionally outside v2.
+These features are intentionally outside v1.

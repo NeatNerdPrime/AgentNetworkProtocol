@@ -3,9 +3,9 @@
 - Document ID: ANP-P1-vNext
 - Title: Core Binding
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
-- Profile: `anp.core.binding.v2`
+- Profile: `anp.core.binding.v1`
 - Applicability: This profile applies to all ANP basic profiles and security overlay profiles.
 
 ---
@@ -37,7 +37,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **Notification**: JSON-RPC call object without `id`.
 - **Result**: `result` member in the Successful Response object.
 - **Error**: `error` member in the failure response object.
-- **Profile**: ANP's protocol capability unit, such as `anp.direct.base.v2`.
+- **Profile**: ANP's protocol capability unit, such as `anp.direct.base.v1`.
 - **Security Profile**: Security semantic unit of ANP, such as `transport-protected`, `direct-e2ee`, `group-e2ee`.
 - **Operation**: A protocol action that can be recognized idempotently, such as sending a message, creating a group, adding a member, or submitting a group state change.
 - **Message-bearing Operation**: Operation carrying application layer message payload, such as `direct.send`, `group.send`, `group.e2ee.send`.
@@ -68,7 +68,7 @@ To help readers quickly build an overall mental model of ANP layering boundaries
 ```mermaid
 flowchart TB
 T[Transport Layer<br/>HTTPS / WSS / secure channel]
-B[Binding Layer<br/>anp.core.binding.v2<br/>JSON-RPC 2.0 / meta / auth / body]
+B[Binding Layer<br/>anp.core.binding.v1<br/>JSON-RPC 2.0 / meta / auth / body]
 D[Business Layer<br/>Direct Base / Group Base]
 S[Security Overlay Layer<br/>Direct E2EE / Group E2EE]
 M[Media / Object Layer<br/>Attachment / object transfer]
@@ -110,7 +110,7 @@ Ordinary Direct Base, Group Base, and Attachment operations remain DID-addressed
 
 The standard name of this Profile is:
 
-`anp.core.binding.v2`
+`anp.core.binding.v1`
 
 Subsequent Profiles **MUST** use this name to reference this Profile when declaring dependencies.
 
@@ -259,13 +259,15 @@ The `meta` object fields are defined as follows:
 #### 6.2.1 `anp_version`
 
 - Type: string
-- Requirements: **MAY**
-- Semantics: ANP major version prompt
-- Default: If omitted, the receiver **MUST** interpret it as `"2.0"`
+- Status: **Deprecated**
+- Requirements: Existing senders **MAY** include it for compatibility; new senders **SHOULD NOT** include it
+- Semantics: Compatibility or diagnostic hint only
+- Default: None
 - Description:
-  - This field is reserved for explicit debugging or cross-version gateways;
-  - In v2, `profile` is used first to determine the interpretation rules;
-  - New implementation of **SHOULD** treat this as a compatibility field rather than a primary negotiation field.
+  - `meta.profile` is the sole source of truth for parsing, wire-contract selection, and capability negotiation;
+  - A receiver **MUST NOT** use `anp_version` to select a Profile, infer support for a Profile set, or change security semantics;
+  - A receiver that accepts this field **MAY** retain it for compatibility gateways or diagnostics only;
+  - Omitting the field does not imply a default ANP or Messaging specification-set version.
 
 #### 6.2.2 `profile`
 
@@ -277,8 +279,8 @@ The `meta` object fields are defined as follows:
   - `profile` **MUST NOT** express the union semantics of multiple profiles at the same time;
   - `security_profile` only expresses security profile and does not replace `profile`.
 - Example:
-  - `"anp.direct.base.v2"`
-  - `"anp.group.base.v2"`
+  - `"anp.direct.base.v1"`
+  - `"anp.group.base.v1"`
   - `"anp.direct.e2ee.v2"`
   - `"anp.group.e2ee.v2"`
 
@@ -523,7 +525,7 @@ The implementer **MAY** return more fine-grained extended fields (such as suppor
   "method": "anp.get_capabilities",
   "params": {
     "meta": {
-      "profile": "anp.core.binding.v2",
+      "profile": "anp.core.binding.v1",
       "security_profile": "transport-protected",
       "operation_id": "op-cap-001",
       "created_at": "2026-03-29T12:00:00Z"
@@ -548,15 +550,19 @@ Notes:
   "result": {
     "service_did": "did:example:service",
     "supported_profiles": [
-      "anp.core.binding.v2",
-      "anp.identity.discovery.v2",
-      "anp.direct.base.v2",
-      "anp.group.base.v2",
-      "anp.direct.e2ee.v2"
+      "anp.core.binding.v1",
+      "anp.identity.discovery.v1",
+      "anp.direct.base.v1",
+      "anp.group.base.v1",
+      "anp.attachment.v1",
+      "anp.federation.relay.v1",
+      "anp.direct.e2ee.v2",
+      "anp.group.e2ee.v2"
     ],
     "supported_security_profiles": [
       "transport-protected",
-      "direct-e2ee"
+      "direct-e2ee",
+      "group-e2ee"
     ],
     "limits": {
       "max_request_bytes": "1048576",
@@ -734,9 +740,13 @@ It is recommended to use the following first-level namespace:
 
 Profile name **MUST** be explicit with version, for example:
 
-- `anp.core.binding.v2`
-- `anp.identity.discovery.v2`
-- `anp.direct.base.v2`
+- `anp.core.binding.v1`
+- `anp.identity.discovery.v1`
+- `anp.direct.base.v1`
+
+Each Profile is independently versioned. Depending on a Profile with a new major version does not change the major versions of its Core, Discovery, Base, Attachment, Federation, or extension dependencies.
+
+The ANP Messaging specification-set version is a document/catalog release version and is not a wire identifier. ANP Messaging 1.2 can therefore contain `anp.direct.base.v1` and `anp.direct.e2ee.v2` at the same time. Profile identifiers **MUST** use major versions such as `.v1` or `.v2` and **MUST NOT** use specification-set minor versions such as `.v1.1` or `.v1.2`.
 
 ### 11.3 Extension methods
 
@@ -760,17 +770,28 @@ The receiver's processing rules for unknown extended fields are as follows:
 - For unknown `body` fields, the receiver will **MAY** ignore them only if the corresponding Profile explicitly states that they can be ignored;
 - If the unknown field affects security, routing, permissions, idempotence, or state machine semantics, the receiver **MUST** reject.
 
-### 12.2 Destructive changes
+### 12.2 Breaking changes
 
 The following changes are considered breaking changes and the Profile major version must be upgraded:
 
-- The meaning of the `meta` field changes;
-- Changes in error code semantics;
-- Semantic changes in method names;
-- security profile semantic changes;
-- The payload structure is no longer compatible.
+- Adding a required wire field;
+- Removing or renaming an existing field;
+- Changing a field's meaning;
+- Changing signature or AAD coverage;
+- Changing an idempotency key or state machine;
+- Changing security-mode semantics;
+- Any change that an older implementation cannot process safely.
 
-The `.v1` and `.v2` Profile identifiers are separate interoperability contracts. An implementation **MUST NOT** infer a v2 device endpoint for a v1 peer, synthesize a default device, or silently downgrade a failed v2 device-addressed E2EE operation to v1 or to a transport-protected Base operation. This does not make v2 Base messaging device-addressed: only the declaring P5/P6-like E2EE Overlay enables the conditional selectors in Section 6.2.4.
+### 12.3 Non-breaking specification revisions
+
+The following changes do not change a Profile major version:
+
+- Clarifying existing semantics or adding prohibitions that make an existing boundary explicit;
+- Correcting examples or internal documentation inconsistencies;
+- Documenting composition with a new Overlay;
+- Adding an optional extension that does not affect older requests.
+
+The v1 and v2 identifiers of the same Profile are separate interoperability contracts. In particular, an implementation **MUST NOT** infer a P5/P6 v2 device endpoint for a v1 peer, synthesize a default device, reuse v1 E2EE state as v2 state, or silently downgrade a failed v2 device-addressed E2EE operation to v1 or to a transport-protected Base operation. P1/P2 v1 only register the conditional extension points; the declaring P5/P6 v2 Overlay exclusively owns and enables the selectors in Section 6.2.4.
 
 ---
 
@@ -855,7 +876,7 @@ The request below is an ordinary transport-protected Direct Base message. It int
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -977,7 +998,7 @@ Notes:
 * `signatureInput`
 * `signature`
 
-For this v2 Profile, the contract is as follows:
+For this v1 Profile, the contract is as follows:
 
 * `contentDigest` **MUST** use `sha-256`
 * `signatureInput` **MUST** use tag `sig1`
@@ -1177,7 +1198,7 @@ The ANP only harmonizes the following in this appendix:
 
 ## B.1 Applicability
 
-In this v2 Profile, the following objects **MUST** use this appendix:
+In this v1 Profile, the following objects **MUST** use this appendix:
 
 - `group_receipt.proof` for P4
 - `prekey_bundle.proof` for P5
@@ -1211,7 +1232,7 @@ The recommended structure is as follows:
 }
 ````
 
-The unified requirements for v2 are as follows:
+The unified requirements for v1 are as follows:
 
 * `proof.type` **MUST** equal `DataIntegrityProof`
 * `proof.cryptosuite` **MUST** equal `eddsa-jcs-2022`

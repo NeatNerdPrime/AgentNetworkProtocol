@@ -1,10 +1,10 @@
-# ANP Messaging vNext multi-device examples
+# ANP Messaging 1.2 multi-device examples
 
 Status: illustrative draft examples; not cryptographic conformance vectors.
 
 [English](README.md) | [中文](README.cn.md)
 
-These files accompany the separately versioned [ANP Messaging vNext drafts](../../message/vnext/README.md). They are valid JSON examples for schema and flow review. Public keys, digests, signatures, ciphertext, and proof values are explicit placeholders and **MUST NOT** be used as cryptographic test vectors.
+These files accompany the mixed-version [ANP Messaging 1.2 drafts](../../message/vnext/README.md). They are valid JSON examples for schema and flow review. Public keys, digests, signatures, ciphertext, and proof values are explicit placeholders and **MUST NOT** be used as cryptographic test vectors.
 
 | File | Purpose |
 | --- | --- |

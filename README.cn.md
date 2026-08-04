@@ -10,7 +10,7 @@
 
 **当前规范集：** 核心协议文档已经围绕 ANP 1.1 版本线整理。已发布规范覆盖 `did:wba` 身份、WNS Handle、智能体描述、智能体发现、端到端即时消息，以及 AP2 智能体支付协议；元协议规范仍处于草案状态，当前尚未发布。
 
-**消息 vNext 草案：** 已发布的 v1.1 消息 Profile 保持不变；独立版本化的 [vNext 草案集](chinese/message/vnext/README.md)定义同一 DID 下的多设备密码学端点，其中 P1–P8 使用 `.v2` Profile ID，P9 仅为不变的 Mention payload 提供 vNext binding。草案存在不表示实现已经支持或可以公开宣告相应能力。
+**ANP Messaging 1.2 草案：** [混合版本草案集](chinese/message/vnext/README.md)在同一 DID 下定义多设备密码学端点，同时让 P1/P2/P3/P4/P7/P8 与 P9 Mention binding 保持 v1；只有不兼容的 Direct E2EE 与 Group E2EE Profile 使用 v2。草案存在不表示实现已经支持或可以公开宣告相应能力。
 
 **版本说明：** `版本：1.1` 表示规范/文档发布版本；它不改变 ANP 载荷字段 `protocolVersion`。本次发布未修改协议字段、流程或安全要求，因此示例与协议字段中的 `"protocolVersion": "1.0.0"` 保持不变。
 
@@ -78,7 +78,7 @@ ANP 构建在现有互联网基础设施之上，将已发布的协议能力组�
 8. [P8 联邦与跨域](chinese/message/08-联邦与跨域.md)：跨域路由、转发和结果见证。
 9. [P9 消息 Mention 扩展](chinese/message/09-消息Mention扩展.md)：群消息 mention 载荷和 selector 语义。
 
-[vNext 中文草案索引](chinese/message/vnext/README.md)及其[英文镜像](message/vnext/README.md)包含 P1–P8 `.v2` Profile 与 P9 vNext binding。vNext 使普通私聊、群聊、Mention 和附件操作只使用业务 DID 或 Group DID 定址，设备 fan-out 保留在接收域内部。它只在 Direct E2EE 或 Group E2EE 要求密码学端点时引入 `device_id`，包括独立 Direct Session 和同 DID 多 MLS Leaf；P8 也只对这类外层 Profile 保留设备 selector。实现不得把 v1 Profile 重新解释成 v2，也不得把 v2 操作静默降级为 v1。
+[ANP Messaging 1.2 中文草案索引](chinese/message/vnext/README.md)及其[英文镜像](message/vnext/README.md)定义一组合法的混合版本能力：Base、Attachment 与 Federation 保持 v1，Direct E2EE 与 Group E2EE 使用 v2。普通私聊、群聊、Mention 和附件操作只使用业务 DID 或 Group DID 定址，设备 fan-out 保留在接收域内部。只有 E2EE v2 Profile 要求密码学端点时才引入 `device_id`，包括独立 Direct Session 和同 DID 多 MLS Leaf；P8 v1 也只对这类外层 Profile 保留设备 selector。实现不得把 E2EE v1 状态重新解释为 v2，也不得静默降级 E2EE v2 操作。
 
 ### DID 兼容性附录
 

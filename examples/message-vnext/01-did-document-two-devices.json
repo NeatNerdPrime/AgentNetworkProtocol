@@ -76,14 +76,14 @@
       "serviceEndpoint": "https://alice.example/anp",
       "serviceDid": "did:example:alice-domain",
       "profiles": [
-        "anp.core.binding.v2",
-        "anp.identity.discovery.v2",
-        "anp.direct.base.v2",
+        "anp.core.binding.v1",
+        "anp.identity.discovery.v1",
+        "anp.direct.base.v1",
         "anp.direct.e2ee.v2",
-        "anp.group.base.v2",
+        "anp.group.base.v1",
         "anp.group.e2ee.v2",
-        "anp.attachment.v2",
-        "anp.federation.relay.v2"
+        "anp.attachment.v1",
+        "anp.federation.relay.v1"
       ],
       "securityProfiles": ["transport-protected", "direct-e2ee", "group-e2ee"]
     }
@@ -96,11 +96,11 @@
         "signing_key_id": "did:example:alice#dev-a-sign",
         "e2ee_key_id": "did:example:alice#dev-a-e2ee",
         "profiles": [
-          "anp.core.binding.v2",
-          "anp.identity.discovery.v2",
-          "anp.direct.base.v2",
+          "anp.core.binding.v1",
+          "anp.identity.discovery.v1",
+          "anp.direct.base.v1",
           "anp.direct.e2ee.v2",
-          "anp.group.base.v2",
+          "anp.group.base.v1",
           "anp.group.e2ee.v2"
         ]
       },
@@ -109,11 +109,11 @@
         "signing_key_id": "did:example:alice#dev-a2-sign",
         "e2ee_key_id": "did:example:alice#dev-a2-e2ee",
         "profiles": [
-          "anp.core.binding.v2",
-          "anp.identity.discovery.v2",
-          "anp.direct.base.v2",
+          "anp.core.binding.v1",
+          "anp.identity.discovery.v1",
+          "anp.direct.base.v1",
           "anp.direct.e2ee.v2",
-          "anp.group.base.v2",
+          "anp.group.base.v1",
           "anp.group.e2ee.v2"
         ]
       }

@@ -3,11 +3,11 @@
 - Document ID: ANP-P6-vNext
 - Title: Group End-to-End Encryption
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Profile: `anp.group.e2ee.v2`
-- Dependencies: `anp.core.binding.v2`, `anp.identity.discovery.v2`, `anp.group.base.v2`
-- Applicability: This Profile is suitable for the Group End-to-End Encryption control layer based on Group DID and works closely with `anp.group.base.v2`.
+- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`, `anp.group.base.v1`
+- Applicability: This Profile is suitable for the Group End-to-End Encryption control layer based on Group DID and works closely with `anp.group.base.v1`.
 
 ---
 
@@ -19,7 +19,7 @@ This Profile defines the Group End-to-End Encryption control layer of ANP, stipu
 2. How to use MLS as the basic protocol for group key establishment, member changes, and application message protection;
 3. How to bind a `did:wba` Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
 4. How to define a set of independent `group.e2ee.*` JSON-RPC methods to specifically carry MLS cryptographic actions;
-5. How to work closely with `anp.group.base.v2` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
+5. How to work closely with `anp.group.base.v1` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
 6. How to deal with `epoch`, `Welcome`, `PrivateMessage`, `PublicMessage`, `epoch_authenticator`, fork detection and recovery.
 7. How to replace the corresponding MLS leaves through ordered `group.e2ee.add` and `group.e2ee.remove` operations after P4 accepts a DID rebind for a Handle-backed Member;
 8. How one P4 member DID can have multiple independent MLS device leaves without changing DID-level business membership.
@@ -89,9 +89,11 @@ P6 **MAY** represent several devices of that same DID as independent MLS clients
 
 Each device independently generates and stores its KeyPackage private material, leaf private key, epoch secrets, and MLS state. Those values **MUST NOT** be copied or shared between sibling devices. A new device enters a group only through its own Add, Commit, and device-targeted Welcome.
 
+`anp.group.e2ee.v1` remains a separate interoperability contract. An implementation **MUST NOT** reinterpret a v1 member or MLS leaf as a v2 Device Leaf, or load v1 MLS group state as v2 multi-device state. This Profile defines no in-place v1-to-v2 state upgrade; any migration requires an explicitly defined process outside this Profile and must otherwise fail closed.
+
 ### 3.3 P4 is the main business protocol, and P6 is the cryptography control layer
 
-The relationship between this Profile and `anp.group.base.v2` is as follows:
+The relationship between this Profile and `anp.group.base.v1` is as follows:
 
 - P4 defines the business actions, business state, ordering semantics and receipt semantics of the group;
 - P6 defines MLS cryptographic actions, cryptographic objects, binding rules and verification requirements;
@@ -237,9 +239,9 @@ The standard name of this Profile is:
 
 This Profile **MUST** depend on the following Profiles:
 
-- `anp.core.binding.v2`
-- `anp.identity.discovery.v2`
-- `anp.group.base.v2`
+- `anp.core.binding.v1`
+- `anp.identity.discovery.v1`
+- `anp.group.base.v1`
 
 ### 4.3 Security Profile
 
@@ -1827,7 +1829,6 @@ This Profile v2 does **not** require:
   "method": "group.e2ee.publish_key_package",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -1878,7 +1879,6 @@ This Profile v2 does **not** require:
   "method": "group.e2ee.create",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -1934,7 +1934,6 @@ This Profile v2 does **not** require:
   "method": "group.e2ee.add",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -1993,7 +1992,6 @@ This Profile v2 does **not** require:
   "method": "group.e2ee.send",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -2080,7 +2078,6 @@ After P4 `member-credential-rebound` is accepted and the message plane is paused
   "method": "group.e2ee.add",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -2139,7 +2136,6 @@ After every selected Add is accepted, the Group Host keeps application messages 
   "method": "group.e2ee.remove",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -2185,7 +2181,6 @@ The Group Host sends an independent copy of this envelope to each current device
   "method": "group.incoming",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:wba:a.example:agents:alice:e1_<fingerprint>",
@@ -2248,7 +2243,7 @@ Subsequent versions of this standard **SHOULD** establish the following registry
 
 When implementing this Profile, the implementer should regard it as:
 
-- MLS control layer that works closely with `anp.group.base.v2`;
+- MLS control layer that works closely with `anp.group.base.v1`;
 - A group E2EE model in which the owner is responsible for member change control and members are responsible for sending ordinary messages;
 - Convergent scheme that drives `create/add/remove` through state changes;
 - An ordered workflow of per-device add(new DID) Commits followed by per-device remove(old DID) Commits, driven by the P4 `member-credential-rebound` event;

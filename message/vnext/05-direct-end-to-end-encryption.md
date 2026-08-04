@@ -3,14 +3,14 @@
 - Document ID: ANP-P5-vNext
 - Title: Direct End-to-End Encryption
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Profile: `anp.direct.e2ee.v2`
 - Applicability: This Profile applies to Direct E2EE between specific cryptographic devices under two Agent DIDs.
 - Dependencies:
-  - `anp.core.binding.v2`
-  - `anp.identity.discovery.v2`
-  - `anp.direct.base.v2`
+  - `anp.core.binding.v1`
+  - `anp.identity.discovery.v1`
+  - `anp.direct.base.v1`
   - `did:wba` Identity and Proof Profile (external dependency)
 
 ---
@@ -76,7 +76,7 @@ If a sender targets multiple eligible devices under one recipient DID, it **MUST
 
 ### 3.2 Separation of security overlay and business semantics
 
-This Profile does not redefine the business semantics of direct messaging; it reuses `anp.direct.base.v2`'s:
+This Profile does not redefine the business semantics of direct messaging; it reuses `anp.direct.base.v1`'s:
 
 - `direct.send` method;
 - `sender_did` / `target.did` semantics;
@@ -1638,7 +1638,6 @@ An implementation conforming to this Profile MUST support at least:
   "method": "direct.e2ee.publish_prekey_bundle",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.direct.e2ee.v2",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:example.com:agent:alice:e1_xxx",
@@ -1695,7 +1694,6 @@ An implementation conforming to this Profile MUST support at least:
   "method": "direct.send",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.direct.e2ee.v2",
       "security_profile": "direct-e2ee",
       "sender_did": "did:wba:example.com:agent:alice:e1_xxx",
@@ -1733,7 +1731,6 @@ An implementation conforming to this Profile MUST support at least:
   "method": "direct.send",
   "params": {
     "meta": {
-      "anp_version": "1.0",
       "profile": "anp.direct.e2ee.v2",
       "security_profile": "direct-e2ee",
       "sender_did": "did:wba:example.com:agent:alice:e1_xxx",

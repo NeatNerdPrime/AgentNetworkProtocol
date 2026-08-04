@@ -10,7 +10,7 @@
 
 **Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
 
-**Messaging vNext draft:** the released v1.1 messaging Profiles remain unchanged. A separately versioned [vNext draft suite](message/vnext/README.md) defines multi-device cryptographic endpoints under one DID; P1–P8 use `.v2` Profile IDs, while P9 is only a vNext binding for the unchanged Mention payload. Draft presence does not imply implementation support or public capability advertisement.
+**ANP Messaging 1.2 draft:** the [mixed-version draft suite](message/vnext/README.md) defines multi-device cryptographic endpoints under one DID while keeping P1/P2/P3/P4/P7/P8 and the P9 Mention binding on v1. Only the incompatible Direct E2EE and Group E2EE Profiles use v2. Draft presence does not imply implementation support or public capability advertisement.
 
 **Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
@@ -78,7 +78,7 @@ The released ANP 1.1 end-to-end instant messaging suite is split into focused pr
 8. [P8 Federation and Cross-Domain](message/08-federation-and-cross-domain.md): cross-domain routing, relaying, and result witnessing.
 9. [P9 Message Mentions Extension](message/09-message-mentions.md): group-message mention payloads and selector semantics.
 
-The [vNext draft index](message/vnext/README.md) and its [Chinese mirror](chinese/message/vnext/README.md) contain the P1–P8 `.v2` Profiles and the P9 vNext binding. vNext keeps ordinary Direct, Group, Mention, and Attachment operations addressed only by business DID or Group DID; their device fan-out remains local to the receiving domain. It adds `device_id` only where Direct E2EE or Group E2EE requires a cryptographic endpoint, including independent Direct sessions and multiple MLS leaves, and P8 preserves device selectors only for such enclosing Profiles. Implementations **MUST NOT** reinterpret a v1 Profile as v2 or silently downgrade a v2 operation to v1.
+The [ANP Messaging 1.2 draft index](message/vnext/README.md) and its [Chinese mirror](chinese/message/vnext/README.md) define a legal mixed-version capability set: Base, Attachment, and Federation remain v1, while Direct E2EE and Group E2EE use v2. Ordinary Direct, Group, Mention, and Attachment operations stay addressed only by business DID or Group DID; their device fan-out remains local to the receiving domain. `device_id` appears only where an E2EE v2 Profile requires a cryptographic endpoint, including independent Direct sessions and multiple MLS leaves, and P8 v1 preserves device selectors only for such enclosing Profiles. Implementations **MUST NOT** reinterpret E2EE v1 state as v2 or silently downgrade an E2EE v2 operation.
 
 ### DID Compatibility Appendices
 

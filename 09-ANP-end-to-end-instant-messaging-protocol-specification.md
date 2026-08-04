@@ -2,10 +2,10 @@
 
 - Document ID: ANP-09
 - Title: ANP End-to-End Instant Messaging Protocol Overview
-- Status: v1.1 released baseline; vNext multi-device draft
-- Version: 1.1 / vNext Draft
+- Status: v1.1 released baseline; Messaging 1.2 multi-device draft
+- Version: 1.1 Released / 1.2 Draft
 - Language: English
-- Applicability: This document indexes both the released ANP 1.1 messaging Profiles and the separately versioned vNext multi-device drafts.
+- Applicability: This document indexes both the released ANP Messaging 1.1 Profiles and the mixed-version ANP Messaging 1.2 multi-device draft.
 
 > This document provides a top-level overview of the ANP end-to-end instant messaging specification suite. It is intended to help readers quickly understand the goals, layering, core ideas, and key technical directions of the protocol family. This document is not a clause-by-clause normative specification; normative requirements are defined by the individual Profile specifications.
 
@@ -23,7 +23,7 @@ It is not designed to solve "how to chat within a certain product", but:
 - How to transfer attachments and large objects;
 - How to complete routing, relaying, sorting and result witnessing in cross-domain scenarios.
 
-The business identity and authorization endpoint for ANP remains the **Agent DID**. In the released v1.1 Profiles, devices and internal replicas remain outside the interoperability boundary. The separately versioned vNext Profiles keep ordinary non-E2EE Direct, Group, Mention, and Attachment operations DID-addressed, with endpoint fan-out internal to the receiving domain. Only E2EE Profiles expose the minimum device semantics needed for secure cross-domain cryptographic communication: a `device_id` identifies one cryptographic endpoint under the same DID. It is not a new business identity, Group member, or `target.kind`.
+The business identity and authorization endpoint for ANP remains the **Agent DID**. In the released v1.1 Profiles, devices and internal replicas remain outside the interoperability boundary. The Messaging 1.2 draft keeps ordinary non-E2EE Direct, Group, Mention, and Attachment operations on their v1 DID-addressed contracts, with endpoint fan-out internal to the receiving domain. Only E2EE v2 Profiles expose the minimum device semantics needed for secure cross-domain cryptographic communication: a `device_id` identifies one cryptographic endpoint under the same DID. It is not a new business identity, Group member, or `target.kind`.
 
 ---
 
@@ -51,7 +51,7 @@ The first-class identifier of the ANP is not the username or device number, but:
 
 ANP discovers interactive service endpoints through DID documents, and uses this to establish subsequent message sending, key discovery, group service discovery, and object service discovery paths. In the current version, the ANP service endpoint disclosed by DID documents is unified as `ANPMessageService`; capabilities such as direct messaging, group messaging, key material access, and object control are carried by this unified service endpoint.
 
-For vNext, a DID that advertises a device-addressed E2EE Profile can additionally carry a complete `deviceManifest` in its root-signed DID Document. Its entries expose only the current device endpoint identifier, signing-key reference, E2EE-key reference, and supported v2 Profiles. Base-only discovery does not require a Manifest. Product-local roles, tokens, recovery state, registry versions, and document checkpoints are not ANP wire semantics.
+In Messaging 1.2, a DID that advertises a device-addressed E2EE v2 Profile can additionally carry a complete `deviceManifest` in its root-signed DID Document. Its entries expose only the current device endpoint identifier, signing-key reference, E2EE-key reference, and supported Profile identifiers with their dependencies. Base-only discovery does not require a Manifest. Product-local roles, tokens, recovery state, registry versions, and document checkpoints are not ANP wire semantics.
 
 ### 2.3 Layered design instead of “one unified protocol”
 
@@ -120,7 +120,7 @@ At the same time, group messaging is not only "sending messages", but also inclu
 
 This allows group governance, group status, and group encryption to be naturally connected.
 
-vNext does not create device-level business membership. P3 Direct Base delivery and P4 membership, roles, policy, sending, and notifications remain DID-scoped. Only Direct E2EE delivery and MLS cryptographic leaves are device-scoped.
+Messaging 1.2 does not create device-level business membership. P3 Direct Base delivery and P4 membership, roles, policy, sending, and notifications remain DID-scoped under their v1 Profiles. Only P5/P6 v2 E2EE delivery and MLS cryptographic leaves are device-scoped.
 
 ### 3.3 Plaintext and E2EE coexist
 
@@ -164,7 +164,7 @@ Specifically:
 - Prekey Bundle is used for asynchronous offline link building;
 - Ratchet is used for subsequent per-message key rolling, out-of-order tolerance and replay protection.
 
-In vNext, Prekey Bundles, asynchronous sessions, ratchet state, AAD, replay state, and Mailboxes are bound to the concrete `(DID, device_id)` pair at both ends. One logical message is encrypted and submitted separately for each eligible recipient device; private state is never shared between devices.
+In Direct E2EE v2, Prekey Bundles, asynchronous sessions, ratchet state, AAD, replay state, and Mailboxes are bound to the concrete `(DID, device_id)` pair at both ends. One logical message is encrypted and submitted separately for each eligible recipient device; private state is never shared between devices.
 
 This route is suitable for Agent asynchronous communication and leaves room for upgrades to stronger packages.
 
@@ -183,7 +183,7 @@ This means:
 - `group_did`, `group_state_version`, `policy_hash` are bound to the cryptographic group status;
 - `group_receipt` is responsible for proving that "the operation or message was accepted and sequenced by the group".
 
-In vNext, one business-member DID may own multiple authenticated MLS leaves. Each leaf uses its own device-bound KeyPackage and private state. Adding or removing one device leaf does not by itself add or remove the DID-level group member.
+In Group E2EE v2, one business-member DID may own multiple authenticated MLS leaves. Each leaf uses its own device-bound KeyPackage and private state. Adding or removing one device leaf does not by itself add or remove the DID-level group member.
 
 This approach is more suitable to become a long-term standard than inventing a group cryptography state machine.
 
@@ -201,7 +201,7 @@ Therefore:
 - The download link can be made into a locator instead of a long-term direct link;
 - Even if the link is leaked, object-level encryption can be used to ensure that the third party cannot get the clear text.
 
-For vNext Direct E2EE, the same uploaded object and `object_key` may be referenced by multiple per-device encrypted messages, with the key delivered independently to each recipient device. For Group E2EE, the key is carried in an MLS Application Message for the current epoch.
+For Direct E2EE v2, the same uploaded object and `object_key` may be referenced by multiple per-device encrypted messages, with the key delivered independently to each recipient device. For Group E2EE v2, the key is carried in an MLS Application Message for the current epoch. P7 remains `anp.attachment.v1`; it does not duplicate object, Access Grant, or Ticket state per device.
 
 ### 4.5 Federation: Direct call from service to service
 
@@ -219,7 +219,7 @@ One of the important principles is:
 - The object byte stream must be downloaded independently via HTTPS;
 - Group operations use Group Host acceptance and sorting as cross-domain success semantics;
 - direct messaging takes acceptance of the target Agent ingress service as cross-domain success semantics.
-- vNext federation preserves and validates sender and recipient device identifiers only when the enclosing E2EE Profile declares them. Ordinary P3/P4/P7 operations remain DID-addressed, and any endpoint fan-out stays internal to the receiving domain; a gateway neither adds device selectors to those operations nor performs hidden fan-out for an E2EE delivery.
+- P8 v1 federation preserves and validates sender and recipient device identifiers only when the enclosing E2EE v2 Profile declares them. Ordinary P3/P4/P7 operations remain DID-addressed, and any endpoint fan-out stays internal to the receiving domain; a gateway neither adds device selectors to those operations nor performs hidden fan-out for an E2EE delivery.
 
 ---
 
@@ -229,7 +229,7 @@ ANP has several conscious design trade-offs:
 
 ### 5.1 Keep business identity separate from device endpoints
 
-The v1.1 baseline treats devices, terminals, and replicas as Agent-internal details. vNext leaves the ordinary Base wire boundary DID-addressed and changes only the E2EE cryptographic endpoint boundary: it exposes the minimum device identifier and key bindings needed to avoid shared device keys, shared ratchets, hidden encrypted-delivery fan-out, or ambiguous MLS leaves. DID remains the business identity, and product-local device management is still out of scope.
+The v1.1 baseline treats devices, terminals, and replicas as Agent-internal details. Messaging 1.2 leaves the ordinary Base wire boundary and v1 Profile identifiers unchanged, while P5/P6 v2 change the E2EE cryptographic endpoint boundary: they expose the minimum device identifier and key bindings needed to avoid shared device keys, shared ratchets, hidden encrypted-delivery fan-out, or ambiguous MLS leaves. DID remains the business identity, and product-local device management is still out of scope.
 
 ### 5.2 Group governance takes precedence over ultimate anonymity
 
@@ -270,19 +270,19 @@ The following 9 Profiles constitute the released v1.1 baseline:
 | 8 | [08-Federation and Cross-Domain](message/08-federation-and-cross-domain.md) | Defines the principles of cross-domain service invocation | Specifies service roles, discovery and routing, service-to-service security, principles for direct cross-domain calls, group event distribution, and cross-domain success semantics. |
 | 9 | [09-Message Mentions Extension](message/09-message-mentions.md) | Defines group-message mention payload semantics | Specifies structured mention objects, group selectors such as `@all`, `@agents`, and `@humans`, placement rules for Group Base and Group E2EE, and terminal-side validation. |
 
-The [vNext draft suite](message/vnext/README.md) mirrors the same layering: P1–P8 have independent `.v2` Profile IDs, while P9 is only a vNext binding for the unchanged Mention payload:
+The [ANP Messaging 1.2 draft suite](message/vnext/README.md) keeps each Profile on its independent lifecycle. P1/P2/P3/P4/P7/P8 and the P9 Mention binding retain v1; only the incompatible multi-device P5/P6 Profiles use v2:
 
-| Profile | vNext draft | Main multi-device change |
+| Profile | Messaging 1.2 draft | Main multi-device change |
 | --- | --- | --- |
-| P1 | [`anp.core.binding.v2`](message/vnext/01-core-binding.md) | DID-level common metadata and device selectors used only when the enclosing E2EE Profile declares them |
-| P2 | [`anp.identity.discovery.v2`](message/vnext/02-identity-and-discovery.md) | Root-signed `deviceManifest` and current eligibility for device-addressed security Profiles; Base discovery stays DID-level |
-| P3 | [`anp.direct.base.v2`](message/vnext/03-direct-messaging-base-semantics.md) | One DID-to-DID ordinary delivery with no device selectors |
-| P4 | [`anp.group.base.v2`](message/vnext/04-group-messaging-base-semantics.md) | DID-scoped membership, sends, and notifications with domain-local endpoint fan-out |
+| P1 | [`anp.core.binding.v1`](message/vnext/01-core-binding.md) | DID-level common metadata plus registered conditional device fields owned by P5/P6 v2 |
+| P2 | [`anp.identity.discovery.v1`](message/vnext/02-identity-and-discovery.md) | Root-signed `deviceManifest` and current eligibility for device-addressed security Profiles; Base discovery stays DID-level |
+| P3 | [`anp.direct.base.v1`](message/vnext/03-direct-messaging-base-semantics.md) | One DID-to-DID ordinary delivery with no device selectors |
+| P4 | [`anp.group.base.v1`](message/vnext/04-group-messaging-base-semantics.md) | DID-scoped membership, sends, and notifications with domain-local endpoint fan-out |
 | P5 | [`anp.direct.e2ee.v2`](message/vnext/05-direct-end-to-end-encryption.md) | Device-bound PreKey, Session, Ratchet, AAD, replay state, and Mailbox |
 | P6 | [`anp.group.e2ee.v2`](message/vnext/06-group-end-to-end-encryption.md) | Multiple independently authenticated device leaves for one member DID |
-| P7 | [`anp.attachment.v2`](message/vnext/07-attachments-and-object-transfer.md) | DID-addressed manifest, object control, and Ticket flows; E2EE object-key delivery is inherited from P5/P6 |
-| P8 | [`anp.federation.relay.v2`](message/vnext/08-federation-and-cross-domain.md) | Conditional device-selector preservation and eligibility validation for the enclosing E2EE Profile |
-| P9 | [vNext binding](message/vnext/09-message-mentions.md) | v2 dependency and payload placement; mentions remain DID/group selectors |
+| P7 | [`anp.attachment.v1`](message/vnext/07-attachments-and-object-transfer.md) | DID-addressed manifest, object control, and Ticket flows; E2EE object-key delivery is inherited from P5/P6 |
+| P8 | [`anp.federation.relay.v1`](message/vnext/08-federation-and-cross-domain.md) | Conditional device-selector preservation and eligibility validation for an enclosing E2EE v2 Profile |
+| P9 | [v1 binding](message/vnext/09-message-mentions.md) | Compose unchanged mention payloads with P4 v1 or P6 v2; mentions remain DID/group selectors |
 
 
 The recommended reading order is:
@@ -302,7 +302,7 @@ Its basic approach can be summarized as follows:
 
 - **Federation**: cross-domain interoperability like Email;
 - **Identity first**: DID serves as the unified anchor;
-- **Device-safe vNext**: one DID may expose multiple independent cryptographic endpoints without changing business identity;
+- **Device-safe E2EE v2**: one DID may expose multiple independent cryptographic endpoints without changing business identity or the Base v1 contracts;
 - **Layered design**: business semantics, encryption, attachments, and federation are separated from one another;
 - **Optional E2EE overlay**: the base protocol can run independently, and the security overlay can be enabled as needed;
 - **Direct attachment download**: messages carry manifests, while objects use an independent HTTP(S) data plane;

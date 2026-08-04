@@ -3,7 +3,7 @@
 - Document ID: ANP-P7-vNext
 - Title: Attachments and Object Transfer
 - Status: Draft
-- Version: 2.0-draft
+- Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Applicability: This draft preserves the v1.1 attachment and object lifecycle while defining its multi-device boundary: ordinary attachment operations remain DID-scoped, and device-bound encrypted delivery belongs to P5 or P6.
 
@@ -20,7 +20,7 @@ This Profile defines the Attachments and Object Transfer semantics of ANP, stipu
 5. How to reduce the risk of link leakage through object location URI, short-term Download Ticket and Object-Level Encryption;
 6. How to perform integrity verification, access control and Object-Level Encryption on the object content;
 7. How attachment objects and Download Tickets remain DID-scoped while P5 and P6 own device-bound encrypted delivery;
-8. How to keep the v2 solution clear, simple, and implementable.
+8. How to keep the v1 solution clear, simple, and implementable.
 
 This Profile does not define:
 
@@ -51,16 +51,16 @@ Definition of terms:
 - **Message Plane**: `direct.send`, `group.send`, or `group.e2ee.send` carry the `attachment_manifest` plane.
 - **Upload Slot**: The temporary upload capability and metadata place applied by the sender for uploading objects.
 - **Committed Object**: An object that has been uploaded and can be referenced by messages.
-- **Object URI**: Object location URI. In v2, it is a locator-style HTTPS resource address, which is not equivalent to a public direct link.
+- **Object URI**: Object location URI. In v1, it is a locator-style HTTPS resource address, which is not equivalent to a public direct link.
 - **Download Ticket**: Temporary access ticket used when the object is downloaded.
 - **Access Grant**: The download authorization record established by the sender service for an attachment after the attachment message is successfully sent.
 - **Object-Level Encryption**: Encryption of object contents performed locally by the sender, rather than relying solely on transport-layer confidentiality.
 - **Object Key**: A random symmetric key generated individually by the sender for an object.
-- **Nonce**: Nonce used with object encryption; length fixed to 12 bytes in v2 MTI.
+- **Nonce**: Nonce used with object encryption; length fixed to 12 bytes in v1 MTI.
 
 ---
 
-## 3. General Design Principles and v2 Consolidation Decisions
+## 3. General Design Principles and v1 Consolidation Decisions
 
 ### 3.1 Three-layer separation
 
@@ -76,9 +76,9 @@ These three levels of responsibilities **MUST NOT** be confused. Especially:
 - The message plane is not responsible for relaying object bytes;
 - data plane is not responsible for business message delivery.
 
-### 3.2 v2 mainline path
+### 3.2 v1 mainline path
 
-The standard mainline path **MUST** for v2 is:
+The standard mainline path **MUST** for v1 is:
 
 1. The sender calls `attachment.create_slot`;
 2. If Object-Level Encryption is enabled, the sender first encrypts the file locally;
@@ -115,7 +115,7 @@ This diagram emphasizes that `create_slot` / `commit_object` only create the obj
 
 ### 3.3 Only keep two object modes
 
-In v2, `encryption_info.mode` **MUST** only allows the following two values:
+In v1, `encryption_info.mode` **MUST** only allows the following two values:
 
 - `none`
 - `object-e2ee`
@@ -131,7 +131,7 @@ There are two levels of security for attachments:
 1. **Message Security**: Determined by `transport-protected`, `direct-e2ee`, and `group-e2ee` that carry the list;
 2. **Object Security**: Determined by `encryption_info.mode`.
 
-The rules for v2 are:
+The rules for v1 are:
 
 - Attachment objects **MUST** use `mode = "none"` under `transport-protected` hosting;
 - Attachment object **MAY** use `mode = "none"` or `mode = "object-e2ee"` under `direct-e2ee` or `group-e2ee` hosting.
@@ -142,11 +142,11 @@ When `mode = "object-e2ee"`:
 
 - `object_key_b64u` and `nonce_b64u` **MUST** only appear in the list of attachments protected by `direct-e2ee` or `group-e2ee`;
 - `object_key_b64u` and `nonce_b64u` **MUST NOT** appear in the control plane request of `attachment.create_slot` or `attachment.commit_object`;
-- v2 **undefined** Separate file-level key agreement protocol.
+- v1 **undefined** Separate file-level key agreement protocol.
 
-### 3.6 v2 Explicitly removed forked paths
+### 3.6 v1 Explicitly removed forked paths
 
-In order to keep v2 clear, simple, and implementable, the following paths are **not** allowed to enter this Profile:
+In order to keep v1 clear, simple, and implementable, the following paths are **not** allowed to enter this Profile:
 
 - `service-managed`
 - `wrapped_object_key_b64u`
@@ -185,20 +185,22 @@ P7 retains the existing object and Ticket state machines and adds no device-addr
 
 The standard name of this Profile is:
 
-`anp.attachment.v2`
+`anp.attachment.v1`
 
 ### 4.2 Dependencies
 
 This Profile **MUST** depend on:
 
-- `anp.core.binding.v2`
-- `anp.identity.discovery.v2`
+- `anp.core.binding.v1`
+- `anp.identity.discovery.v1`
 
 This Profile **MAY** be used in combination with the following Profiles:
 
-- `anp.direct.base.v2`
-- `anp.group.base.v2`
+- `anp.direct.base.v1`
+- `anp.group.base.v1`
+- `anp.direct.e2ee.v1`
 - `anp.direct.e2ee.v2`
+- `anp.group.e2ee.v1`
 - `anp.group.e2ee.v2`
 
 ### 4.3 Security Profile
@@ -336,9 +338,9 @@ sequenceDiagram
 
 ### 6.1 Carried in Direct Base
 
-When the attachment list is sent in `anp.direct.base.v2` via `direct.send`:
+When the attachment list is sent in `anp.direct.base.v1` via `direct.send`:
 
-- `meta.profile` **MUST** equal `anp.direct.base.v2`
+- `meta.profile` **MUST** equal `anp.direct.base.v1`
 - `meta.security_profile` **MUST** equal `transport-protected`
 - `meta.content_type` **MUST** equal `application/anp-attachment-manifest+json`
 - `body.payload` **MUST** be the Attachment Message object
@@ -347,9 +349,9 @@ When the attachment list is sent in `anp.direct.base.v2` via `direct.send`:
 
 ### 6.2 Carried in Group Base
 
-When the attachment list is sent in `anp.group.base.v2` via `group.send`:
+When the attachment list is sent in `anp.group.base.v1` via `group.send`:
 
-- `meta.profile` **MUST** equal `anp.group.base.v2`
+- `meta.profile` **MUST** equal `anp.group.base.v1`
 - `meta.security_profile` **MUST** equal `transport-protected`
 - `meta.content_type` **MUST** equal `application/anp-attachment-manifest+json`
 - `body.payload` **MUST** be the Attachment Message object
@@ -359,7 +361,7 @@ When the attachment list is sent in `anp.group.base.v2` via `group.send`:
 
 ### 6.3 Carried in Direct E2EE
 
-When the attachment list is sent via `anp.direct.e2ee.v2`:
+When the attachment list is sent via `anp.direct.e2ee.v1` or `anp.direct.e2ee.v2`:
 
 - Under the normal path after session establishment, the outer `meta.content_type` **MUST** be `application/anp-direct-cipher+json`
 - If the first init carrying application message path allowed by P5 is used, the outer `meta.content_type` **MAY** be `application/anp-direct-init+json`
@@ -368,7 +370,7 @@ When the attachment list is sent via `anp.direct.e2ee.v2`:
 
 ### 6.4 Carried in Group E2EE
 
-When the attachment list is sent via `group.e2ee.send` under `anp.group.e2ee.v2`:
+When the attachment list is sent via `group.e2ee.send` under `anp.group.e2ee.v1` or `anp.group.e2ee.v2`:
 
 - Outer layer `meta.content_type` **MUST** fixed to `application/anp-group-cipher+json`
 - Outer layer `body` **MUST NOT** directly appears the clear text attachment list
@@ -379,7 +381,7 @@ When the attachment list is sent via `group.e2ee.send` under `anp.group.e2ee.v2`
 
 - Direct Base and Group Base attachment messages use only the enclosing Profile's DID or Group DID addressing. P7 does not add a device selector.
 - `attachment_message` and `attachment_manifest` contain no device identifier.
-- A P5 Direct E2EE envelope carries its required sender and recipient device fields; a P6 MLS envelope carries its required device binding. Those outer fields are interpreted only by P5 or P6.
+- A P5 v2 Direct E2EE envelope carries its required sender and recipient device fields; a P6 v2 MLS envelope carries its required device binding. Those outer fields are interpreted only by P5 or P6. A v1 E2EE envelope does not acquire device selectors through P7.
 - `object_key_b64u` and `nonce_b64u` remain inside the encrypted attachment manifest. P7 does not introduce a separate per-device key-distribution request.
 
 ---
@@ -462,7 +464,7 @@ Field description:
 
 Rules:
 
-- `digest.alg` in v2 **MUST** fixed to `sha-256`
+- `digest.alg` in v1 **MUST** fixed to `sha-256`
 - `digest.value_b64u` **MUST** be the SHA-256 digest of the upload object bytes
 - When `encryption_info.mode = "none"`, the digest corresponds to plaintext bytes
 - When `encryption_info.mode = "object-e2ee"`, the digest corresponds to the ciphertext byte
@@ -480,7 +482,7 @@ The structure of `access_info` is as follows:
 Rules:
 
 1. `object_uri` **MUST** be the `https://` URL
-2. `object_uri` represents a locator-style object address in v2; it is not a permanent public direct link
+2. `object_uri` represents a locator-style object address in v1; it is not a permanent public direct link
 3. The receiver **MUST** call `attachment.get_download_ticket` before downloading
 4. The receiver **MUST** parse its public `ANPMessageService` based on the original message sender's DID carrying the attachment list.
 5. In a group scenario, the above original message sender DID **MUST** be taken from the original group message sender carrying the attachment list (e.g. `group.incoming.meta.sender_did`)
@@ -501,7 +503,7 @@ If numeric fields are present, **MUST** use decimal strings.
 
 ### 7.7 Thumbnails and chunking
 
-v2 does not define a dedicated `thumbnail` field, nor does it define a dedicated `chunking_info` field.
+v1 does not define a dedicated `thumbnail` field, nor does it define a dedicated `chunking_info` field.
 
 If a thumbnail is required, the sender **SHOULD** send the thumbnail as a normal attachment.
 
@@ -546,7 +548,7 @@ Rules:
 
 ### 8.2 MTI algorithm of `object-e2ee`
 
-The `object-e2ee` MTI algorithm **MUST** for v2 is:
+The `object-e2ee` MTI algorithm **MUST** for v1 is:
 
 - `object_cipher = "chacha20-poly1305"`
 - `object_key_b64u`: 32-byte random symmetric key
@@ -587,7 +589,7 @@ Additional requirements:
 
 ### 8.4 `expected_size` and `plaintext_size`
 
-Under `chacha20-poly1305` for v2 MTI:
+Under `chacha20-poly1305` for v1 MTI:
 
 - Upload object size = original file size + 16-byte authentication tag
 - If the sender fills in `expected_size` in `attachment.create_slot`, the value **SHOULD** point to the upload object size, not the original file size
@@ -617,16 +619,16 @@ P = ChaCha20-Poly1305-Decrypt(
 
 ### 8.6 Object key distribution rules
 
-There is only one standard object key distribution path for v2:
+There is only one standard object key distribution path for v1:
 
 - When the attachment message itself is protected by `direct-e2ee` or `group-e2ee`, the sender **MAY** directly puts `object_key_b64u` and `nonce_b64u` into the inner `attachment_manifest`
 - After the receiver obtains the object key from the E2EE message, it then obtains ticket through control plane and downloads the ciphertext object through data plane.
 
 This means:
 
-- v2 **No need** to design a complex key agreement protocol separately for attachments
+- v1 **No need** to design a complex key agreement protocol separately for attachments
 - In a group scenario, anyone who can decrypt the group messages can get the object key.
-- v2 **Not Guaranteed** Retrospective withdrawal of rights; if members who are removed from the group have obtained the object key and object content before, this specification does not promise to erase the information they have obtained afterwards.
+- v1 **Not Guaranteed** Retrospective withdrawal of rights; if members who are removed from the group have obtained the object key and object content before, this specification does not promise to erase the information they have obtained afterwards.
 
 ---
 
@@ -672,7 +674,7 @@ The actual download authorization basis **MUST** come from the Access Grant sent
 
 ### 9.4 Ticket Binding
 
-In v2, Download Ticket **MUST** bind at least the following context:
+In v1, Download Ticket **MUST** bind at least the following context:
 
 - `attachment_id`
 - `object_uri`
@@ -692,7 +694,7 @@ The standard Ticket binding **MUST NOT** contain `requester_device_id` or anothe
 - Download Ticket **MUST** transmitted via HTTP `Authorization` header
 - Download Ticket **MUST NOT** carried via URL query parameters
 
-The fixed download method for v2 is:
+The fixed download method for v1 is:
 
 ```http
 GET {object_uri}
@@ -715,13 +717,13 @@ P7 does not require a requester device selector for this validation. Any local d
 
 ### 9.7 Cross-service synchronization
 
-v2 **Not separately standardized** Access Grant synchronization protocol between multiple internal services.
+v1 **Not separately standardized** Access Grant synchronization protocol between multiple internal services.
 
-In the default v2 path, the Download Ticket is issued by the `ANPMessageService` exposed by the original sender of the attachment message. Whether that public service entry routes internally to an independent Object Service is an implementation detail. If the deployer separates the object-control component internally, the implementation **MUST** ensure that the externally exposed service can obtain the Access Grant required to issue the Download Ticket from local state or internal synchronization.
+In the default v1 path, the Download Ticket is issued by the `ANPMessageService` exposed by the original sender of the attachment message. Whether that public service entry routes internally to an independent Object Service is an implementation detail. If the deployer separates the object-control component internally, the implementation **MUST** ensure that the externally exposed service can obtain the Access Grant required to issue the Download Ticket from local state or internal synchronization.
 
 ### 9.8 Access boundaries after member changes
 
-v2 **Retroactive withdrawal is not guaranteed**.
+v1 **Retroactive withdrawal is not guaranteed**.
 
 This means:
 
@@ -765,7 +767,7 @@ The method in this section is used for object control plane. They **not** change
 
 These methods run by default on:
 
-- `meta.profile = "anp.attachment.v2"`
+- `meta.profile = "anp.attachment.v1"`
 - `meta.security_profile = "transport-protected"`
 
 And adopts the following authentication model:
@@ -782,7 +784,7 @@ Therefore:
 - `meta.target.kind` **MUST** equal `service`
 - `meta.target.did` **MUST** equal target public `ANPMessageService.serviceDid`
 - Cross-domain outer-layer authentication is provided by P8 through `serviceDid + HTTP Message Signatures`
-- v2 does **not** require the Object Service to re-verify the end recipient's `origin_proof`
+- v1 does **not** require the Object Service to re-verify the end recipient's `origin_proof`
 
 These methods **MUST NOT** add `sender_device_id`, `recipient_device_id`, or `requester_device_id` to the P7 wire model. Internal device authentication and routing context remain private to the deployment.
 
@@ -1122,7 +1124,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
 19. Support the `chacha20-poly1305` object encryption process specified in this Profile
 20. Distribute `object_key_b64u` and `nonce_b64u` inside the E2EE attachment manifest protected by P5 or P6; device selection remains owned by that overlay
 21. Perform ciphertext digest verification and local decryption after object download
-22. Clearly comply with the access boundaries of "v2 does not guarantee retroactive withdrawal of rights"
+22. Clearly comply with the access boundaries of "v1 does not guarantee retroactive withdrawal of rights"
 
 ---
 
@@ -1137,8 +1139,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
   "method": "attachment.create_slot",
   "params": {
     "meta": {
-      "anp_version": "2.0",
-      "profile": "anp.attachment.v2",
+      "profile": "anp.attachment.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -1193,8 +1194,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
   "method": "attachment.commit_object",
   "params": {
     "meta": {
-      "anp_version": "2.0",
-      "profile": "anp.attachment.v2",
+      "profile": "anp.attachment.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -1244,8 +1244,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
   "method": "attachment.abort_object",
   "params": {
     "meta": {
-      "anp_version": "2.0",
-      "profile": "anp.attachment.v2",
+      "profile": "anp.attachment.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -1286,8 +1285,7 @@ If an implementation claims to support E2EE attachments, it MUST also:
   "method": "attachment.get_download_ticket",
   "params": {
     "meta": {
-      "anp_version": "2.0",
-      "profile": "anp.attachment.v2",
+      "profile": "anp.attachment.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-b",
       "target": {
@@ -1351,7 +1349,7 @@ Content-Length: 1048592
   "method": "direct.send",
   "params": {
     "meta": {
-      "profile": "anp.direct.base.v2",
+      "profile": "anp.direct.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -1408,7 +1406,7 @@ Content-Length: 1048592
   "method": "group.send",
   "params": {
     "meta": {
-      "profile": "anp.group.base.v2",
+      "profile": "anp.group.base.v1",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {
@@ -1465,7 +1463,6 @@ Content-Length: 1048592
   "method": "direct.send",
   "params": {
     "meta": {
-      "anp_version": "2.0",
       "profile": "anp.direct.e2ee.v2",
       "security_profile": "direct-e2ee",
       "sender_did": "did:example:agent-a",
@@ -1536,7 +1533,6 @@ Content-Length: 1048592
   "method": "group.e2ee.send",
   "params": {
     "meta": {
-      "anp_version": "2.0",
       "profile": "anp.group.e2ee.v2",
       "security_profile": "group-e2ee",
       "sender_did": "did:example:agent-a",
@@ -1627,4 +1623,4 @@ Authorization: Bearer BASE64URL_TICKET
 2. By default, each attachment runs `attachment.get_download_ticket`
 3. Each object uses a new random object key by default
 4. Treat thumbnails as independent attachments by default instead of inventing new sub-objects
-5. If you really need more complex object capabilities, they should be defined separately in future versions instead of re-forking the v2 mainline path.
+5. If you really need more complex object capabilities, they should be defined separately in future versions instead of re-forking the v1 mainline path.
