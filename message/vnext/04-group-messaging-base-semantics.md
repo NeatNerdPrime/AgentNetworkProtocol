@@ -582,7 +582,9 @@ The common rules are as follows:
 2. It **MUST NOT** be used to send out-of-band group entry credentials, reminders or result notifications to objects that have not yet become group members;
 3. It **SHOULD** maintain the same sequential semantics as `group_event_seq`;
 4. If `subject_method = "group.join"` or `"group.add"`, then `event_type = "member-activated"`;
-5. If `subject_method = "group.rebind_member"`, `event_type` **MUST** be `member-credential-rebound`.
+5. If `subject_method = "group.rebind_member"`, `event_type` **MUST** be `member-credential-rebound`;
+6. If `subject_method = "group.remove"`, `event_type` **MUST** be `member-removed`, and `membership_status`, when present, **MUST** be `removed`;
+7. If `subject_method = "group.leave"`, `event_type` **MUST** be `member-left`, and `membership_status`, when present, **MUST** be `left`.
 
 #### 7.10.2 Standard `event_type`
 
@@ -816,7 +818,8 @@ A current `active` member is removed from the group by an authorized member.
 #### 8.5.3 Processing rules
 
 - If the target is currently at `active`, then `group.remove` **MUST** make it `group_member.status = "removed"`;
-- If the target is already `left`, `removed`, or does not exist, the recipient **MUST** reject the request.
+- If the target is already `left`, `removed`, or does not exist, the recipient **MUST** reject the request;
+- After acceptance, the Group Host emits `member-removed` per Section 8.11, including the final self-scoped envelope to the removed `member_did`.
 
 #### 8.5.4 Successful Response
 
@@ -841,7 +844,12 @@ Indicates that the current sender actively exits the group.
 
 - `meta.sender_did` **MUST** be the current leave-group member
 
-#### 8.6.3 Successful Response
+#### 8.6.3 Processing rules
+
+- After acceptance, the leaver's `group_member.status` becomes `left`;
+- After acceptance, the Group Host emits `member-left` per Section 8.11, including the final self-scoped envelope to the departed `leaver_did`.
+
+#### 8.6.4 Successful Response
 
 A successful response **MUST** contain at least:
 
@@ -1010,6 +1018,10 @@ Its Notification envelope **MUST** satisfy:
 - `body` **MUST** directly carry exactly one event object defined in Section 7.10
 
 `group.state_changed` **MUST NOT** be used for out-of-band group-membership credential delivery, non-member reminders, or any targeted governance notification that would otherwise use `direct.send`.
+
+One exception is scoped to the event subject itself. For a `member-removed` or `member-left` event, the Group Host **MUST** also emit one final `group.state_changed` envelope to the event's `subject_did`, carrying the same ordered event object that the remaining active members receive. A membership change is a fact about both sides, and without this envelope a removed member has no in-band way to distinguish removal from a transport failure. This final self-scoped notification is therefore not a non-member reminder, a governance broadcast to an outsider, or a credential delivery; the prohibitions above continue to apply to every other non-member target and every other event type.
+
+The final self-scoped envelope **MUST** target exactly the event's `subject_did` and no other non-member. Its retry and retention **MUST** be bounded by an explicit deployment limit, after which the Group Host **MAY** discard it together with that DID's remaining delivery state; the Group Host **MUST NOT** retain delivery state for a removed or departed member indefinitely. Delivery is therefore attempted but not guaranteed: the removal or departure takes effect regardless of whether this envelope arrives, the subject **MUST NOT** treat its absence as evidence of continued membership, and a later request rejected with `group.not_member` remains an equally authoritative signal of the same terminal state. The subject processes this event only to converge its local view; the event grants no continued membership, read access, or governance standing.
 
 `group.state_changed` is addressed from the Group DID to a recipient Agent DID. It **MUST NOT** carry a device selector or list or expose per-device delivery results; any member-domain fan-out remains internal.
 
@@ -1338,6 +1350,7 @@ An implementation conforming to this Profile MUST support at least:
 18. Safe transmission operation mode
 19. DID-scoped membership, roles, governance, messages, and notifications without device selectors or per-device results
 20. Separation between P4 business members and P6 device-scoped MLS Leaves
+21. One final self-scoped `group.state_changed` delivery of `member-removed` and `member-left` to the event's `subject_did`, attempted under a bounded retry and retention limit and never required for the state change to take effect
 
 If an implementation provides a push capability, its `group.incoming` and `group.state_changed` **MUST** follow the standard Notification semantics of this Profile.
 

@@ -63,6 +63,8 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **MLS Controller**: The subject responsible for executing MLS member change control actions. Fixed to group `owner` in v2.
 - **State Coupling**: P4 and P6 do not do method-by-method mapping, but a coupling method that triggers cryptographic state advancement through business state changes.
 - **E2EE Notice**: P6's self-defined independent encryption notification object, used to deliver cryptographic results such as `commit` and `welcome`.
+- **Terminal Leaf**: A device leaf that has been removed from the group's MLS membership set. Its local group binding can no longer send, receive, or decrypt application messages for that `group_did`, while the device itself may remain a current eligible P2 Manifest entry.
+- **Device Delivery Queue**: The durable per-`(recipient_did, recipient_device_id)` delivery state that the Group Host keeps for P6 envelopes it has not transport-confirmed. It carries public metadata, any preserved public origin proof, and opaque ciphertext only, and it is not group history.
 - **Fork**: An irreconcilable sequence of `epoch` / `epoch_authenticator` / status advancement was observed by different members for the same `group_did`.
 - **MLS Member Credential Rebind**: After P4 accepts a DID rebind for the same Handle member, the cryptographic orchestration that adds selected new-DID device leaves and then removes every old-DID device leaf through ordered Commits.
 
@@ -648,6 +650,7 @@ The recommended structure is as follows:
 
 Rules:
 
+- `notice_id` **MUST** exist, **MUST** be stable across redeliveries of the same envelope, and **MUST NOT** be reused for a different logical notice delivered to the same recipient device. Per-leaf copies of the same cryptographic result **MAY** share one `notice_id`, because each device deduplicates only envelopes addressed to itself, keyed on `(group_did, notice_id)`;
 - `notice_type` **MUST** exist;
 - `group_did` **MUST** exist;
 - `group_state_ref` **MUST** exist;
@@ -657,7 +660,7 @@ Rules:
 - When `notice_type = "welcome-delivery"`, `welcome_b64u` and `ratchet_tree_b64u` **MUST** exist at the same time;
 - For a notice produced by credential-rebind orchestration, `group_state_ref` **MUST** exactly reference the accepted P4 `member-credential-rebound` event used by every P6 Add and Remove. The receiver **MUST** obtain the Handle, binding generation, previous DID, and new DID from that P4 event rather than from duplicated P6 continuity fields;
 - `subject_did`, `subject_device_id`, and `subject_status` describe the one leaf affected by this P6 operation: Add uses the added DID/device with `active`, while Remove uses the removed DID/device with `removed`;
-- The device receiving the notice is identified only by outer `meta.target.did` and `meta.recipient_device_id`; for `commit-delivery`, it can differ from the affected subject;
+- The device receiving the notice is identified only by outer `meta.target.did` and `meta.recipient_device_id`; for `commit-delivery`, it can differ from the affected subject. For a Remove `commit-delivery`, the recipient **MAY** be the removed subject leaf itself, which receives one final notice as specified in Section 12.3;
 - `ratchet_tree_b64u` **MUST** be no-padding base64url of raw bytes for TLS serialization of the ratchet tree;
 - `group_receipt` **MAY** exist to associate cryptographic results with the location of business ordering.
 
@@ -1042,6 +1045,8 @@ This rule also applies to:
 
 In other words, P4’s various service entry points eventually converge to `group.e2ee.add` at the cryptographic layer.
 
+A device whose leaf was previously removed from this group **MAY** rejoin it later. The trigger above is unchanged and sufficient: the DID is P4 `active`, that exact device currently has no leaf, and it has published a **fresh** `group_key_package`. This Profile defines no separate rejoin method. The owner **MUST NOT** reuse a consumed KeyPackage as described in Section 13.2, **MUST NOT** restore the device's previous leaf, and **MUST NOT** release any epoch secret from before the rejoin; the rejoining device obtains only current and subsequent state from its new Welcome.
+
 ### 10.4 Member Removal / Leaving Coupling Rules
 
 When a `member_did` becomes `removed` or `left` in P4, owner **MUST** trigger one ordered `group.e2ee.remove` for every current device leaf of that DID.
@@ -1049,6 +1054,8 @@ When a `member_did` becomes `removed` or `left` in P4, owner **MUST** trigger on
 When only one device loses current Manifest eligibility or is removed by group policy while its DID remains P4 `active`, owner **MUST** remove only that device leaf. This does not change the P4 member or its sibling leaves.
 
 Once the Host determines that a current leaf must be removed, it **MUST** pause new `group.e2ee.send` acceptance until the corresponding Remove Commit advances the group to an epoch without that leaf. Stopping future service delivery alone is not cryptographic removal.
+
+Removing a device leaf is a **group-scoped** cryptographic action, and it is a different state machine from **identity-scoped** P2 device removal. Removing a leaf does not remove the device from its DID's `deviceManifest` and does not retire its `device_id`. A device that remains a current eligible Manifest entry keeps the same `device_id` after its leaf is removed, and **MAY** later rejoin this or any other group under that same `device_id` with a fresh KeyPackage, as described in Section 10.3. Conversely, a device removed from the P2 Manifest **MUST** re-enroll under a new device ID and new device keys and **MUST NOT** reuse the retired identifier. Implementations **MUST NOT** conflate the two: group leaf removal is per-group and reversible, while Manifest device removal is identity-scoped and permanent.
 
 ### 10.5 Member Credential Rebind Coupling Rules
 
@@ -1208,6 +1215,8 @@ When executing `group.e2ee.remove`, the owner's local MLS runtime **MUST**:
 
 If P4 removes or leaves a DID, the owner **MUST** repeat this operation in order for every current leaf of that DID. If the DID remains P4 `active`, only the named ineligible or policy-removed device leaf is removed; P4 membership and sibling leaves do not change.
 
+A successful Remove makes that leaf a Terminal Leaf. The removed device is entitled to learn this: MLS carries no in-band signal to a removed member, so the Group Host **MUST** deliver the accepted Commit to the removed leaf as its final notice, as specified in Section 12.3. Removal does not retire the device's `device_id` and does not bar a later rejoin under Section 10.3.
+
 The line protocol output for `group.e2ee.remove` **MUST** contain at least:
 
 - `commit_b64u`
@@ -1261,6 +1270,19 @@ When receiving `notice_type = "commit-delivery"`, the receiver's local MLS runti
 3. Apply the commit to this device's local MLS group state;
 4. Update the local current `epoch` and record the necessary `epoch_authenticator` or consistency status, if present.
 
+A Remove `commit-delivery` whose `subject_did` and `subject_device_id` equal the receiving device's own pair is that device's **final** notice for the group. Such a receiver:
+
+- **MUST** accept and process it rather than reject it as a notice for a group it is no longer a member of;
+- **MUST** apply it only to advance and terminalize its own local group binding;
+- **MUST NOT** derive the new epoch secrets, and **MUST** remain unable to decrypt any application message of the new or any later epoch; and
+- **MUST NOT** submit any further `group.e2ee.send` for that `group_did` while the binding remains terminal, that is, until it rejoins under Section 10.3.
+
+The Commit in that notice is an MLS `PublicMessage`, so it conveys no new epoch secret to the removed device. It only allows that device to reach the same terminal conclusion the retained leaves already hold.
+
+Delivery of the final notice is bounded and not guaranteed, as stated in Section 12.3. A device **MUST NOT** make its terminal-state determination or its ability to rejoin depend solely on receiving it. P4 Section 8.11 likewise requires the Group Host to attempt one final self-scoped `member-removed` or `member-left` delivery to the subject DID, but that attempt is also bounded and its arrival is also not guaranteed. Each of the following **MUST** therefore be treated as an equally authoritative terminal signal, and any one of them alone **MUST** be sufficient to reach the same terminal local state: the final notice when it arrives, the P4 `member-removed` or `member-left` event for its own DID when it arrives, a `group.not_member` rejection of a later request of its own, a `group.e2ee.leaf_not_current` rejection of a later group-addressed P6 request of its own, or the stale-state rule of Section 11.9.2.
+
+For a leaf-only Remove whose DID remains P4 `active`, neither the P4 event nor `group.not_member` will ever fire: the DID is still a member, and only the exact device leaf was removed. The `group.e2ee.leaf_not_current` rejection defined in Sections 13.3 and 17 is the pull signal that remains available in that case: the device's next legitimate group-addressed P6 request — in practice its next `group.e2ee.send` — **MUST** be rejected with that error before policy or payload evaluation, and on receiving it the device **MUST** treat its local binding for that group as terminal, exactly as if the final notice had arrived. A device **SHOULD NOT** fabricate synthetic application messages solely to probe its membership; a deployment that needs proactive checking **MAY** offer a read-only status mechanism outside this Profile.
+
 #### 11.9.2 `welcome-delivery`
 
 When receiving `notice_type = "welcome-delivery"`, the new device's local MLS runtime **MUST**:
@@ -1268,8 +1290,19 @@ When receiving `notice_type = "welcome-delivery"`, the new device's local MLS ru
 1. Verify that outer `meta.target.did` and `meta.recipient_device_id` equal `subject_did` and `subject_device_id` and identify this local device;
 2. Decode `welcome_b64u` and `ratchet_tree_b64u`;
 3. Verify `group_did`, `group_state_ref`, `crypto_group_id_b64u`, and `epoch`;
-4. Initialize and persist this device's own MLS group state from the Welcome and ratchet tree;
-5. Bind that state to the local `(group_did, device_id)` pair and prepare for subsequent commit and application-message delivery.
+4. Verify that the Welcome decrypts under the private key of a fresh, unconsumed KeyPackage that this device itself published, verify that the delivered ratchet tree contains exactly one leaf carrying that KeyPackage's leaf node for this device, and mark that KeyPackage consumed;
+5. Initialize and persist this device's own MLS group state from the Welcome and ratchet tree;
+6. Bind that state to the local `(group_did, device_id)` pair and prepare for subsequent commit and application-message delivery.
+
+A device **MAY** already hold local MLS state for that `group_did` when a Welcome arrives, most commonly because its leaf was removed earlier and it is now rejoining under Section 10.3. The device **MUST** resolve that collision as follows:
+
+- If the local state is still usable for the group, the Welcome's `crypto_group_id_b64u` and `epoch` match it, and the delivered `welcome_b64u` and `ratchet_tree_b64u` are byte-identical to a Welcome this device already processed for that binding, treat the Welcome as an idempotent repeat and **MUST NOT** discard the local state. If `crypto_group_id_b64u` and `epoch` match but the delivered bytes differ from the previously processed ones, the device **MUST** fail closed, keep the local state, and **MUST NOT** process the differing payload;
+- Otherwise, if the Welcome references the same `crypto_group_id_b64u` as the stored binding at a strictly newer `epoch`, and either the stored binding is a Terminal Leaf or the delivered ratchet tree no longer contains the exact leaf node recorded in the device's stored local state, replace the local state from the Welcome and **SHOULD** retain an auditable record of the replaced binding. The leaf comparison is against that stored leaf node, not against any leaf bound to the device's `(agent_did, device_id)` pair: in a rejoin the delivered tree contains the device's new leaf from the fresh KeyPackage, and that new leaf does not count as the stored one;
+- Otherwise **MUST** fail closed and **MUST NOT** discard the local state.
+
+These branches decide only whether replacing existing local state is permitted; they waive none of the numbered verifications above. A Terminal Leaf therefore does not bypass the `crypto_group_id_b64u` continuity check or the epoch comparison, and a Welcome that references a different `crypto_group_id_b64u` under the same `group_did` fails closed in every branch, because this version defines no group re-creation or fork-recovery transition.
+
+Accepting a fresh Welcome grants the device no capability it did not itself request, because in every branch the Welcome decrypts only under the private key of a fresh, unconsumed KeyPackage this device itself published for the rejoin. The risk this rule manages is destruction of still-usable local state, not confidentiality. Accordingly, a device **MUST NOT** replace usable local state, and **MUST NOT** condition replacement on having previously received the final Remove `commit-delivery` of Section 12.3, because that notice is not guaranteed to arrive.
 
 Welcome handling is a local behavior specification, not a new JSON-RPC protocol method.
 
@@ -1313,6 +1346,7 @@ The Group Host **SHOULD** persist at least:
 - `group_receipt`
 - Outer binding reference to `crypto_group_id`, `epoch`
 - The current public `(DID, device_id)`-to-leaf projection derived from accepted `create/add/remove` operations; this projection **MUST NOT** contain MLS private keys or epoch secrets
+- The Section 12.6 Device Delivery Queue state for envelopes not yet transport-confirmed, limited to public metadata, any preserved public origin proofs, and opaque ciphertext
 - Internal progress indicating whether credential-rebind orchestration is at Add or Remove; this progress is not a new protocol-level membership state
 
 By default, the Group Host is **not required** to persist MLS private state capable of decrypting group messages.
@@ -1336,7 +1370,7 @@ The owner's local MLS runtime **MUST**:
 3. Obtain and fully verify a separate KeyPackage and device binding for each selected new-DID device;
 4. Execute one `group.e2ee.add` Commit per selected new-DID device, delivering its Welcome and ratchet tree only to that device;
 5. After all selected Adds succeed, execute one `group.e2ee.remove` Commit per old-DID device leaf;
-6. Deliver each Commit independently to every retained device leaf;
+6. Deliver each Commit independently to every retained device leaf, and deliver each old-DID Remove Commit additionally to that removed old-DID leaf as its final notice under Section 12.3;
 7. Resume application messages only after the final Remove succeeds.
 
 Every Add and Remove Commit **MUST** bind the same P4 `group_state_ref`. Every intermediate epoch exists only to complete the rebind and **MUST NOT** carry application messages. New-DID devices obtain only current and subsequent state through their own Welcomes; this Profile **MUST NOT** restore lost historical epoch secrets or share private MLS state between devices.
@@ -1381,7 +1415,25 @@ For delivery to current MLS members:
 - NEW `epoch`
 - New `epoch_authenticator` (if available)
 
-The Group Host **MUST** emit an independent notification envelope for every retained device leaf. Each envelope targets that leaf's DID and device ID, while `body.subject_did` and `body.subject_device_id` identify the one leaf added or removed by the Commit. After receiving it, the device processes the Commit according to its local MLS runtime rules.
+For an Add Commit, the Group Host **MUST** emit one independent notification envelope for every retained device leaf.
+
+For a Remove Commit, the Group Host **MUST** emit one independent notification envelope for every retained device leaf **and** one final notification envelope for the exact removed subject leaf. That final envelope:
+
+- **MUST** target exactly `(body.subject_did, body.subject_device_id)` in outer `meta.target.did` and `meta.recipient_device_id`;
+- **MUST** carry the same accepted Commit, `crypto_group_id_b64u`, `epoch`, and `group_state_ref` as the retained-leaf envelopes, with `body.subject_status = "removed"`; and
+- **MUST NOT** be redirected to a sibling device of the removed subject, to another removed leaf, or to any DID-level fan-out.
+
+The final envelope is required because MLS provides no in-band way for a removed member to learn that it was removed. Without it, a removed device cannot distinguish removal from a transport failure and may retain an apparently active local group binding indefinitely. The Commit is an MLS `PublicMessage`, so this delivery discloses no epoch secret and does not weaken forward secrecy; Section 11.9.1 states the removed device's processing obligations.
+
+Each envelope targets that leaf's DID and device ID, while `body.subject_did` and `body.subject_device_id` identify the one leaf added or removed by the Commit. After receiving it, the device processes the Commit according to its local MLS runtime rules in Section 11.9.1.
+
+The final envelope for a removed leaf is the last P6 envelope that leaf may receive for the group. Its delivery is therefore bounded rather than indefinite:
+
+- the Group Host **MUST** apply an explicit, deployment-declared retry and retention limit to it;
+- once that limit is reached, the Group Host **MUST** be able to discard the envelope together with that leaf's Device Delivery Queue state, and **MUST NOT** retain per-device delivery state for a Terminal Leaf indefinitely; and
+- discarding it **MUST NOT** block the group's subsequent epochs, the retained leaves' delivery, or acceptance of new `group.e2ee.send`.
+
+Because delivery is bounded, a receiver **MUST NOT** treat this envelope as a guaranteed prerequisite for any later local transition; see Sections 11.9.1 and 11.9.2.
 
 ### 12.4 `notice_type = "welcome-delivery"`
 
@@ -1412,12 +1464,46 @@ P6 application-ciphertext delivery **MUST** use `group.incoming` as a JSON-RPC N
 - `meta.target.kind = "agent"`, `meta.target.did` is one current leaf's Agent DID, and `meta.recipient_device_id` is that leaf's device ID;
 - `meta.sender_did` and `meta.sender_device_id` preserve the sender pair accepted by `group.e2ee.send`;
 - `meta.message_id`, `meta.operation_id`, and `meta.content_type` preserve the accepted `group.e2ee.send` values;
-- `params.auth` preserves the original `scheme` and `origin_proof` without modification;
+- `params.auth` preserves the original `scheme` and `origin_proof` without modification, including on any redelivery from the Device Delivery Queue, and additionally carries the `origin_context` reconstruction input defined in Section 13.6; Section 13.6 defines how a receiver verifies that preserved proof;
 - `body.group_did` equals the accepted `group.e2ee.send.meta.target.did` and `body.group_cipher_object.group_state_ref.group_did`;
 - `body.group_state_version`, `body.group_event_seq`, `body.accepted_at`, and `body.group_receipt` preserve the Group Host's accepted ordering result; and
 - `body.group_cipher_object` is an unchanged copy of the accepted `group.e2ee.send` body.
 
 The Group Host emits one independent envelope per current device leaf. All such envelopes carry the same ordering fields, receipt, and MLS `PrivateMessage`; only `meta.target.did` and `meta.recipient_device_id` vary by leaf. The Host **MUST NOT** decrypt or re-encrypt the ciphertext. This standard P6 notification is not P4 Base `group.incoming`; it uses the same method name while P4 definitions of `group_event_seq`, `group_state_version`, `group_receipt`, and ordering continue to apply to the accepted group message. The top-level `body.group_did` also provides the group caller anchor required by P8 federation.
+
+### 12.6 Device Delivery Queue
+
+Both P6 notification paths are device-addressed, and their envelopes are not interchangeable between sibling devices. A device that was offline when an envelope was first emitted still needs that exact envelope, because the Group Host holds no MLS private state and therefore cannot re-encrypt or regenerate one for it.
+
+The Group Host **MUST** therefore maintain durable Device Delivery Queue state, keyed by `(recipient_did, recipient_device_id)` within the group, for both `group.e2ee.notice` and P6 `group.incoming`. That state:
+
+1. **MUST** persist the emitted envelope's `meta`, opaque `body`, and, for P6 `group.incoming`, its preserved `auth`, for every envelope the Host has not transport-confirmed;
+2. **MUST** reproduce the envelope unchanged on redelivery, including `meta.message_id`, `meta.operation_id`, `meta.content_type`, the ordering fields, `group_receipt`, the preserved `auth` when the envelope carries one, and `body`; a redelivery **MUST NOT** re-target, merge, split, re-order, or renumber envelopes across devices or epochs;
+3. **MUST** be revalidated against current eligibility before enqueue and before each delivery attempt, so that delivery stops for a leaf that is no longer a current eligible leaf, with two exceptions: the final Remove notice defined in Section 12.3, and envelopes already enqueued for that leaf as permitted below; and
+4. **MUST NOT** be delivered, exposed, or fanned out to a sibling device of the same DID, and **MUST NOT** be satisfied by substituting a sibling device's envelope; and
+5. **MUST** be limited to public metadata, any preserved public origin proof, and opaque ciphertext. The Group Host **MUST NOT** persist MLS private state, epoch secrets, or plaintext in order to satisfy this section.
+
+Delivery confirmation is transport-level. Both P6 delivery paths are JSON-RPC Notifications and remain one-way under P1 Section 5.3; this Profile defines no application-level acknowledgment method. An envelope counts as transport-confirmed when the Host's transport reports a completed write of that exact envelope toward the recipient device's authenticated session or endpoint. That confirms transport delivery, not application processing. After transport confirmation the Host **MAY** dequeue the envelope, and it **MUST NOT** hold the queue open waiting for an application acknowledgment that this Profile does not define. Because transport confirmation does not prove processing, a receiver **MUST** process redelivered envelopes idempotently: `(body.group_did, body.group_event_seq)` together with `meta.message_id` identifies a P6 `group.incoming` envelope, and `(body.group_did, body.notice_id)` identifies a `group.e2ee.notice` within one recipient device's own delivery stream, per the `notice_id` rules of Section 7.6.
+
+Within one device's queue, P6 `group.incoming` envelopes **MUST** be delivered and redelivered in `group_event_seq` order, and `commit-delivery` notices in epoch order. A `welcome-delivery` **MAY** overtake pending application envelopes, because it starts a new binding rather than continuing an old one. The final Remove notice **MUST NOT** overtake an application envelope that the Host still intends to deliver, so that it stays the last P6 envelope the leaf receives, as Section 12.3 requires. Concretely, after a Remove of a leaf is accepted, the Host **MUST NOT** enqueue new application envelopes for that leaf, and then does exactly one of the following within the same bounded retention: it **SHOULD** deliver the application envelopes already enqueued for that leaf, in order — the removed leaf still holds the epoch keys they were encrypted under — with the final notice of Section 12.3 delivered after all of them; or it **MAY**, as declared deployment policy, cancel all remaining enqueued application envelopes for that leaf and deliver the final notice immediately. Once the final notice is transport-confirmed, the Host **MUST NOT** deliver any further P6 envelope to that leaf.
+
+Retention **MUST** be bounded by an explicit, deployment-declared limit. The consequence of a discard depends on the envelope type. Each recovery path also has to respect the Section 13.4 Add precondition that an exact DID/device pair which is still a current leaf cannot be Added again:
+
+- a discarded `welcome-delivery` leaves an accepted leaf that its device never initialized. The owner **MUST** first Remove that leaf — a policy-driven Remove that Section 13.4 permits while the DID remains `active` — and then perform a fresh Add with a fresh KeyPackage, which yields a fresh Welcome;
+- a discarded `commit-delivery` to a retained leaf leaves the device unable to advance past that epoch while it is still a current leaf. If the envelope cannot be redelivered within retention, the owner likewise **MUST** first Remove the stale leaf, after which the device rejoins under Section 10.3;
+- a discarded final Remove notice needs no further Host-side action: the leaf is already absent from the group, the device reaches terminal state through the other signals of Section 11.9.1, and it can rejoin directly under Section 10.3;
+- a discarded P6 `group.incoming` envelope loses only that one message; later envelopes remain independently decryptable, and no Remove or rejoin is needed.
+
+None of these recovery paths releases historical epoch secrets, which this Profile **MUST NOT** release.
+
+This queue is a delivery mechanism, not group history. Like the P5 Mailbox it owns no MLS state, and this Profile defines no P6 history-pull, read-receipt, or device-synchronization method.
+
+A deployment **MAY** offer a local history or replay API outside this Profile. Such an API is not part of `anp.group.e2ee.v2` and **MUST NOT** be advertised as a P6 capability. If it returns device-addressed P6 envelopes, then:
+
+- it **MUST** derive `meta.target.did` and `meta.recipient_device_id` from the authenticated device principal of the caller;
+- it **MUST NOT** accept a caller-asserted device selector as authority for which device an envelope is addressed to, and **MUST** reject a selector that conflicts with the authenticated principal using `anp.device_binding_invalid`;
+- it **MUST NOT** return an envelope addressed to a device that is not the authenticated caller's own current leaf; and
+- it **MUST NOT** synthesize a device-addressed envelope at all when the caller's authentication establishes only a DID-level principal.
 
 ---
 
@@ -1512,6 +1598,8 @@ Before accepting an `group.e2ee.send`, the Group Host **MUST** verify at least:
 7. `group_policy.permissions.send` allows this sender;
 8. The `group_cipher_object` field is complete and in the correct format.
 
+Checks 4 and 5 distinguish three states that **MUST** map to three distinct stable errors, and the Group Host **MUST** resolve them in this order, before the policy check 7 and the payload check 8: if `meta.sender_did` is not currently a P4 `active` member, the P4 `group.not_member` error applies; otherwise, if `meta.sender_device_id` is not currently eligible in the sender's P2 Manifest, the P1 Core device errors apply (`anp.device_not_eligible` or `anp.device_state_changed`, per Section 17); otherwise, if the eligible pair does not map to a current leaf, the Group Host **MUST** reject with the stable error `group.e2ee.leaf_not_current` defined in Section 17, and **MUST NOT** collapse this case into `group.not_member`, a device error, or a policy error. This rejection is the authoritative terminal signal of Section 11.9.1 for a leaf-only removal, so a Host that returns a different or unstable error for this case breaks the removed device's ability to converge.
+
 Because the Group Host need not hold MLS private state, the receiving MLS runtime performs the final check that the decrypted MLS sender leaf is the same `(sender_did, sender_device_id)` pair bound in `authenticated_data`. A mismatch **MUST** be rejected.
 
 ### 13.4 `group.e2ee.add/remove` Request Verification
@@ -1544,6 +1632,47 @@ Before accepting an `group.e2ee.create`, the Group Host **MUST** verify at least
 3. `creator_key_package.owner_did` and `owner_device_id` equal `meta.sender_did` and `meta.sender_device_id`, and its binding extension matches the current P2 Manifest;
 4. `crypto_group_id_b64u`, `epoch`, and `group_state_ref` fields are complete
 5. There is currently no accepted MLS initial status for this group.
+
+### 13.6 Verification of delivered and redelivered `group.incoming` envelopes
+
+This section applies to P6 `group.incoming` only. A standard `group.e2ee.notice` carries no `params.auth` and no preserved origin proof: its authenticity rests on the transport-authenticated channel from the Group Host, the Section 12.2 envelope binding, and the MLS signature that the receiving runtime verifies inside the delivered Commit or Welcome itself. An implementation **MUST NOT** attach a proof that appears to sign a notice envelope and **MUST NOT** apply the rules below to notices.
+
+A P6 `group.incoming` envelope preserves the origin proof that was produced when `group.e2ee.send` was submitted, unmodified, as required by Section 12.5. The same proof therefore appears in the submission, in every per-leaf delivery envelope, and in any later redelivery from the Device Delivery Queue. Proof freshness and proof validity **MUST** be evaluated differently in these two contexts.
+
+Origin-proof freshness parameters such as `created`, `expires`, and `nonce` constrain **submission** only. The Group Host **MUST** apply the full freshness window and the single-use nonce check when it accepts `group.e2ee.create`, `group.e2ee.add`, `group.e2ee.remove`, and `group.e2ee.send`.
+
+**Reconstruction input.** The proof signs the sender's original submission, not the delivery envelope, so the receiver must be able to reproduce the covered components. Under the global mapping of P1 Appendix A.4 these are logical values, not HTTP transport values: `"@method"` is the Signed Request Object's `method`, and `"@target-uri"` is `anp://{meta.target.kind}/{pct-encoded meta.target.did}`. Both are therefore fully derivable from the reconstruction below, and an implementation **MUST NOT** substitute the actual HTTP method or request URL for them. The only submission values the receiver cannot derive from the envelope are the submission's `meta.created_at`, which the envelope's own delivery timestamp overwrites, and any other original meta field this Profile does not require the envelope to preserve. The envelope's `auth` therefore **MUST** carry `origin_context` beside the preserved proof:
+
+```json
+"auth": {
+  "scheme": "anp-rfc9421-origin-proof-v1",
+  "origin_proof": { "...": "preserved unchanged" },
+  "origin_context": {
+    "created_at": "2026-03-29T16:30:00Z"
+  }
+}
+```
+
+`origin_context.created_at` records the submission's `meta.created_at` when the accepted Signed Request Object contained one, because the envelope's own `meta.created_at` is a delivery timestamp. If the accepted Signed Request Object contained any other meta field that this Profile does not already require the envelope to preserve, the Group Host **MUST** record it unchanged in `origin_context.extra_meta`. `extra_meta` **MUST NOT** contain `profile`, `security_profile`, `sender_did`, `sender_device_id`, `target`, `recipient_device_id`, `message_id`, `operation_id`, `content_type`, or `created_at`; a receiver that finds one of these reserved fields in `extra_meta` **MUST** treat the envelope as unproven and **MUST NOT** let the `extra_meta` value override a reconstruction-defined value. `origin_context` is a verification input, not a trusted claim: an incorrect value simply makes digest verification fail, so it needs no separate protection, and a relay **MUST** forward it unmodified.
+
+**Reconstruction.** The receiver reconstructs the submission's Signed Request Object as:
+
+- `method` = `"group.e2ee.send"`;
+- `meta` = the preserved submission fields `profile`, `security_profile`, `sender_did`, `sender_device_id`, `message_id`, `operation_id`, and `content_type`, plus `target` rebuilt as `{"kind": "group", "did": <body.group_did>}`, plus `created_at` from `origin_context.created_at` when present, plus any `origin_context.extra_meta` fields. The delivery-only values are excluded: the envelope's per-leaf `meta.target`, `meta.recipient_device_id`, and the envelope's own `meta.created_at`;
+- `body` = `body.group_cipher_object`, unchanged.
+
+**Verification.** A receiving device validating a delivered or redelivered `group.incoming` envelope **MUST** verify:
+
+1. that the RFC 8785 JCS `contentDigest` recomputed over the reconstructed Signed Request Object equals the digest covered by the proof;
+2. that the RFC 9421 signature verifies over the covered components, deriving `"@method"` from the reconstructed object's `method` (`group.e2ee.send`) and `"@target-uri"` as `anp://group/<pct-encoded body.group_did>` per P1 Appendix A.4, using the verification method referenced by the proof's `keyid`, as resolved from the sender's current root-protected DID Document;
+3. that the proof binds the same `(meta.sender_did, meta.sender_device_id)` pair carried by the envelope; and
+4. that the envelope's ordering fields, `group_receipt`, and `group_cipher_object` are mutually consistent and bound to the same `group_did`.
+
+P2 documents are not a historical key log, so a key rotated or removed after the operation may make an old proof unverifiable. If the `keyid` verification method can no longer be resolved from the current document, the receiver **MUST NOT** treat the envelope as forged; it **MUST** instead handle the envelope as unproven, exactly as if `auth` were absent. The MLS checks of Section 11.8 remain the authoritative sender authentication for the ciphertext itself.
+
+That receiver **MUST NOT** reject the envelope solely because the proof's `expires` has passed, and **MUST NOT** treat a proof `nonce` repeated between the original delivery and a redelivery of the same `(group_did, group_event_seq)` as a replay attack. Receiver-side replay protection for application messages is keyed on `(group_did, group_event_seq)` and `meta.message_id` together with the MLS checks of Section 11.8; it **MUST NOT** be keyed on origin-proof freshness.
+
+A standard P6 `group.incoming` envelope that lacks `auth` is non-conformant, whether realtime or redelivered: the Group Host accepted the submission, so it always possesses the proof and context that Section 12.5 requires it to preserve. The option to omit `auth` and surface an envelope as unproven exists only for an out-of-Profile local history or replay API under Section 12.6, for example when replaying stored rows that predate proof persistence. An envelope carrying no `auth` **MUST NOT** be treated as origin-proven, and no implementation may synthesize, re-sign, backdate, or repair a proof, or substitute the Group Host's own signature for the sender's.
 
 ---
 
@@ -1648,6 +1777,7 @@ sequenceDiagram
     participant H as Group Host
     participant O as Owner Device
     participant R as Remaining Device Leaves
+    participant D as Removed Device Leaf
 
     X->>H: group.remove / group.leave
     H-->>X: business state changed (removed/left)
@@ -1655,7 +1785,9 @@ sequenceDiagram
     loop each affected device leaf
         O->>H: group.e2ee.remove(member_did, member_device_id)
         H-->>R: independent group.e2ee.notice(commit-delivery)
+        H-->>D: final group.e2ee.notice(commit-delivery, subject_status=removed)
     end
+    Note over D: terminalize local binding only; no new epoch secret
 ```
 
 ### 15.5 Group message sending process
@@ -1681,6 +1813,7 @@ sequenceDiagram
     participant H as Group Host
     participant O as Owner Device / MLS Controller
     participant M as Retained Device Leaves
+    participant P as Removed Old-DID Leaves
 
     N->>H: P4 group.rebind_member
     H-->>O: group.state_changed(member-credential-rebound)
@@ -1694,6 +1827,7 @@ sequenceDiagram
     loop each old-DID device leaf
         O->>H: group.e2ee.remove(old DID, device ID)
         H-->>M: independent commit-delivery envelopes
+        H-->>P: final commit-delivery to the removed old-DID leaf
     end
     Note over H: Resume after the final Remove succeeds
 ```
@@ -1712,6 +1846,8 @@ The Group Host **MUST NOT** be presumed to have access to group plaintext merely
 - The MLS signature or sender data proves which device-bound MLS leaf produced the ciphertext or Commit.
 
 For ordinary actions, both bindings **MUST** resolve to the same DID/device pair and **MUST NOT** replace each other. The only exception is the transitional owner-rebind Add in Sections 10.5 and 11.12: the Origin Proof binds an eligible current new-owner device, the Commit may be generated by a retained old-owner device leaf, and both are bound to the same accepted P4 rebind event.
+
+An `origin_proof` preserved in a P6 `group.incoming` envelope proves who submitted the referenced `group.e2ee.send`. It is not evidence of delivery time, delivery order, or the recipient device, and its freshness parameters do not constrain the receiver's acceptance of a redelivered envelope. Section 13.6 defines that split. A standard `group.e2ee.notice` carries no preserved proof; its Commit and Welcome payloads are authenticated by their MLS signatures.
 
 ### 16.3 Group policy takes precedence over pure cryptography capabilities
 
@@ -1766,6 +1902,7 @@ On the premise of following the ANP Core public error model, this Profile recomm
 | 5010 | `group.e2ee.fork_suspected` | Potential fork detected |
 | 5011 | `group.e2ee.notice_type_unsupported` | Unsupported E2EE Notice type |
 | 5012 | `group.e2ee.key_package_consumed` | KeyPackage has been consumed and cannot be reused |
+| 5013 | `group.e2ee.leaf_not_current` | The sender device is not a current MLS leaf of this group, while its DID may remain a P4 member |
 
 Credential-rebind orchestration defines no dedicated error codes. If state is not ready, a Commit is invalid, an epoch conflicts, or the caller is not the controller, implementations reuse `group.e2ee.state_not_ready`, `group.e2ee.commit_invalid`, `group.e2ee.epoch_conflict`, and `group.e2ee.controller_required`, respectively.
 
@@ -1805,6 +1942,13 @@ An implementation conforming to this Profile MUST support at least:
 26. Maintain independent KeyPackages, Welcomes, private MLS state, and encrypted delivery for each device; private state is not shared between sibling devices
 27. Remove every leaf when a P4 DID is removed or leaves, and remove only the affected leaf when one device loses eligibility
 28. Encrypt one MLS `PrivateMessage` per application send and distribute it in one independent P6 envelope per current device leaf without Host re-encryption
+29. Emit one final `commit-delivery` envelope to the exact removed subject leaf in addition to every retained leaf, under a bounded retry and retention limit, and process that final envelope on the removed device without deriving new epoch secrets
+30. Reach the same terminal local state when the final `commit-delivery` never arrives, from the P4 `member-removed` or `member-left` event when observed, from a `group.not_member` rejection of a later request, from a `group.e2ee.leaf_not_current` rejection when only the device leaf was removed, or from the Section 11.9.2 stale-state rule, and never require that envelope as a precondition for rejoining
+31. Rejoin a previously removed device leaf through P4 `active` state plus a fresh KeyPackage and Welcome, without a rejoin method, without reusing a consumed KeyPackage, and without restoring any earlier epoch secret
+32. Keep group leaf removal separate from P2 Manifest device removal, retaining the same `device_id` across group leaf removal and rejoin
+33. Maintain a durable Device Delivery Queue keyed by `(recipient_did, recipient_device_id)` that reproduces unacknowledged envelopes unchanged, revalidates leaf eligibility before each delivery, never substitutes a sibling device's envelope, and stores no MLS private state or plaintext
+34. Verify a delivered or redelivered P6 `group.incoming` envelope's preserved `origin_proof` by reconstructing the original Signed Request Object per Section 13.6 and deriving the covered components under the P1 Appendix A.4 logical mapping, without applying submission freshness windows or treating a repeated proof nonce as a replay, and never synthesize a missing proof
+35. Reject a group-addressed P6 request from a device that is no longer a current leaf while its DID remains `active` with the stable error `group.e2ee.leaf_not_current`, and on the device treat that rejection as an authoritative terminal signal for its group binding
 
 This Profile v2 does **not** require:
 
@@ -1815,6 +1959,8 @@ This Profile v2 does **not** require:
 - Standalone `get_state` method
 - `Update` as protocol-level mainline action
 - Concurrent submission by multiple controllers
+- A P6 history-pull, read-receipt, or device-synchronization method
+- A dedicated rejoin method
 
 ---
 
@@ -2173,7 +2319,7 @@ After every selected Add is accepted, the Group Host keeps application messages 
 
 ### 19.7 P6 `group.incoming` Device Delivery Example
 
-The Group Host sends an independent copy of this envelope to each current device leaf. Every copy carries the same ordering fields, receipt, and `group_cipher_object`; only the target DID and `recipient_device_id` vary by leaf.
+The Group Host sends an independent copy of this envelope to each current device leaf. Every copy carries the same ordering fields, receipt, and `group_cipher_object`; only the target DID and `recipient_device_id` vary by leaf. `auth` preserves the sender's submission proof unchanged and adds the Section 13.6 `origin_context`, whose `created_at` echoes the submission's `meta.created_at` while the envelope's own `meta.created_at` is the delivery timestamp.
 
 ```json
 {
@@ -2201,6 +2347,9 @@ The Group Host sends an independent copy of this envelope to each current device
         "contentDigest": "sha-256=:BASE64_DIGEST:",
         "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774798200;expires=1774798260;nonce=\"n-send\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#dev-a-sign\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
+      },
+      "origin_context": {
+        "created_at": "2026-03-29T16:30:00Z"
       }
     },
     "body": {
@@ -2225,6 +2374,50 @@ The Group Host sends an independent copy of this envelope to each current device
 }
 ```
 
+### 19.8 Final `commit-delivery` Example for a Removed Leaf
+
+After `group.e2ee.remove` is accepted, the Group Host emits one `commit-delivery` envelope per retained leaf and one final envelope to the removed leaf itself. The final envelope below carries the same Commit and epoch as the retained-leaf copies; only the outer target identifies the removed device, and `subject_status` is `removed`. As a standard notice it carries no `params.auth`: the Commit inside is authenticated by its MLS signature, per Section 13.6.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "group.e2ee.notice",
+  "params": {
+    "meta": {
+      "profile": "anp.group.e2ee.v2",
+      "security_profile": "transport-protected",
+      "sender_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+      "target": {
+        "kind": "agent",
+        "did": "did:wba:b.example:agents:bob:e1_<fingerprint>"
+      },
+      "recipient_device_id": "dev-b-4M8P1X",
+      "operation_id": "op-notice-009",
+      "created_at": "2026-03-29T16:45:00Z"
+    },
+    "body": {
+      "notice_id": "en-009",
+      "notice_type": "commit-delivery",
+      "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+      "group_state_ref": {
+        "group_did": "did:wba:groups.example:team:dev:e1_<fingerprint>",
+        "group_state_version": "3",
+        "policy_hash": "sha-256:efgh"
+      },
+      "crypto_group_id_b64u": "BASE64URL_GROUPID",
+      "epoch": "2",
+      "subject_did": "did:wba:b.example:agents:bob:e1_<fingerprint>",
+      "subject_device_id": "dev-b-4M8P1X",
+      "subject_status": "removed",
+      "commit_b64u": "BASE64URL_MLSMESSAGE",
+      "epoch_authenticator": "BASE64URL_AUTH"
+    }
+  }
+}
+```
+
+The removed device applies this Commit only to terminalize its own local binding. It **MUST NOT** derive the epoch `2` secrets and remains unable to decrypt any application message at epoch `2` or later. If this envelope is never delivered within the Host's retention limit, that device instead reaches the same terminal state from another authoritative signal, such as the P4 `member-removed` event when observed, a `group.not_member` rejection of a later request, or a `group.e2ee.leaf_not_current` rejection when only this device leaf was removed, and its later rejoin does not depend on having received it.
+
 ---
 
 ## 20. Registry Placeholder
@@ -2248,7 +2441,9 @@ When implementing this Profile, the implementer should regard it as:
 - Convergent scheme that drives `create/add/remove` through state changes;
 - An ordered workflow of per-device add(new DID) Commits followed by per-device remove(old DID) Commits, driven by the P4 `member-credential-rebound` event;
 - Independent MLS leaf and private state per device, with one encrypted-delivery envelope per current leaf;
-- Delivery of `commit` and `welcome` through device-targeted independent `group.e2ee.notice` envelopes.
+- Delivery of `commit` and `welcome` through device-targeted independent `group.e2ee.notice` envelopes;
+- A durable per-device delivery queue that redelivers the exact stored envelope, rather than a history service that reconstructs one;
+- Two separate lifecycles for one device: a per-group leaf that may be removed and later rejoined, and an identity-scoped Manifest entry whose removal is permanent.
 
 For future versions, further consideration may be given to:
 

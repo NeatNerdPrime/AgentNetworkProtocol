@@ -91,7 +91,7 @@ Profile wire 标识只使用 `.v1`、`.v2` 这样的主版本。1.1、1.2 等小
 5. 继续复用现有 `anp-rfc9421-origin-proof-v1` 和 Data Integrity proof scheme；P5/P6 的 `.v2` Profile ID 不会自动创建 proof v2。Base Profile 认证 sender DID。P5/P6 设备字段 **MUST** 受所属 Overlay 定义的 authenticated context 覆盖：当该操作使用 `auth.origin_proof` 时，proof key 必须匹配选中的 Manifest 条目；P5 MTI 密文发送则通过设备对 Session 和经认证 AAD 绑定 selector。
 6. ANP 不公开部署私有的 `document_version`、`document_hash` 或 checkpoint 字段；资格可能变化时，调用方重新 resolve 当前根保护 DID Document。
 7. 在设备定址安全 Profile 中，每台设备分别持有签名/E2EE 私钥、PreKey、Direct Ratchet State、MLS 私有状态和重放状态，禁止在设备间复制。
-8. 已移除设备不得用原 `device_id` 或设备 key 原地恢复；重新加入必须使用新 ID 和新 key。
+8. 已从其 DID `deviceManifest` 移除的设备不得用原 `device_id` 或设备 key 原地恢复；重新注册必须使用新 ID 和新 key。这是身份作用域且永久的，**MUST NOT** 与 Overlay 作用域的端点变化混淆，例如 P6 把某台设备的 MLS leaf 从某个群移除：仍然是当前合格 Manifest 条目的设备保留其 `device_id`，并可用新的密码学材料重建该 Overlay 端点。
 9. P6 草案暂用私用 MLS ExtensionType `0xF0A1` 承载强制 LeafNode 设备绑定；该值不是 IANA 分配，取得稳定注册 code point 是发布 gate。
 10. 新请求省略已废弃的 `meta.anp_version`。接收方只可为兼容或诊断保留该字段，且 **MUST NOT** 用它选择 Profile 或推断支持某个 Profile 集。
 
