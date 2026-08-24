@@ -3,6 +3,7 @@
 ## Project Structure & Module Organization
 
 - Root contains protocol specifications and white papers (e.g., `01-*.md`, `06-*.md`, `07-*.md`, `08-*.md`).
+- `vnext/` and `chinese/vnext/` hold candidate drafts for core protocols 01–09.
 - `docs/` and `docs/chinese/` hold guides, links, and community operations.
 - `chinese/` mirrors core documents in Chinese plus research notes and process docs.
 - `blogs/` and `blogs/cn/` store long-form articles; `blogs/images/` holds blog assets.

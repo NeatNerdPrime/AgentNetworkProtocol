@@ -10,6 +10,8 @@
 
 **当前规范集：** 核心协议文档已经围绕 ANP 1.1 版本线整理。已发布规范覆盖 `did:wba` 身份、WNS Handle、智能体描述、智能体发现、端到端即时消息，以及 AP2 智能体支付协议；元协议规范仍处于草案状态，当前尚未发布。
 
+**ANP 核心协议 vNext 草案：** [核心协议 vNext 索引](chinese/vnext/README.md)保存 ANP-01 至 ANP-09 的候选修订。目前从已发布 v1.1 文本复制的 ANP-03 和 ANP-04 起步。这些草案在正式发布前不替代已发布规范。
+
 **ANP Messaging 1.2 草案：** [混合版本草案集](chinese/message/vnext/README.md)在同一 DID 下定义多设备密码学端点，同时让 P1/P2/P3/P4/P7/P8 与 P9 Mention binding 保持 v1；只有不兼容的 Direct E2EE 与 Group E2EE Profile 使用 v2。草案存在不表示实现已经支持或可以公开宣告相应能力。
 
 **版本说明：** `版本：1.1` 表示规范/文档发布版本；它不改变 ANP 载荷字段 `protocolVersion`。本次发布未修改协议字段、流程或安全要求，因此示例与协议字段中的 `"protocolVersion": "1.0.0"` 保持不变。
@@ -56,13 +58,15 @@ ANP 构建在现有互联网基础设施之上，将已发布的协议能力组�
 | 领域 | 文档 | 状态 | 定义内容 |
 | --- | --- | --- | --- |
 | 总览 | [ANP 技术白皮书](chinese/01-AgentNetworkProtocol技术白皮书.md) | 白皮书 | 愿景、设计原则和三层协议架构 |
-| 身份 | [ANP-03：did:wba 方法规范](chinese/03-did-wba方法规范.md) | 已发布 v1.1 | Web DID 方法、跨平台认证、`e1_` Ed25519 绑定、`k1_` 兼容扩展 |
-| 命名 | [ANP-04：基于 DID:WBA 的命名空间规范](chinese/04-ANP-基于DID-WBA的命名空间规范.md) | 已发布 v1.1 | WNS Handle（如 `alice.example.com`）、Handle 到 DID 的解析、DID 轮换支持 |
+| 身份 | [ANP-03：did:wba 方法规范](chinese/03-did-wba方法规范.md) | 已发布 v1.1 + [vNext 草案](chinese/vnext/03-did-wba方法规范.md) | Web DID 方法、跨平台认证、`e1_` Ed25519 绑定、`k1_` 兼容扩展 |
+| 命名 | [ANP-04：基于 DID:WBA 的命名空间规范](chinese/04-ANP-基于DID-WBA的命名空间规范.md) | 已发布 v1.1 + [vNext 草案](chinese/vnext/04-ANP-基于DID-WBA的命名空间规范.md) | WNS Handle（如 `alice.example.com`）、Handle 到 DID 的解析、DID 轮换支持 |
 | 元协议 | [ANP-06：智能体通信元协议规范](chinese/06-ANP-智能体通信元协议规范.md) | Draft / 未发布 | 可选的语义元协议协商、`MetaProtocolInterface` 声明、`anp.negotiate`，以及接口 / Profile / 安全模式 / Schema 选择 |
 | 描述 | [ANP-07：智能体描述协议规范](chinese/07-ANP-智能体描述协议规范.md) | 已发布 v1.1 | 智能体描述文档、接口描述和能力发布 |
 | 发现 | [ANP-08：智能体发现协议规范](chinese/08-ANP-智能体发现协议规范.md) | 已发布 v1.1 | 基于 `.well-known` 的主动发现，以及向搜索智能体注册的被动发现 |
 | 消息 | [ANP-09：端到端即时消息协议规范总纲](chinese/09-ANP-端到端即时消息协议规范.md) | 已发布 v1.1 + vNext 草案 | 私聊、群聊、端到端加密、附件、联邦、mention 及独立版本化多设备草案的 Profile 索引 |
 | 支付 | [ANP-10：智能体支付协议规范（AP2）](chinese/application/10-ANP-智能体支付协议规范.md) | 中文草案 v0.1；英文 v1.1 | 智能体支付、授权凭证、收据、基于 DID 的签名和交易流程 |
+
+[ANP 核心协议 vNext 中文草案索引](chinese/vnext/README.md)及其[英文镜像](vnext/README.md)目前包含 ANP-03 和 ANP-04 的初始工作稿。草案存在不修改已发布的 1.1 文件。
 
 ### 即时消息 Profile
 
@@ -104,6 +108,7 @@ AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协
 ## 仓库结构
 
 - `01-*.md`、`03-*.md`、`04-*.md`、`06-*.md`、`07-*.md`、`08-*.md`、`09-*.md`：英文核心协议文档。
+- `vnext/`：ANP-01 至 ANP-09 核心协议候选草案，目前从 ANP-03 和 ANP-04 起步；`chinese/vnext/` 为中文镜像。
 - `application/`：AP2 等应用层协议。
 - `message/`：已发布的 ANP 1.1 端到端即时消息 Profile 规范集；`chinese/message/vnext/` 与 `message/vnext/` 保存独立版本化的 v2 草案。
 - `chinese/`：核心规范中文版及相关研究笔记。
@@ -126,6 +131,7 @@ AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协
 - [x] 发布智能体描述协议和智能体发现协议。
 - [ ] 元协议仍为草案，待稳定后发布。
 - [x] 将端到端即时消息拆分为总纲和九个可互操作 Profile。
+- [ ] 稳定并评审核心协议 vNext 草案（目前为 ANP-03 和 ANP-04）。
 - [ ] 稳定并评审独立版本化的多设备消息 vNext 草案。
 - [x] 在应用层加入 AP2 智能体支付协议。
 - [ ] 持续推进 SDK 实现与示例对齐 ANP 1.1 规范集。
