@@ -52,6 +52,10 @@ In order to strike a balance between standard interoperability and ecological co
 
 A natural consequence of the public key fingerprint path scheme is that when the binding key changes, the path-type DID also changes. Therefore, did:wba does not press "stable user-readable identity" directly on the DID string, but solves the stable reference problem through a name service scheme (such as WNS/Handle): DID is responsible for "verifiable cryptographic identity", and the name service is responsible for "stable human-readable name".
 
+For path-type DIDs that need to preserve subject continuity after the binding key changes, the path before the final binding-fingerprint segment is called the **stable subject path**. For example, the stable subject path of `did:wba:example.com:user:alice:e1_<fingerprint>` is `example.com:user:alice`. A stable subject path is not another DID and cannot be resolved independently; once it is used to identify a continuing subject, it MUST remain permanently immutable, non-recyclable, and non-reassignable.
+
+Two complete DIDs with the same stable subject path are still two distinct DIDs. A matching path is only a necessary condition for determining subject continuity; a verifier may treat the DIDs as the same continuing subject only after validating the `successorDid` document chain and the corresponding DID Document `proof` according to this specification.
+
 In addition, various types of identifier systems can add support for DID, creating an interoperable bridge between centralized, federated, and decentralized identifier systems. This means that the existing centralized identifier system does not need to be completely reconstructed, and DID can only be created on its basis to achieve cross-system interoperability, thus greatly reducing the difficulty of technical implementation.
 
 ## 2. did:wba DID method specification
@@ -165,6 +169,22 @@ Notes:
 2. It is recommended to use the thumbprint value without the `e1_` prefix as the `kid` or fragment of the verification method to facilitate the intuitive correspondence between the DID path and the verification method identification;
 3. New deployments SHOULD preferentially use the `e1_` profile.
 
+### 2.2.3 Stable Subject Path
+
+For a path-type DID using the binding-fingerprint path scheme, the stable subject path consists of the domain name and every path segment before the final binding-fingerprint segment:
+
+```text
+did:wba:example.com:user:alice:e1_<fingerprint>
+        └──── stable subject path: example.com:user:alice ────┘
+```
+
+The stable subject path MUST satisfy the following requirements:
+
+1. Once assigned to a continuing subject, it MUST NOT be modified, recycled, or reassigned to another subject;
+2. When a root binding-key change produces a new DID, the stable subject paths of the old and new DIDs MUST be identical;
+3. A verifier MUST NOT conclude that two DIDs belong to the same subject solely because they have the same stable subject path;
+4. Subject continuity MUST be verified according to Sections 2.5.2 through 2.5.5 by validating the old DID Document's `successorDid`, the document-wide `proof`, and the new DID's binding fingerprint.
+
 ### 2.4 Key material and document processing
 
 Due to the way most web servers render content, it is likely that a particular did:wba document will be served with the media type application/json. If a document named did.json is retrieved, the following processing rules should be followed:
@@ -253,6 +273,12 @@ Apart from DID Core, related specifications may evolve over time. This section s
 - **@context**: required field, JSON-LD context defines the semantics and data model used in DID documents to ensure the understandability and interoperability of the document. `https://www.w3.org/ns/did/v1` is required. For e1 documents using the standard Ed25519 proof, `https://w3id.org/security/data-integrity/v2` and `https://w3id.org/security/multikey/v1` are also required. Others are added as needed.
 
 - **id**: required field, cannot carry IP, but can carry port. When carrying port, the colon needs to be encoded as `%3A`. Use a colon later to split the path. For newly created path DIDs, the last path segment MUST be `e1_<fingerprint>`.
+
+- **alsoKnownAs**: An optional field defined by DID Core. When a root binding-key change produces a new DID, the new DID Document MAY use this field to reference its direct predecessor DID. `alsoKnownAs` expresses only a reverse association claim and does not by itself constitute cryptographic proof of subject continuity.
+
+- **deactivated**: An optional did:wba extension field defined for direct DID Document retrieval. A value of `true` indicates that the complete DID is no longer used for new authentication or business routing, while its DID Document remains available for historical verification and successor lookup.
+
+- **successorDid**: An optional extension field defined by did:wba. Its value MUST be a complete DID string that points from a superseded DID to its direct successor DID. It MUST NOT skip an intermediate DID and be rewritten to point directly to a later successor.
 
 - **verificationMethod**: A required field, containing an array of verification methods, which defines the public key information used to verify the DID subject. For scenarios that need to support end-to-end encryption (E2EE) communication, `verificationMethod` should contain both the signature key and the key agreement key to achieve key separation. The signing key is used for identity authentication and document assertion; the key agreement key (such as `X25519KeyAgreementKey2019`) is used for key negotiation of upper-layer protocols or receipt of confidential information. Both types of keys perform their own duties, and the leakage of a single key will not affect identity authentication and communication confidentiality at the same time.
 
@@ -358,13 +384,19 @@ The following steps must be performed to parse a DID Document from a `did:wba` D
 - Append `/did.json` to complete the URL.
 - Perform HTTP GET requests to the URL using a proxy capable of successfully negotiating a secure HTTPS connection that enforces the security requirements described in [Section 2.6 Security and Privacy Considerations](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations).
 - Verify that the `id` of the parsed DID Document matches the `did:wba` DID being parsed.
-- For the `e1_` path type DID defined by the main specification, it must be verified according to the following strict binding relationship:
+- For an `e1_` path-type DID defined by the main specification that does not set `deactivated = true`, the following strict binding relationship MUST be verified:
   - DID Document top-level `proof` must exist;
   - `proof` must pass `DataIntegrityProof` + `eddsa-jcs-2022` verification;
   - The verification method pointed to by `proof.verificationMethod` MUST be Ed25519 `Multikey` (or a semantically equivalent Ed25519 verification method representation);
   - Calculate the RFC 7638 thumbprint with the Ed25519 public key corresponding to `proof.verificationMethod`, and the result must be completely consistent with the last `e1_` fingerprint segment of the DID path.
+- For an `e1_` DID that sets `deactivated = true`:
+  - The verifier MUST still find in the document the original binding key whose fingerprint matches the DID path's `e1_` fingerprint;
+  - If the document also contains `successorDid`, the verifier MUST verify that the old and new DIDs have the same stable subject path;
+  - If the document-wide `proof` was signed by the original binding key, the migration may be treated as verified;
+  - If the document-wide `proof` was signed by a pre-authorized recovery key, the migration may be treated as recovery-verified only if the verifier already holds a trusted DID Document from before deactivation and can confirm that the trusted document pre-authorized the recovery key in `assertionMethod`;
+  - If no valid `proof` is present, a client MAY read `successorDid` as a migration hint provided by the service, but MUST NOT use it to merge identities automatically or make a high-assurance authorization decision.
 - When performing DNS resolution during an HTTP GET request, clients should use [[RFC8484](https://w3c-ccg.github.io/did-method-web/#bib-rfc8484)] to prevent tracking of the identity being resolved.
-- For `e1_` DID, the above proof verification is not affected by the local policy switch, but is a necessary condition for successful parsing.
+- For an active `e1_` DID, the above proof verification is not affected by a local policy switch and is a necessary condition for successful parsing.
 - For other profiles, if the local policy enables DID Document proof verification and the document contains `proof`, it should be verified according to the corresponding profile rules.
 
 For naked domain name DIDs, the parsing and verification process follows the same basic pattern as did:web naked domain name DIDs: parse `/.well-known/did.json`, check `id` consistency, and verify the verification method in the `authentication` relationship according to DID Core / HTTP Message Signatures rules; `e1_` path binding verification does not apply.
@@ -378,7 +410,16 @@ To update the DID document, you need to update the `did.json` file corresponding
 
 For path type did:wba with the default path scheme, as long as the last bound key fingerprint of the DID path does not change, the DID itself will remain unchanged, but other contents of the DID document can change, for example, adding new verification keys, revoking old keys, or updating service endpoints.
 
-If the binding key changes, the path DID MUST be changed to the new DID. At this time, a new DID document should be created, and the upper-layer name service (such as WNS/Handle) is responsible for stable reference and migration.
+If the binding key changes, the path-type DID MUST change to a new DID. The old and new DIDs are two distinct DIDs, but they can establish a migration relationship for the same continuing subject under the following rules:
+
+1. The new DID MUST have exactly the same stable subject path as the old DID;
+2. A new DID Document MUST be created and published. The new document MAY reference the direct predecessor DID in `alsoKnownAs`;
+3. The old DID Document MUST remain retrievable and set `deactivated = true` and `successorDid = <new DID>`;
+4. `successorDid` MUST point only to the direct next-generation DID. On subsequent rotations, the `successorDid` of an earlier DID MUST NOT be rewritten;
+5. The old DID Document's document-wide `proof` should cover `deactivated`, `successorDid`, and all other document properties; the new DID Document has its document-wide `proof` generated by the new binding key;
+6. An upper-layer name service such as WNS/Handle should be updated to the new DID at the same time, but the name-service mapping does not replace the migration proof above.
+
+This specification does not define a programmatic management interface. To prevent concurrent rotations from producing multiple successors, an implementation SHOULD perform an atomic compare-and-swap against the current complete DID (for example, `expected_current_did`) rather than submit an update based only on the stable subject path.
 
 > Note:
 >
@@ -387,9 +428,9 @@ If the binding key changes, the path DID MUST be changed to the new DID. At this
 
 #### 2.5.4 Deactivation (withdrawal)
 
-To delete a DID document, the `did.json` file must be removed or otherwise no longer publicly available.
+For an identity that is permanently deactivated and has no successor DID, the `did.json` file may be removed or otherwise made no longer publicly available.
 
-For path type did:wba using the default path scheme, if the binding key is permanently discarded, the rotation can also be completed by deactivating the old DID and creating a new DID; the stable reference relationship is maintained by the upper-layer name service.
+For a path-type did:wba that has been superseded by a new DID because of binding-key rotation, the old DID Document MUST NOT be removed. It MUST remain retrievable and set `deactivated = true` and `successorDid` to support historical signature verification and successor lookup. Here, `deactivated` means only that this complete DID is no longer used for new authentication and routing; it does not mean that the continuing subject has ceased to exist.
 
 #### 2.5.5 DID Document proof
 
@@ -419,7 +460,13 @@ Additional constraints:
 
 When parsing an `e1_` `did:wba` DID Document, proof verification is not an optional enhanced check, but part of the path-binding semantics. If `proof` is missing, proof verification fails, or `proof.verificationMethod` is inconsistent with the `e1_` binding fingerprint, parsing MUST fail.
 
-For `e1_` DIDs, there is no relaxed mode of "DID Document does not contain `proof` and can still be parsed".
+For `e1_` DIDs, there is no relaxed mode in which an active DID Document can still be parsed without a `proof`.
+
+For an old DID Document that sets `deactivated = true` and `successorDid`, the top-level `proof` remains a document-wide proof over the complete document after removing `proof`:
+
+- When signed by the old DID's binding key, the result provides strong cryptographic continuity;
+- When signed by a recovery key that the old DID authorized through `assertionMethod` before deactivation, the verifier MUST confirm that prior authorization from a previously trusted state;
+- When neither the old private key nor a pre-authorized recovery key is available, the document MAY retain an unverified `successorDid` hint, but the verifier MUST report to the upper layer that the continuity is only a service-provider claim and MUST NOT treat it as a verified migration.
 
 For non-`e1_` profiles, implementations MAY choose one of the following two modes according to the corresponding profile rules or local policy:
 
@@ -432,6 +479,8 @@ For DIDs using the `e1_` profile, this specification requires that the top-level
 ### 2.6 Security and Privacy Considerations
 
 For security and privacy considerations, please refer to [[did:web method specification section 2.6](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations)]. Implementers should also pay additional attention to DID rotation caused by binding key changes under the default path scheme, and name service synchronization issues.
+
+This version does not require an independently verifiable log. Clients SHOULD cache the verified current DID and its successor relationships. If the same old DID returns different `successorDid` values, the migration chain contains a cycle, or a successor DID has a different stable subject path, the client MUST reject the migration and report the conflict to the upper layer.
 
 New deployments SHOULD prefer the `e1_` profile for better standard proof interoperability. If the implementation needs to be compatible with the wallet ecosystem and existing secp256k1 implementation, please see the `k1_` compatible extension in Appendix A.
 
@@ -534,7 +583,7 @@ After receiving the client request, the server performs the following verificati
 
 3. **Extract `keyid` and parse DID**: Extract `keyid` from `Signature-Input` to obtain the corresponding DID and verification method.
 
-4. **Read DID document**: Parse the DID document based on DID.
+4. **Read DID document**: Parse the DID document based on the DID. If the document sets `deactivated = true`, the server MUST NOT continue to use that DID for new authentication. When the document contains `successorDid`, the server should return the DID-superseded error defined in Section 3.2.4.3.
 
 5. **Verify DID binding relationship**:
    - Verify that the verification method pointed to by `keyid` exists;
@@ -674,6 +723,27 @@ It should be noted that the client and server need to limit the number of retrie
 ##### 3.2.4.2 403 response
 
 When server-side authentication is successful, but the DID does not have the permission to access server-side resources, a `403 Forbidden` response can be returned.
+
+##### 3.2.4.3 409 DID Superseded
+
+When the DID targeted by a request or used for authentication sets `deactivated = true` and has a successor DID, the server may return `409 Conflict`:
+
+```http
+HTTP/1.1 409 Conflict
+Content-Type: application/json
+Cache-Control: no-store
+```
+
+```json
+{
+  "code": "did_superseded",
+  "requestedDid": "did:wba:example.com:user:alice:e1_<old-fingerprint>",
+  "currentDid": "did:wba:example.com:user:alice:e1_<current-fingerprint>",
+  "stableSubjectId": "example.com:user:alice"
+}
+```
+
+The response's `currentDid` is only an unverified hint. A client MUST NOT retry directly based on this field. Instead, it must retrieve the old DID Document; verify `deactivated`, `successorDid`, and the document-wide `proof`; and then resolve each successor DID in turn until it finds the current active DID. The client should generate a new signature with the current DID before sending the request again. A transparent `301` / `302` redirect should not replace this verification process.
 
 ## 4. Cross-platform identity authentication process based on did:wba method and JSON-formatted data carriage
 
@@ -844,6 +914,8 @@ Implementers need to consider the following security issues when implementing:
    - When the request contains a message body, the server must verify `Content-Digest` to prevent the message body from being tampered with.
    - Successful authentication does not equal successful authorization. The server must handle authorization judgment and identity authentication separately.
    - For `e1_` DID, the parser MUST verify `DataIntegrityProof`; for other profiles, if the implementation enables DID Document proof verification, it SHOULD verify `proof` according to the corresponding profile rules.
+   - A stable subject path MUST NOT be recycled or reassigned. A verifier MUST NOT merge two DIDs merely by removing the final binding-fingerprint segment.
+   - When following `successorDid`, a verifier MUST limit the chain length, detect cycles, and reject a chain whose stable subject paths differ or in which the same old DID has multiple successors.
 
 3. **Transmission Security**
 
@@ -880,6 +952,8 @@ This version further defines the default scheme for path-type DID as "carrying t
 - `e1_`: Binds the Ed25519 public key, recommended for new deployments, and can directly integrate the W3C standard Data Integrity EdDSA proof.
 
 In order to be compatible with the wallet ecosystem and existing secp256k1 implementation, this specification additionally defines the `k1_` compatible extension in Appendix A.
+
+When a binding-key change produces a new DID, this specification uses the permanently stable subject path as the continuity anchor and proves forward migration through the old DID Document's `successorDid` and document-wide `proof`; the new DID Document may make a reverse claim about the old DID through `alsoKnownAs`. A shared stable subject path alone does not prove DID equivalence.
 
 At the same time, the cross-platform HTTP identity authentication process adopts a standardized solution based on HTTP Message Signatures and `Content-Digest`, and puts additional authentication information after successful authentication into the `Authentication-Info` response header.
 
