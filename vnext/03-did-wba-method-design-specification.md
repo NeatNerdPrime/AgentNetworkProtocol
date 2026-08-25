@@ -434,7 +434,7 @@ For a path-type did:wba that has been superseded by a new DID because of binding
 
 #### 2.5.5 DID Document proof
 
-Whether the top-level `proof` field appears in a `did:wba` DID Document depends on the profile in use. For the default `e1_` profile, `proof` is a required field; for other profiles, the DID Document MAY contain a top-level `proof` field to provide proof of document integrity. This field is used to prove that the DID Document has not been tampered with after the proof was generated and indicates that the signer controlled the corresponding private key when the proof was created. Proof itself does not replace DID method parsing, nor does it replace the `id` consistency check on its own.
+Whether the top-level `proof` field appears in a `did:wba` DID Document depends on the profile and document state. For an active document using the default `e1_` profile, `proof` is required. A deactivated `e1_` transition document with `successorDid` follows the binding, recovery, provider-asserted, and unverified branches defined below, so its top-level `proof` MAY be absent. For other profiles, the DID Document MAY contain a top-level `proof` field to provide proof of document integrity. This field is used to prove that the DID Document has not been tampered with after the proof was generated and indicates that the signer controlled the corresponding private key when the proof was created. Proof itself does not replace DID method parsing, nor does it replace the `id` consistency check on its own.
 
 For the default `e1_` profile, the `proof` profile defined by the master specification MUST conform to:
 
@@ -455,10 +455,10 @@ The `proof` object contains the following fields:
 Additional constraints:
 
 1. For an active `e1_` document, `proof.verificationMethod` MUST use the `e1_` binding key, unifying DID path binding, public-key binding, and document-integrity proof. For a deactivated document with `successorDid`, it may instead use a recovery key that was pre-authorized by `assertionMethod` in a trusted pre-deactivation document, but it MUST NOT use a key introduced only at deactivation;
-2. The parser MUST recalculate the RFC 7638 thumbprint with the Ed25519 public key corresponding to `proof.verificationMethod` and verify that it is completely consistent with the last `e1_` fingerprint segment of the DID path;
+2. For an active `e1_` document, and for a deactivated transition that claims continuity through the old binding key, the parser MUST recalculate the RFC 7638 thumbprint with the Ed25519 public key corresponding to `proof.verificationMethod` and verify that it is completely consistent with the last `e1_` fingerprint segment of the DID path. A recovery proof instead MUST be verified with the key material and `assertionMethod` authorization from a trusted pre-deactivation document; the recovery key is not required to match the `e1_` binding fingerprint;
 3. The generation and verification of `proof` must (MUST) follow the standard algorithm process of `eddsa-jcs-2022`, and the algorithm details will no longer be rewritten by this specification.
 
-When parsing an `e1_` `did:wba` DID Document, proof verification is not an optional enhanced check, but part of the path-binding semantics. If `proof` is missing, proof verification fails, or `proof.verificationMethod` is inconsistent with the `e1_` binding fingerprint, parsing MUST fail.
+When parsing an active `e1_` `did:wba` DID Document, proof verification is not an optional enhanced check, but part of the path-binding semantics. If `proof` is missing, proof verification fails, or `proof.verificationMethod` is inconsistent with the `e1_` binding fingerprint, parsing MUST fail.
 
 For `e1_` DIDs, there is no relaxed mode in which an active DID Document can still be parsed without a `proof`.
 
@@ -466,7 +466,8 @@ For an old DID Document that sets `deactivated = true` and `successorDid`, the t
 
 - When signed by the old DID's binding key, the result provides strong cryptographic continuity;
 - When signed by a recovery key that the old DID authorized through `assertionMethod` before deactivation, the verifier MUST confirm that prior authorization from a previously trusted state;
-- When neither the old private key nor a pre-authorized recovery key is available, the document MAY retain an unverified `successorDid` hint. A verifier may report `provider_asserted` only when the signed object in Section 2.5.6 verifies successfully; without that object it MUST report `unverified`.
+- If a top-level `proof` is present, it MUST verify as either an old-binding proof or a pre-authorized recovery proof. A malformed, unauthorized, or cryptographically invalid proof MUST invalidate the transition and MUST NOT be downgraded to a provider assertion or an unverified hint;
+- When neither the old private key nor a pre-authorized recovery key is available, the top-level `proof` MAY be absent and the document MAY retain an unverified `successorDid` hint. A verifier may report `provider_asserted` only when the signed object in Section 2.5.6 verifies successfully; without that object it MUST report `unverified`.
 
 For non-`e1_` profiles, implementations MAY choose one of the following two modes according to the corresponding profile rules or local policy:
 
@@ -517,7 +518,7 @@ With only a TLS-protected `successorDid`, WNS/Handle, `alsoKnownAs`, a matching 
 
 For security and privacy considerations, please refer to [[did:web method specification section 2.6](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations)]. Implementers should also pay additional attention to DID rotation caused by binding key changes under the default path scheme, and name service synchronization issues.
 
-This version does not require an independently verifiable log. Clients SHOULD cache the verified current DID and its successor relationships. If the same old DID returns different `successorDid` values, the migration chain contains a cycle, or a successor DID has a different stable subject path, the client MUST reject the migration and report the conflict to the upper layer.
+This version does not require an independently verifiable log. After a complete resolution succeeds, clients SHOULD cache only successor edges whose hop assurance is `verified` or `recovery_verified`. `provider_asserted` and `unverified` edges MUST NOT enter that verified-edge cache. Validation failures before the cache-commit step, including invalid final proof, cycle, and hop-limit failures, MUST NOT leave prefix edges from the failed chain in it. If a cached verified edge and a newly observed `successorDid` disagree for the same old DID, the migration chain contains a cycle, or a successor DID has a different stable subject path, the client MUST reject the migration and report the conflict to the upper layer.
 
 New deployments SHOULD prefer the `e1_` profile for better standard proof interoperability. If the implementation needs to be compatible with the wallet ecosystem and existing secp256k1 implementation, please see the `k1_` compatible extension in Appendix A.
 
@@ -950,7 +951,7 @@ Implementers need to consider the following security issues when implementing:
    - When generating `nonce`, you **must** use a secure random number generator provided by the operating system, complying with modern cryptographic security specifications and standards. For example, you can use a module like Python's `secrets` to generate secure random numbers.
    - When the request contains a message body, the server must verify `Content-Digest` to prevent the message body from being tampered with.
    - Successful authentication does not equal successful authorization. The server must handle authorization judgment and identity authentication separately.
-   - For `e1_` DID, the parser MUST verify `DataIntegrityProof`; for other profiles, if the implementation enables DID Document proof verification, it SHOULD verify `proof` according to the corresponding profile rules.
+   - For an active `e1_` DID, the parser MUST verify `DataIntegrityProof`. A deactivated `e1_` transition document follows the binding, recovery, provider-asserted, and unverified rules in Section 2.5.5. For other profiles, if the implementation enables DID Document proof verification, it SHOULD verify `proof` according to the corresponding profile rules.
    - A stable subject path MUST NOT be recycled or reassigned. A verifier MUST NOT merge two DIDs merely by removing the final binding-fingerprint segment.
    - When following `successorDid`, a verifier MUST limit the chain length, detect cycles, and reject a chain whose stable subject paths differ or in which the same old DID has multiple successors.
 

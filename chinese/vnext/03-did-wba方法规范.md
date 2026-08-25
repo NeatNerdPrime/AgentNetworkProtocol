@@ -435,7 +435,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 #### 2.5.5 DID Document proof
 
-did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用的 profile。对于默认 `e1_` profile，`proof` 是必须字段；对于其他 profile，DID Document 可以（MAY）包含顶层 `proof` 字段，用于提供文档完整性证明。该字段用于证明 DID Document 在生成 proof 之后未被篡改，并表明 proof 创建时签名者控制了对应私钥。proof 本身不单独替代 DID method 解析过程，也不单独替代 `id` 一致性检查。
+did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用的 profile 和文档状态。对于使用默认 `e1_` profile 的活动文档，`proof` 是必须字段。设置了 `successorDid` 的已停用 `e1_` transition 文档按下文定义的 binding、recovery、provider-asserted 和 unverified 分支处理，因此其顶层 `proof` 可以（MAY）缺失。对于其他 profile，DID Document 可以（MAY）包含顶层 `proof` 字段，用于提供文档完整性证明。该字段用于证明 DID Document 在生成 proof 之后未被篡改，并表明 proof 创建时签名者控制了对应私钥。proof 本身不单独替代 DID method 解析过程，也不单独替代 `id` 一致性检查。
 
 对于默认 `e1_` profile，主规范定义的 `proof` profile 必须（MUST）符合：
 
@@ -456,10 +456,10 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 额外约束：
 
 1. 对活动 `e1_` 文档，`proof.verificationMethod` 必须（MUST）使用 `e1_` 绑定密钥，使 DID 路径绑定、公钥绑定与文档完整性证明统一；对已停用且包含 `successorDid` 的文档，该方法也可以是停用前可信文档中已由 `assertionMethod` 预授权的 recovery key，但不得使用停用时才加入的 key；
-2. 解析器必须（MUST）以 `proof.verificationMethod` 对应的 Ed25519 公钥重新计算 RFC 7638 thumbprint，并验证其与 DID 路径最后的 `e1_` 指纹段完全一致；
+2. 对活动 `e1_` 文档，以及声明通过旧 binding key 建立连续性的已停用 transition，解析器必须（MUST）以 `proof.verificationMethod` 对应的 Ed25519 公钥重新计算 RFC 7638 thumbprint，并验证其与 DID 路径最后的 `e1_` 指纹段完全一致。recovery proof 则必须（MUST）使用停用前可信文档中的 key material 和 `assertionMethod` 授权进行验证；recovery key 不要求与 `e1_` binding 指纹一致；
 3. `proof` 的生成与验证必须（MUST）遵循 `eddsa-jcs-2022` 的标准算法流程，不再由本规范重写算法细节。
 
-解析 `e1_` did:wba DID Document 时，proof 校验不是可选增强检查，而是路径绑定语义的一部分；缺少 `proof`、`proof` 验证失败、或 `proof.verificationMethod` 与 `e1_` 绑定指纹不一致时，解析必须（MUST）失败。
+解析活动 `e1_` did:wba DID Document 时，proof 校验不是可选增强检查，而是路径绑定语义的一部分；缺少 `proof`、`proof` 验证失败、或 `proof.verificationMethod` 与 `e1_` 绑定指纹不一致时，解析必须（MUST）失败。
 
 对于 `e1_` DID，不存在“活动 DID Document 不含 `proof` 仍可继续解析”的宽松模式。
 
@@ -467,7 +467,8 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 
 - 由旧 DID 绑定密钥签署时，验证结果为强密码学连续性；
 - 由旧 DID 在停用前已通过 `assertionMethod` 授权的恢复密钥签署时，验证者必须（MUST）依据此前可信状态确认该预授权关系；
-- 当旧私钥和预授权恢复密钥均不可用时，文档可以（MAY）保留未验证的 `successorDid` 提示。只有 2.5.6 节的签名对象验证成功时，验证者才可以向上层报告 `provider_asserted`；没有该对象时必须（MUST）报告 `unverified`。
+- 如果顶层 `proof` 存在，它必须（MUST）验证为旧 binding proof 或预授权 recovery proof。格式错误、未授权或密码学验证失败的 proof 必须（MUST）使 transition 失效，且不得（MUST NOT）降级为 provider assertion 或 unverified hint；
+- 当旧私钥和预授权恢复密钥均不可用时，顶层 `proof` 可以（MAY）缺失，文档可以（MAY）保留未验证的 `successorDid` 提示。只有 2.5.6 节的签名对象验证成功时，验证者才可以向上层报告 `provider_asserted`；没有该对象时必须（MUST）报告 `unverified`。
 
 对于非 `e1_` profile，实现可以（MAY）按对应 profile 规则或本地策略在以下两种模式中选择其一：
 
@@ -518,7 +519,7 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 
 安全与隐私注意事项参考[[did:web 方法规范2.6节](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations)]。实现者还应额外关注默认路径方案下绑定密钥变更带来的 DID 轮换，以及名称服务同步问题。
 
-本版本不要求独立可验证日志。客户端应当（SHOULD）缓存已验证的当前 DID 及其后继关系；如果同一旧 DID 返回不同的 `successorDid`、迁移链出现循环、或后继 DID 的稳定主体路径发生变化，必须（MUST）拒绝该迁移并向上层报告冲突。
+本版本不要求独立可验证日志。完整解析成功后，客户端应当（SHOULD）仅缓存 hop assurance 为 `verified` 或 `recovery_verified` 的后继边。`provider_asserted` 和 `unverified` 边不得（MUST NOT）进入该已验证边缓存。在 cache commit 步骤之前发生的验证失败，包括最终活动文档 proof 无效、循环和 hop 上限失败，不得（MUST NOT）在其中遗留失败链的前缀边。如果同一旧 DID 的已缓存验证边与新观察到的 `successorDid` 不同、迁移链出现循环、或后继 DID 的稳定主体路径发生变化，必须（MUST）拒绝该迁移并向上层报告冲突。
 
 新部署应当（SHOULD）优先采用 `e1_` profile，以获得更好的标准 proof 互操作性。如果实现需要兼容钱包生态和现有 secp256k1 实现，请参见附录 A 的 `k1_` 兼容扩展。
 
@@ -951,7 +952,7 @@ sequenceDiagram
    - 生成 `nonce` 时，**必须**使用操作系统提供的安全随机数生成器，要符合现代密码学安全规范和标准。比如可以使用类似 Python `secrets` 模块生成安全随机数。
    - 当请求存在消息体时，服务端**必须**验证 `Content-Digest`，防止消息体被篡改。
    - 认证成功不等于授权成功。服务端**必须**将授权判断与身份认证分开处理。
-   - 对于 `e1_` DID，解析器必须（MUST）验证 `DataIntegrityProof`；对于其他 profile，如果实现启用了 DID Document proof 校验，则应当（SHOULD）按对应 profile 规则验证 `proof`。
+   - 对于活动 `e1_` DID，解析器必须（MUST）验证 `DataIntegrityProof`。已停用 `e1_` transition 文档按 2.5.5 节的 binding、recovery、provider-asserted 和 unverified 规则处理；对于其他 profile，如果实现启用了 DID Document proof 校验，则应当（SHOULD）按对应 profile 规则验证 `proof`。
    - 稳定主体路径不得（MUST NOT）被回收或重新分配；验证者不得（MUST NOT）仅通过删除最后一个绑定指纹 segment 来合并两个 DID。
    - 验证者在跟随 `successorDid` 时必须（MUST）限制链长、检测循环，并拒绝稳定主体路径不一致或同一旧 DID 出现多个后继的情况。
 
