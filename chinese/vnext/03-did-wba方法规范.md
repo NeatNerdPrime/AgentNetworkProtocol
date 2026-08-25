@@ -395,7 +395,7 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
   - 若文档同时包含 `successorDid`，验证者必须（MUST）验证新旧 DID 的稳定主体路径相同；
   - 若整体 `proof` 由原绑定密钥签署，则该迁移可以被视为已验证；
   - 若整体 `proof` 由预授权恢复密钥签署，只有在验证者已持有停用前的可信 DID Document，并能确认该恢复密钥已在该可信文档的 `assertionMethod` 中被预先授权时，才可以将该迁移视为恢复验证通过；
-  - 缺少有效 `proof` 时，客户端可以（MAY）读取 `successorDid` 作为服务端提供的迁移提示，但不得（MUST NOT）据此自动合并身份或作出高信任授权决定。
+  - 缺少有效 `proof` 时，客户端可以（MAY）读取 `successorDid` 作为未验证迁移提示，但不得（MUST NOT）据此自动合并身份或作出高信任授权决定；只有同时存在并通过 2.5.6 节验证的 `providerTransitionAssertion` 时，才可以把该 hop 报告为 `provider_asserted`。
 - 在HTTP GET请求期间执行DNS解析时，客户端应使用[[RFC8484](https://w3c-ccg.github.io/did-method-web/#bib-rfc8484)]以防止跟踪正在解析的身份。
 - 对活动 `e1_` DID，上述 proof 校验不受本地策略开关影响，而是解析成功的必要条件。
 - 对其他 profile，如果本地策略启用了 DID Document proof 校验，且文档包含 `proof`，则应按对应 profile 规则进行校验。
@@ -455,7 +455,7 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 
 额外约束：
 
-1. `proof.verificationMethod` 必须（MUST）使用 `e1_` 绑定密钥，使 DID 路径绑定、公钥绑定与文档完整性证明统一；
+1. 对活动 `e1_` 文档，`proof.verificationMethod` 必须（MUST）使用 `e1_` 绑定密钥，使 DID 路径绑定、公钥绑定与文档完整性证明统一；对已停用且包含 `successorDid` 的文档，该方法也可以是停用前可信文档中已由 `assertionMethod` 预授权的 recovery key，但不得使用停用时才加入的 key；
 2. 解析器必须（MUST）以 `proof.verificationMethod` 对应的 Ed25519 公钥重新计算 RFC 7638 thumbprint，并验证其与 DID 路径最后的 `e1_` 指纹段完全一致；
 3. `proof` 的生成与验证必须（MUST）遵循 `eddsa-jcs-2022` 的标准算法流程，不再由本规范重写算法细节。
 
@@ -467,7 +467,7 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 
 - 由旧 DID 绑定密钥签署时，验证结果为强密码学连续性；
 - 由旧 DID 在停用前已通过 `assertionMethod` 授权的恢复密钥签署时，验证者必须（MUST）依据此前可信状态确认该预授权关系；
-- 当旧私钥和预授权恢复密钥均不可用时，文档可以（MAY）保留未验证的 `successorDid` 提示，但验证者必须（MUST）向上层报告该连续性仅为服务提供方声明，不得将其当作已验证迁移。
+- 当旧私钥和预授权恢复密钥均不可用时，文档可以（MAY）保留未验证的 `successorDid` 提示。只有 2.5.6 节的签名对象验证成功时，验证者才可以向上层报告 `provider_asserted`；没有该对象时必须（MUST）报告 `unverified`。
 
 对于非 `e1_` profile，实现可以（MAY）按对应 profile 规则或本地策略在以下两种模式中选择其一：
 
@@ -476,6 +476,43 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 **规范性说明**：
 
 对于采用 `e1_` profile 的 DID，本规范要求 DID Document 的顶层 `proof` 使用 W3C 标准的 Data Integrity proof 机制。其 proof 数据模型、proof configuration、document transformation、hashing、proof serialization 以及 verification 规则，分别遵循 [Verifiable Credential Data Integrity 1.0](https://www.w3.org/TR/vc-data-integrity/) 和 [Data Integrity EdDSA Cryptosuites v1.0](https://www.w3.org/TR/vc-di-eddsa/)。本规范仅约束 did:wba 场景下 proof 的使用位置、字段要求与验证关系，不重复定义底层密码学算法；若出现冲突，以上游 W3C 规范为准。
+
+#### 2.5.6 Provider transition assertion
+
+当 predecessor 的原绑定私钥和预授权 recovery key 均不可用时，did:wba Provider 可以（MAY）在该 predecessor 的停用 DID Document 中加入方法级 `providerTransitionAssertion`。该对象的唯一标准形状为：
+
+```json
+{
+  "type": "DidWbaProviderTransitionAssertion",
+  "providerDid": "did:wba:example.com",
+  "predecessorDid": "did:wba:example.com:users:alice:e1_<old>",
+  "successorDid": "did:wba:example.com:users:alice:e1_<new>",
+  "stableSubjectPath": "example.com:users:alice",
+  "issuedAt": "2026-08-25T00:00:00Z",
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:wba:example.com#provider-assertion-key",
+    "proofPurpose": "assertionMethod",
+    "created": "2026-08-25T00:00:00Z",
+    "proofValue": "z..."
+  }
+}
+```
+
+验证者必须（MUST）执行以下检查：
+
+1. 对象必须（MUST）且只能包含示例中的字段；移除对象内 `proof` 后的完整对象是 protected document，并按 UTF-8 RFC 8785 JCS 和 `eddsa-jcs-2022` 验签；
+2. `predecessorDid` 必须（MUST）等于承载该对象的停用文档 `id`，`successorDid` 必须（MUST）等于该文档顶层 `successorDid`；
+3. predecessor 与 successor 必须（MUST）都是路径型 `e1_` did:wba，其规范 stable subject path 必须相同并等于 `stableSubjectPath`；
+4. `providerDid` 必须（MUST）是由 predecessor HTTPS origin 的同一 host 和显式 port 构造的裸域名 did:wba DID；
+5. `proof.verificationMethod` 必须（MUST）属于 `providerDid`，存在于该 Provider DID Document 中，并由其 `assertionMethod` 授权；
+6. `proof.created` 必须（MUST）等于 `issuedAt`，两者必须使用规范 RFC 3339 UTC 表示；
+7. proof 缺失/无效、未知字段、跨 origin Provider 或任一绑定不一致时，必须（MUST）将 transition 判为无效，不得把该对象降级成有效提示。
+
+验证成功时，该 hop 的 assurance 精确为 `provider_asserted`。它只证明 Provider 对指定 predecessor、直接 successor 和 stable subject path 作出签名声明，不证明旧 binding key 或 recovery key 的密码学连续性，因此不得（MUST NOT）提升为 `verified` 或 `recovery_verified`。
+
+仅有 TLS 保护下返回的 `successorDid`、WNS/Handle、`alsoKnownAs`、相同 stable subject path 或 409 `currentDid` 时，assurance 仍为 `unverified`。如果同一 hop 同时存在多种证据，验证者必须先拒绝任何已出现但格式或签名无效的证据；全部已出现证据均有效时，按 `verified`、`recovery_verified`、`provider_asserted`、`unverified` 的顺序报告最强结果，不能用较弱结果掩盖无效 proof。
 
 ### 2.6 安全和隐私注意事项
 

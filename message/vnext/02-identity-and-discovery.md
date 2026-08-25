@@ -690,7 +690,7 @@ A transition result **MUST** preserve its actual assurance:
 
 - `verified`: the old DID's bound root key signs the deactivation and successor relationship;
 - `recovery_verified`: a recovery key that was authorized in a previously trusted old document establishes the transition;
-- `provider_asserted`: the provider supplies the applicable method-defined assertion without old-root or pre-authorized recovery-key proof;
+- `provider_asserted`: a did:wba Provider supplies a `providerTransitionAssertion` that verifies under Section 2.5.6 of Specification 03, but there is no proof from the old binding key or a pre-authorized recovery key. TLS, `successorDid`, a Handle, or a 409 hint alone does not reach this level;
 - `unverified`: no accepted continuity evidence exists.
 
 The transition resolver and verification layer **MUST NOT** itself merge identities or make a high-trust business authorization decision from `provider_asserted`; it reports that assurance unchanged to the owning business layer. Any automated inheritance based on `provider_asserted` occurs only because that business system has an explicit policy accepting the provider-compromise and account-recovery tradeoff, not because the assertion was upgraded to cryptographic continuity.

@@ -720,7 +720,7 @@ Handle Provider 必须（MUST）满足以下要求：
 - Handle Provider 必须（MUST）在新的 DID Document 可用且其独立恢复或身份验证策略完成后，将 Handle 映射更新到新 DID，并严格递增 `binding_generation`
 - `binding_generation` 只表示 Handle 映射状态；它不得（MUST NOT）被解释为 DID 代际或 DID 迁移的密码学证明
 - DID 换绑必须（MUST）表示同一 Handle 主体的凭证更新，不得（MUST NOT）被用于转让 Handle 或更换 Handle 主体
-- 若 Handle Provider 或客户端需要将新旧 DID 视为经密码学验证的同一持续主体，必须（MUST）按 03 规范验证二者稳定主体路径一致、旧 DID Document 的 `successorDid` 指向新 DID，并验证相应整体 `proof`；不得（MUST NOT）仅凭 Handle 相同或前缀相同作出该判断。缺少有效迁移 `proof` 时，Handle Provider 可以依据其恢复策略更新映射，但不得将该关系表述为已通过密码学连续性验证
+- 若 Handle Provider 或客户端需要将新旧 DID 视为经密码学验证的同一持续主体，必须（MUST）按 03 规范验证二者稳定主体路径一致、旧 DID Document 的 `successorDid` 指向新 DID，并验证相应整体 `proof`；不得（MUST NOT）仅凭 Handle 相同或前缀相同作出该判断。缺少有效迁移 `proof` 时，Handle Provider 可以依据其恢复策略更新映射，但不得将该关系表述为已通过密码学连续性验证；只有 03 规范的方法级签名 `providerTransitionAssertion` 验证成功时才可以报告 `provider_asserted`，Handle 映射本身仍只产生 `unverified`
 - 在轮换窗口中，Handle Provider 应当（SHOULD）降低缓存 TTL，以减少客户端使用旧映射的时间
 - 客户端不得（MUST NOT）假定 Handle 永远绑定同一个 DID；当前解析结果才是该 Handle 的权威当前 DID
 - 对于安全敏感操作，客户端在使用 Handle 获得新的 DID 后，必须（MUST）重新执行双向绑定验证
