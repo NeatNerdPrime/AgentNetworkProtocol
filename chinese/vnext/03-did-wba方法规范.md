@@ -52,6 +52,10 @@ did:wba方法参考的did:web方法规范地址为[https://w3c-ccg.github.io/did
 
 公钥指纹路径方案会带来一个自然结果：当绑定密钥发生变化时，路径型 DID 也会发生变化。因此，did:wba 不把“稳定的用户可读标识”直接压在 DID 字符串上，而是通过名称服务方案（如 WNS/Handle）来解决稳定引用问题：DID 负责“可验证的加密身份”，名称服务负责“稳定的人类可读名称”。
 
+对于需要在绑定密钥变化后保持主体连续性的路径型 DID，最后一个绑定指纹 segment 之前的路径称为**稳定主体路径**。例如，`did:wba:example.com:user:alice:e1_<fingerprint>` 的稳定主体路径为 `example.com:user:alice`。稳定主体路径不是另一个 DID，也不能独立解析；一旦用于标识持续主体，就必须（MUST）永久不可修改、不可回收、不可重新分配。
+
+具有相同稳定主体路径的两个完整 DID 仍然是两个不同的 DID。相同路径只是判断主体连续性的必要条件；验证者只有在按本规范验证 `successorDid` 文档链及相应 DID Document `proof` 后，才可以将它们视为同一个持续主体。
+
 此外，各种类型的标识符系统都可以添加对 DID 的支持，从而在集中式、联合式和去中心化标识符系统之间架起互操作的桥梁。这意味着现有的中心化标识符系统无需彻底重构，只需在其基础上创建 DID，即可实现跨系统互操作，从而大大降低了技术实施的难度。
 
 ## 2. WBA DID 方法规范
@@ -165,6 +169,22 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 2. 推荐将不带 `e1_` 前缀的 thumbprint 值用作该验证方法的 `kid` 或 fragment，便于 DID 路径与验证方法标识保持直观对应；
 3. 新部署应当（SHOULD）优先采用 `e1_` profile。
 
+### 2.2.3 稳定主体路径
+
+对于采用绑定指纹路径方案的路径型 DID，稳定主体路径由域名及最后一个绑定指纹 segment 之前的全部路径 segment 组成：
+
+```text
+did:wba:example.com:user:alice:e1_<fingerprint>
+        └──── 稳定主体路径：example.com:user:alice ────┘
+```
+
+稳定主体路径必须（MUST）满足以下要求：
+
+1. 一旦分配给某一持续主体，就不得（MUST NOT）修改、回收或重新分配给其他主体；
+2. 根绑定密钥变化并产生新 DID 时，新旧 DID 的稳定主体路径必须（MUST）完全一致；
+3. 验证者不得（MUST NOT）仅凭稳定主体路径相同就认定两个 DID 属于同一主体；
+4. 主体连续性必须（MUST）按 2.5.2 至 2.5.5 节验证旧 DID Document 的 `successorDid`、整体 `proof` 以及新 DID 的绑定指纹。
+
 ### 2.4 密钥材料和文档处理
 
 由于大多数Web服务器呈现内容的方式，特定的did:wba文档很可能会以application/json的媒体类型提供服务。如果检索到一个名为did.json的文档，应该遵循以下处理规则：
@@ -253,6 +273,12 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 - **@context**：必须字段，JSON-LD 上下文定义了DID文档中使用的语义和数据模型，确保文档的可理解性和互操作性。`https://www.w3.org/ns/did/v1` 是必须的。对于采用标准 Ed25519 proof 的 e1 文档，`https://w3id.org/security/data-integrity/v2` 与 `https://w3id.org/security/multikey/v1` 也是必须的。其他根据需要添加。
 
 - **id**：必须字段，不可以携带IP，但是可以携带端口，携带端口时，冒号需要编码为`%3A`。后面使用冒号进行路径分割。对于新创建的路径型 DID，最后一个 path segment 必须（MUST）是 `e1_<fingerprint>`。
+
+- **alsoKnownAs**：DID Core 定义的可选字段。在根绑定密钥变化并生成新 DID 时，新 DID Document 可以（MAY）通过该字段引用直接前驱 DID。`alsoKnownAs` 只表达反向关联声明，不单独构成主体连续性的密码学证明。
+
+- **deactivated**：did:wba 在直接 DID Document 获取模式下定义的可选扩展字段。值为 `true` 时，表示该完整 DID 已停止用于新的认证和业务路由，但其 DID Document 仍可用于历史验证和后继查询。
+
+- **successorDid**：did:wba 定义的可选扩展字段，值必须（MUST）是完整 DID 字符串，用于从已被替代的 DID 指向其直接后继 DID。它不得（MUST NOT）跳过中间 DID 而直接改写为更晚的后继。
 
 - **verificationMethod**：必须字段，包含验证方法的数组，定义了用于验证DID主体的公钥信息。对于需要支持端到端加密（E2EE）通信的场景，`verificationMethod` 中**应**同时包含签名密钥和密钥协商密钥，实现密钥分离。签名密钥用于身份认证和文档断言；密钥协商密钥（如 `X25519KeyAgreementKey2019`）用于上层协议的密钥协商或机密信息接收。两类密钥各司其职，单一密钥泄露不会同时影响身份认证和通信机密性。
 
@@ -359,13 +385,19 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 - 附加 `/did.json` 以完成URL。
 - 使用能够成功协商安全HTTPS连接的代理执行对URL的HTTP GET请求，该代理强制执行 [2.6节安全和隐私注意事项](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations) 描述的安全要求。
 - 验证解析的DID文档的ID是否与正在解析的 did:wba DID 匹配。
-- 对于主规范定义的 `e1_` 路径型 DID，必须（MUST）按如下严格绑定关系验证：
+- 对于主规范定义的、未设置 `deactivated = true` 的 `e1_` 路径型 DID，必须（MUST）按如下严格绑定关系验证：
   - DID Document 顶层 `proof` 必须存在；
   - `proof` 必须通过 `DataIntegrityProof` + `eddsa-jcs-2022` 校验；
   - `proof.verificationMethod` 指向的验证方法必须（MUST）是 Ed25519 `Multikey`（或语义等价的 Ed25519 验证方法表示）；
   - 以 `proof.verificationMethod` 对应的 Ed25519 公钥计算 RFC 7638 thumbprint，结果必须（MUST）与 DID 路径最后的 `e1_` 指纹段完全一致。
+- 对于设置了 `deactivated = true` 的 `e1_` DID：
+  - 验证者仍必须（MUST）在文档中找到与该 DID 路径 `e1_` 指纹匹配的原绑定密钥；
+  - 若文档同时包含 `successorDid`，验证者必须（MUST）验证新旧 DID 的稳定主体路径相同；
+  - 若整体 `proof` 由原绑定密钥签署，则该迁移可以被视为已验证；
+  - 若整体 `proof` 由预授权恢复密钥签署，只有在验证者已持有停用前的可信 DID Document，并能确认该恢复密钥已在该可信文档的 `assertionMethod` 中被预先授权时，才可以将该迁移视为恢复验证通过；
+  - 缺少有效 `proof` 时，客户端可以（MAY）读取 `successorDid` 作为服务端提供的迁移提示，但不得（MUST NOT）据此自动合并身份或作出高信任授权决定。
 - 在HTTP GET请求期间执行DNS解析时，客户端应使用[[RFC8484](https://w3c-ccg.github.io/did-method-web/#bib-rfc8484)]以防止跟踪正在解析的身份。
-- 对 `e1_` DID，上述 proof 校验不受本地策略开关影响，而是解析成功的必要条件。
+- 对活动 `e1_` DID，上述 proof 校验不受本地策略开关影响，而是解析成功的必要条件。
 - 对其他 profile，如果本地策略启用了 DID Document proof 校验，且文档包含 `proof`，则应按对应 profile 规则进行校验。
 
 对于裸域名 DID，解析与验证流程遵循与 did:web 裸域名 DID 等价的基本模式：解析 `/.well-known/did.json`，检查 `id` 一致性，并按 DID Core / HTTP Message Signatures 规则验证 `authentication` 关系中的验证方法；不适用 `e1_` 路径绑定校验。
@@ -379,7 +411,16 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 对于采用默认路径方案的路径型 did:wba，只要 DID 路径最后的绑定密钥指纹不变，DID 本身将保持不变，但 DID 文档的其他内容可以更改，例如，添加新的验证密钥、撤销旧密钥或更新服务端点。
 
-如果绑定密钥发生变化，则该路径型 DID 必须（MUST）变更为新的 DID。此时应创建新的 DID 文档，并由上层名称服务（如 WNS/Handle）负责稳定引用和迁移。
+如果绑定密钥发生变化，则该路径型 DID 必须（MUST）变更为新的 DID。新旧 DID 是两个不同的 DID，但可以按以下规则建立同一持续主体的迁移关系：
+
+1. 新 DID 必须（MUST）与旧 DID 具有完全相同的稳定主体路径；
+2. 必须（MUST）创建并发布新 DID Document，新文档可以（MAY）在 `alsoKnownAs` 中引用直接前驱 DID；
+3. 旧 DID Document 必须（MUST）继续可获取，并设置 `deactivated = true` 与 `successorDid = <new DID>`；
+4. `successorDid` 必须（MUST）只指向直接下一代 DID；后续再次轮换时，不得改写更早 DID 的 `successorDid`；
+5. 旧 DID Document 的整体 `proof` 应覆盖 `deactivated`、`successorDid` 及文档中的其他属性；新 DID Document 由新绑定密钥生成整体 `proof`；
+6. 上层名称服务（如 WNS/Handle）应同步更新到新 DID，但名称服务映射本身不替代上述迁移证明。
+
+程序化管理接口不由本规范定义。为避免并发轮换产生多个后继 DID，实现应当（SHOULD）以当前完整 DID（例如 `expected_current_did`）执行原子比较并交换，而不是仅依据稳定主体路径提交更新。
 
 > 注意：
 >
@@ -388,9 +429,9 @@ did:wba:example.com%3A3000:user:alice:e1_<fingerprint>
 
 #### 2.5.4 停用（撤销）
 
-要删除DID文档，必须移除 `did.json` 文件，或者由于其他原因使其不再公开可用。
+对于彻底停用且不存在后继 DID 的身份，可以移除 `did.json` 文件，或者由于其他原因使其不再公开可用。
 
-对于采用默认路径方案的路径型 did:wba，如果绑定密钥被永久废弃，也可以通过停用旧 DID 并创建新 DID 的方式完成轮换；稳定引用关系由上层名称服务负责维护。
+对于因绑定密钥轮换而被新 DID 替代的路径型 did:wba，不得（MUST NOT）移除旧 DID Document。旧文档必须（MUST）继续可获取，并设置 `deactivated = true` 与 `successorDid`，以支持历史签名验证和后继查询。这里的 `deactivated` 只表示该完整 DID 不再用于新的认证和路由，不表示其持续主体已经消失。
 
 #### 2.5.5 DID Document proof
 
@@ -420,7 +461,13 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 
 解析 `e1_` did:wba DID Document 时，proof 校验不是可选增强检查，而是路径绑定语义的一部分；缺少 `proof`、`proof` 验证失败、或 `proof.verificationMethod` 与 `e1_` 绑定指纹不一致时，解析必须（MUST）失败。
 
-对于 `e1_` DID，不存在“DID Document 不含 `proof` 仍可继续解析”的宽松模式。
+对于 `e1_` DID，不存在“活动 DID Document 不含 `proof` 仍可继续解析”的宽松模式。
+
+对于设置了 `deactivated = true` 和 `successorDid` 的旧 DID Document，顶层 `proof` 仍然是一个覆盖移除 `proof` 后完整文档的整体证明：
+
+- 由旧 DID 绑定密钥签署时，验证结果为强密码学连续性；
+- 由旧 DID 在停用前已通过 `assertionMethod` 授权的恢复密钥签署时，验证者必须（MUST）依据此前可信状态确认该预授权关系；
+- 当旧私钥和预授权恢复密钥均不可用时，文档可以（MAY）保留未验证的 `successorDid` 提示，但验证者必须（MUST）向上层报告该连续性仅为服务提供方声明，不得将其当作已验证迁移。
 
 对于非 `e1_` profile，实现可以（MAY）按对应 profile 规则或本地策略在以下两种模式中选择其一：
 
@@ -433,6 +480,8 @@ did:wba DID Document 的顶层 `proof` 字段是否出现，取决于所采用�
 ### 2.6 安全和隐私注意事项
 
 安全与隐私注意事项参考[[did:web 方法规范2.6节](https://w3c-ccg.github.io/did-method-web/#security-and-privacy-considerations)]。实现者还应额外关注默认路径方案下绑定密钥变更带来的 DID 轮换，以及名称服务同步问题。
+
+本版本不要求独立可验证日志。客户端应当（SHOULD）缓存已验证的当前 DID 及其后继关系；如果同一旧 DID 返回不同的 `successorDid`、迁移链出现循环、或后继 DID 的稳定主体路径发生变化，必须（MUST）拒绝该迁移并向上层报告冲突。
 
 新部署应当（SHOULD）优先采用 `e1_` profile，以获得更好的标准 proof 互操作性。如果实现需要兼容钱包生态和现有 secp256k1 实现，请参见附录 A 的 `k1_` 兼容扩展。
 
@@ -535,7 +584,7 @@ Signature: sig1=:BASE64_SIGNATURE:
 
 3. **提取 `keyid` 并解析 DID**：从 `Signature-Input` 中提取 `keyid`，获得对应 DID 与验证方法。
 
-4. **读取 DID 文档**：根据 DID 解析 DID 文档。
+4. **读取 DID 文档**：根据 DID 解析 DID 文档。若文档设置 `deactivated = true`，服务端不得（MUST NOT）继续使用该 DID 完成新的身份认证；当文档包含 `successorDid` 时，应按 3.2.4.3 节返回 DID 已被替代的错误。
 
 5. **验证 DID 绑定关系**：
    - 验证 `keyid` 指向的验证方法存在；
@@ -675,6 +724,27 @@ Cache-Control: no-store
 ##### 3.2.4.2 403响应
 
 当服务端身份验证成功，但是 DID 不具备访问服务端资源的权限时，可以返回 `403 Forbidden` 响应。
+
+##### 3.2.4.3 409 DID 已被替代
+
+当请求目标 DID 或用于认证的 DID 已设置 `deactivated = true`，且存在后继 DID 时，服务端可以返回 `409 Conflict`：
+
+```http
+HTTP/1.1 409 Conflict
+Content-Type: application/json
+Cache-Control: no-store
+```
+
+```json
+{
+  "code": "did_superseded",
+  "requestedDid": "did:wba:example.com:user:alice:e1_<old-fingerprint>",
+  "currentDid": "did:wba:example.com:user:alice:e1_<current-fingerprint>",
+  "stableSubjectId": "example.com:user:alice"
+}
+```
+
+响应中的 `currentDid` 只作为未验证提示。客户端不得（MUST NOT）直接依据该字段重试，而应获取旧 DID Document，验证 `deactivated`、`successorDid` 和整体 `proof`，再逐个解析后继 DID，直到找到当前活动 DID。客户端应使用当前 DID 重新生成签名后再发起请求，不应使用透明 `301` / `302` 跳转代替该验证流程。
 
 ## 4. 基于did:wba方法和json格式数据承载的跨平台身份认证流程
 
@@ -845,6 +915,8 @@ sequenceDiagram
    - 当请求存在消息体时，服务端**必须**验证 `Content-Digest`，防止消息体被篡改。
    - 认证成功不等于授权成功。服务端**必须**将授权判断与身份认证分开处理。
    - 对于 `e1_` DID，解析器必须（MUST）验证 `DataIntegrityProof`；对于其他 profile，如果实现启用了 DID Document proof 校验，则应当（SHOULD）按对应 profile 规则验证 `proof`。
+   - 稳定主体路径不得（MUST NOT）被回收或重新分配；验证者不得（MUST NOT）仅通过删除最后一个绑定指纹 segment 来合并两个 DID。
+   - 验证者在跟随 `successorDid` 时必须（MUST）限制链长、检测循环，并拒绝稳定主体路径不一致或同一旧 DID 出现多个后继的情况。
 
 3. **传输安全**
 
@@ -881,6 +953,8 @@ Alice希望通过智能助理调用一个名为example的第三方服务API。�
 - `e1_`：绑定 Ed25519 公钥，推荐用于新部署，并可直接集成 W3C 标准的 Data Integrity EdDSA proof。
 
 为了兼容钱包生态和现有 secp256k1 实现，本规范在附录 A 中额外定义了 `k1_` 兼容扩展。
+
+当绑定密钥变化并生成新 DID 时，本规范以永久稳定主体路径作为连续性锚点，以旧 DID Document 的 `successorDid` 和整体 `proof` 证明前向迁移；新 DID Document 可以通过 `alsoKnownAs` 反向声明旧 DID。相同稳定主体路径本身不构成 DID 等价证明。
 
 同时，跨平台 HTTP 身份认证流程采用基于 HTTP Message Signatures 与 `Content-Digest` 的标准化方案，并将认证成功后的附加认证信息放入 `Authentication-Info` 响应头中。
 
