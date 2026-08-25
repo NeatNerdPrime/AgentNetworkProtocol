@@ -197,7 +197,7 @@ This Profile **MUST** depend on:
 This Profile **MAY** be used in combination with the following Profiles:
 
 - `anp.direct.base.v1`
-- `anp.group.base.v1`
+- `anp.group.base.v2`
 - `anp.direct.e2ee.v1`
 - `anp.direct.e2ee.v2`
 - `anp.group.e2ee.v1`
@@ -349,9 +349,9 @@ When the attachment list is sent in `anp.direct.base.v1` via `direct.send`:
 
 ### 6.2 Carried in Group Base
 
-When the attachment list is sent in `anp.group.base.v1` via `group.send`:
+When the attachment list is sent in `anp.group.base.v2` via `group.send`:
 
-- `meta.profile` **MUST** equal `anp.group.base.v1`
+- `meta.profile` **MUST** equal `anp.group.base.v2`
 - `meta.security_profile` **MUST** equal `transport-protected`
 - `meta.content_type` **MUST** equal `application/anp-attachment-manifest+json`
 - `body.payload` **MUST** be the Attachment Message object
@@ -757,6 +757,14 @@ R->>O: GET object_uri + Authorization
 
 Therefore, authorization for `attachment.get_download_ticket` should depend on message context and Access Grants, rather than only on `object_uri` or only on `intended_target` left during the upload stage.
 
+### 9.9 Historical Access Grants after an Agent DID transition
+
+Historical `attachment_manifest` objects and Access Grants **MUST NOT** be rewritten when an Agent DID changes.
+
+If a direct-message Access Grant names an earlier recipient DID and the current requester presents its successor DID, the Object Service **MAY** map the request to the same internal grant only after it verifies the P2 transition from the grant's DID to `requester_did` and the owning business policy accepts the returned assurance. Whether `provider_asserted` is sufficient to inherit historical attachment access is a business decision; P7 does not force acceptance or rejection.
+
+The mapping is internal. P7 **MUST NOT** add a stable-subject field, name, transition chain, or device selector to the historical manifest, Access Grant, Ticket, or control-plane request. For a group attachment, authorization remains based on the current P4 v2 roster, group policy, and original message context.
+
 ---
 
 ## 10. Control-Plane Methods
@@ -1117,14 +1125,15 @@ An implementation conforming to this Profile MUST support at least:
 15. Object bytes are not forwarded through ANP business messages or cross-domain service invocation paths
 16. `mode = "none"` under `transport-protected`
 17. Ordinary P7 manifests, control-plane requests, Access Grants, and Download Tickets do not require or expose a device selector
+18. Historical Access Grants may be mapped to a successor DID only after P2 transition verification and business-policy acceptance, without rewriting historical wire objects
 
 If an implementation claims to support E2EE attachments, it MUST also:
 
-18. Support `mode = "object-e2ee"`
-19. Support the `chacha20-poly1305` object encryption process specified in this Profile
-20. Distribute `object_key_b64u` and `nonce_b64u` inside the E2EE attachment manifest protected by P5 or P6; device selection remains owned by that overlay
-21. Perform ciphertext digest verification and local decryption after object download
-22. Clearly comply with the access boundaries of "v1 does not guarantee retroactive withdrawal of rights"
+19. Support `mode = "object-e2ee"`
+20. Support the `chacha20-poly1305` object encryption process specified in this Profile
+21. Distribute `object_key_b64u` and `nonce_b64u` inside the E2EE attachment manifest protected by P5 or P6; device selection remains owned by that overlay
+22. Perform ciphertext digest verification and local decryption after object download
+23. Clearly comply with the access boundaries of "v1 does not guarantee retroactive withdrawal of rights"
 
 ---
 
@@ -1406,7 +1415,7 @@ Content-Length: 1048592
   "method": "group.send",
   "params": {
     "meta": {
-      "profile": "anp.group.base.v1",
+      "profile": "anp.group.base.v2",
       "security_profile": "transport-protected",
       "sender_did": "did:example:agent-a",
       "target": {

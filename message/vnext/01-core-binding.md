@@ -280,7 +280,7 @@ The `meta` object fields are defined as follows:
   - `security_profile` only expresses security profile and does not replace `profile`.
 - Example:
   - `"anp.direct.base.v1"`
-  - `"anp.group.base.v1"`
+  - `"anp.group.base.v2"`
   - `"anp.direct.e2ee.v2"`
   - `"anp.group.e2ee.v2"`
 
@@ -553,7 +553,7 @@ Notes:
       "anp.core.binding.v1",
       "anp.identity.discovery.v1",
       "anp.direct.base.v1",
-      "anp.group.base.v1",
+      "anp.group.base.v2",
       "anp.attachment.v1",
       "anp.federation.relay.v1",
       "anp.direct.e2ee.v2",
@@ -634,6 +634,8 @@ Among them:
 
 For DID-addressed Base operations, a device identifier is not part of the idempotency scope. A device-addressed E2EE Overlay **MUST** extend the idempotency scope with every device selector that it requires, so retries for different cryptographic endpoints cannot collide.
 
+When an owning Profile supports DID-transition continuity, an exact retry of a request accepted under an earlier DID **MUST** be looked up before rejecting that DID as superseded. If the exact idempotency record exists, the receiver **MUST** return the prior result. A request signed by the successor DID is not an exact retry of the earlier-DID request; the owning Profile **MAY** define additional cross-DID deduplication only after the transition has been accepted and the business action is semantically equivalent.
+
 ### 9.2 Message retry
 
 For message sending operations:
@@ -711,8 +713,13 @@ For ANP business layer errors, the server **SHOULD** use the 1000+ error codes d
 | 1016 | `anp.device_binding_invalid` | A device selector or its required DID/key binding is invalid |
 | 1017 | `anp.device_not_eligible` | The selected device is not currently eligible for the requested security Profile |
 | 1018 | `anp.device_state_changed` | Previously resolved device eligibility or key state is no longer current |
+| 1019 | `anp.did_superseded` | The requested DID has a successor; the caller must verify the transition, rebuild the request, and sign again |
+| 1020 | `anp.did_transition_invalid` | The transition chain, proof, binding, stable subject path, or transition Profile is invalid or unsupported |
+| 1021 | `anp.did_transition_conflict` | The transition contains a fork, cycle, ambiguous subject, active-record collision, or concurrent update conflict |
 
 Codes 1015 through 1018 apply only when the owning P5/P6-like E2EE Overlay declares device addressing. An ordinary Base, Group, or Attachment operation **MUST NOT** use these errors to demand a device selector; a selector received in such an operation is instead an invalid parameter for that Profile.
+
+Codes 1019 through 1021 apply only when the owning Profile processes a DID transition. For `anp.did_superseded`, `error.data.details` **SHOULD** include `requested_did` and `current_did`. The latter is an unverified hint: the caller **MUST** verify the transition from `requested_did` and **MUST** rebuild every DID-bound signature, digest, or encrypted context before retrying. ANP errors **MUST NOT** expose an internal stable-subject identifier.
 
 ### 10.4 Error return requirements
 
@@ -860,6 +867,7 @@ An ANP Core Binding compliant implementation MUST support at least:
 12. Force verification of `meta.target.kind = "service"` and `target.did = serviceDid` for the `service-scoped` method;
 13. Explicit declaration of `endpoint-local` method allows omission of `target`, and rejects ambiguous omission when not declared;
 14. Reject device selectors in ordinary Base operations and validate them only when a P5/P6-like device-addressed E2EE Overlay explicitly declares them.
+15. Public DID-transition errors 1019 through 1021 and exact old-DID idempotent replay before superseded-DID rejection.
 
 ## 16. Example
 

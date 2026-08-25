@@ -6,8 +6,8 @@
 - Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Profile: `anp.group.e2ee.v2`
-- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`, `anp.group.base.v1`
-- Applicability: This Profile is suitable for the Group End-to-End Encryption control layer based on Group DID and works closely with `anp.group.base.v1`.
+- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`, `anp.group.base.v2`
+- Applicability: This Profile is suitable for the Group End-to-End Encryption control layer based on Group DID and works closely with `anp.group.base.v2`.
 
 ---
 
@@ -19,9 +19,9 @@ This Profile defines the Group End-to-End Encryption control layer of ANP, stipu
 2. How to use MLS as the basic protocol for group key establishment, member changes, and application message protection;
 3. How to bind a `did:wba` Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
 4. How to define a set of independent `group.e2ee.*` JSON-RPC methods to specifically carry MLS cryptographic actions;
-5. How to work closely with `anp.group.base.v1` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
+5. How to work closely with `anp.group.base.v2` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
 6. How to deal with `epoch`, `Welcome`, `PrivateMessage`, `PublicMessage`, `epoch_authenticator`, fork detection and recovery.
-7. How to replace the corresponding MLS leaves through ordered `group.e2ee.add` and `group.e2ee.remove` operations after P4 accepts a DID rebind for a Handle-backed Member;
+7. How to replace the corresponding MLS leaves through ordered `group.e2ee.add` and `group.e2ee.remove` operations after P4 accepts a DID update for a member;
 8. How one P4 member DID can have multiple independent MLS device leaves without changing DID-level business membership.
 
 This Profile does not define:
@@ -66,7 +66,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **Terminal Leaf**: A device leaf that has been removed from the group's MLS membership set. Its local group binding can no longer send, receive, or decrypt application messages for that `group_did`, while the device itself may remain a current eligible P2 Manifest entry.
 - **Device Delivery Queue**: The durable per-`(recipient_did, recipient_device_id)` delivery state that the Group Host keeps for P6 envelopes it has not transport-confirmed. It carries public metadata, any preserved public origin proof, and opaque ciphertext only, and it is not group history.
 - **Fork**: An irreconcilable sequence of `epoch` / `epoch_authenticator` / status advancement was observed by different members for the same `group_did`.
-- **MLS Member Credential Rebind**: After P4 accepts a DID rebind for the same Handle member, the cryptographic orchestration that adds selected new-DID device leaves and then removes every old-DID device leaf through ordered Commits.
+- **MLS Member DID Update**: After P4 accepts a DID update for the same member, the cryptographic orchestration that adds selected new-DID device leaves and then removes every old-DID device leaf through ordered Commits.
 
 ---
 
@@ -85,7 +85,7 @@ The four MUST NOT be mechanically equivalent; but there MUST be a verifiable bin
 
 ### 3.2 One Agent DID = one external group member; each device = one MLS leaf
 
-P4 membership, roles, policy, and member counts remain attached to the current `agent_did`. P4's optional `member_handle` is a stable business-membership anchor, but it **MUST NOT** replace the current DID in MLS `credential.identity`.
+P4 membership, roles, policy, and member counts remain attached to the current `agent_did`. P4 v2 uses the current `agent_did` as its only wire member identity; no name, stable-path field, or local record identifier may replace that DID in MLS `credential.identity`.
 
 P6 **MAY** represent several devices of that same DID as independent MLS clients and leaves. Every such leaf keeps `credential.identity = UTF8(agent_did)` and is distinguished by the authenticated `device_id` binding defined in Section 6. Multiple leaves with the same DID do not create additional P4 members, roles, or member-count entries.
 
@@ -95,7 +95,7 @@ Each device independently generates and stores its KeyPackage private material, 
 
 ### 3.3 P4 is the main business protocol, and P6 is the cryptography control layer
 
-The relationship between this Profile and `anp.group.base.v1` is as follows:
+The relationship between this Profile and `anp.group.base.v2` is as follows:
 
 - P4 defines the business actions, business state, ordering semantics and receipt semantics of the group;
 - P6 defines MLS cryptographic actions, cryptographic objects, binding rules and verification requirements;
@@ -121,7 +121,7 @@ For example:
 - An already-active member adds another eligible device → owner may execute another device-level `group.e2ee.add` without a P4 membership change
 - A member becomes `left` or `removed` in P4 → owner removes every MLS device leaf for that DID
 - A device loses P2 Manifest eligibility while its DID remains active → owner removes only that device leaf
-- A Handle-backed Member produces `member-credential-rebound` in P4 → owner adds selected new-DID device leaves and then removes every old-DID device leaf
+- A P4 member produces `member-did-updated` in P4 → owner adds selected new-DID device leaves and then removes every old-DID device leaf
 
 ### 3.5 owner is the only MLS controller
 
@@ -132,7 +132,7 @@ owner is responsible for:
 - Create MLS group;
 - Execute `add`;
 - Execute `remove`;
-- Execute member credential rebinds through ordered per-device Adds and Removes;
+- Execute member DID updates through ordered per-device Adds and Removes;
 - Generate `commit` corresponding to member changes;
 - Generate `welcome` for new members;
 - Advance `epoch` after member change.
@@ -141,14 +141,14 @@ The core idea of P6 is not to put MLS objects into P4 method bodies, but to let 
 
 ```mermaid
 flowchart TB
-P4[P4 business-state changes<br/>group.create / member active / member left or removed / credential rebound]
+P4[P4 business-state changes<br/>group.create / member active / member left or removed / member DID updated]
 OBS[owner observes business state]
 
 CREATE[group.e2ee.create]
 ADD[group.e2ee.add(DID + device)]
 REMOVE[group.e2ee.remove(DID + device)]
-REBIND_ADD[group.e2ee.add(new DID devices)]
-REBIND_REMOVE[group.e2ee.remove(old DID devices)]
+DID_UPDATE_ADD[group.e2ee.add(new DID devices)]
+DID_UPDATE_REMOVE[group.e2ee.remove(old DID devices)]
 
 HOST[Group Host]
 NOTICE[group.e2ee.notice]
@@ -157,14 +157,14 @@ P4 --> OBS
 OBS -->|group created and has no crypto_group_id yet| CREATE
 OBS -->|eligible device not yet in MLS| ADD
 OBS -->|device or DID must leave MLS| REMOVE
-OBS -->|Handle member rebound and old leaves remain| REBIND_ADD
+OBS -->|P4 member rebound and old leaves remain| DID_UPDATE_ADD
 
 CREATE --> HOST
 ADD --> HOST
 REMOVE --> HOST
-REBIND_ADD --> HOST
-REBIND_ADD -->|execute after rebind Add is accepted| REBIND_REMOVE
-REBIND_REMOVE --> HOST
+DID_UPDATE_ADD --> HOST
+DID_UPDATE_ADD -->|execute after DID update Add is accepted| DID_UPDATE_REMOVE
+DID_UPDATE_REMOVE --> HOST
 
 HOST --> NOTICE
 ```
@@ -224,7 +224,7 @@ All group entry paths are eventually unified into MLS `add` initiated by the own
 In v2:
 
 - Only the application message content of `group.e2ee.send` enters MLS `PrivateMessage` and is encrypted;
-- `group.e2ee.create`, `group.e2ee.add`, and `group.e2ee.remove` all continue to use plaintext JSON-RPC request bodies; rebind orchestration reuses `add` and `remove` and defines no new request method;
+- `group.e2ee.create`, `group.e2ee.add`, and `group.e2ee.remove` all continue to use plaintext JSON-RPC request bodies; DID update orchestration reuses `add` and `remove` and defines no new request method;
 - Objects such as `commit` and `welcome` appear as method inputs or Notice payloads instead of being embedded in the P4 business method body.
 
 ---
@@ -243,7 +243,7 @@ This Profile **MUST** depend on the following Profiles:
 
 - `anp.core.binding.v1`
 - `anp.identity.discovery.v1`
-- `anp.group.base.v1`
+- `anp.group.base.v2`
 
 ### 4.3 Security Profile
 
@@ -324,7 +324,7 @@ v2 mainline includes at least:
 - PrivateMessage
 - Epoch advancement
 
-A Handle-backed Member credential rebind introduces neither a new P6 method nor a new MLS primitive. It first uses one `group.e2ee.add` Commit per selected new-DID device, then one `group.e2ee.remove` Commit per old-DID device leaf.
+A P4 member DID update introduces neither a new P6 method nor a new MLS primitive. It first uses one `group.e2ee.add` Commit per selected new-DID device, then one `group.e2ee.remove` Commit per old-DID device leaf.
 
 Among them:
 
@@ -372,7 +372,7 @@ This Profile requires the following MLS elements to be bound to `(agent_did, dev
 
 ### 6.2 Credential Identity Rules
 
-For this Profile, `credential.identity` in an MLS member credential **MUST** equal the UTF-8 byte string of that leaf's current `agent_did`. A Handle **MUST NOT** be written into or replace `credential.identity`.
+For this Profile, `credential.identity` in an MLS member credential **MUST** equal the UTF-8 byte string of that leaf's current `agent_did`. A readable name, stable subject path, or local identity **MUST NOT** be written into or replace `credential.identity`.
 
 Implementation **MUST NOT** replace `credential.identity` with a local account ID, device ID, numeric user ID, or other non-DID string.
 
@@ -658,7 +658,7 @@ Rules:
 - `epoch` **MUST** exist;
 - `commit_b64u` **MUST** exist when `notice_type = "commit-delivery"` is present;
 - When `notice_type = "welcome-delivery"`, `welcome_b64u` and `ratchet_tree_b64u` **MUST** exist at the same time;
-- For a notice produced by credential-rebind orchestration, `group_state_ref` **MUST** exactly reference the accepted P4 `member-credential-rebound` event used by every P6 Add and Remove. The receiver **MUST** obtain the Handle, binding generation, previous DID, and new DID from that P4 event rather than from duplicated P6 continuity fields;
+- For a notice produced by DID update orchestration, `group_state_ref` **MUST** exactly reference the accepted P4 `member-did-updated` event used by every P6 Add and Remove. The receiver **MUST** obtain the previous DID and current DID from that P4 event rather than from duplicated P6 continuity fields;
 - `subject_did`, `subject_device_id`, and `subject_status` describe the one leaf affected by this P6 operation: Add uses the added DID/device with `active`, while Remove uses the removed DID/device with `removed`;
 - The device receiving the notice is identified only by outer `meta.target.did` and `meta.recipient_device_id`; for `commit-delivery`, it can differ from the affected subject. For a Remove `commit-delivery`, the recipient **MAY** be the removed subject leaf itself, which receives one final notice as specified in Section 12.3;
 - `ratchet_tree_b64u` **MUST** be no-padding base64url of raw bytes for TLS serialization of the ratchet tree;
@@ -752,7 +752,7 @@ A successful response **MUST** contain at least:
 - **MUST** return a KeyPackage whose `owner_did` and `owner_device_id` exactly equal the requested target pair, and **MUST NOT** substitute a sibling device;
 - **MUST** revalidate the target device against the current P2 Manifest before return;
 - The server **MAY** mark it as `reserved`, or assign an equivalent status after return, to avoid concurrent re-issuance;
-- When the corresponding `group.e2ee.add`, including the Add step of a rebind orchestration, is successfully accepted by the Group Host and the cryptographic membership change is completed, the service **MUST** mark it as `consumed` or delete it from the publishing set;
+- When the corresponding `group.e2ee.add`, including the Add step of a DID update orchestration, is successfully accepted by the Group Host and the cryptographic membership change is completed, the service **MUST** mark it as `consumed` or delete it from the publishing set;
 - If the corresponding process fails, is canceled, or times out, release of the reserved KeyPackage is deployment-specific, but it **SHOULD NOT** allow the same KeyPackage to be concurrently reused by two successful `group.e2ee.add` operations;
 - Caller identity, rate limiting and anti-abuse policies **MUST** be implemented based on hop/service level authentication.
 
@@ -868,8 +868,8 @@ Rules:
 - `ratchet_tree_b64u` **MUST** be no-padding base64url of raw bytes for TLS serialization of the ratchet tree
 - `epoch` **MUST** indicate the new `epoch` after this `add`
 - On an ordinary path, `member_did` **MUST** be a current P4 `active` member and the exact `(member_did, member_device_id)` leaf **MUST NOT** already exist; another leaf with the same DID is not a conflict;
-- On a rebind path, `group_state_ref` **MUST** exactly reference an accepted P4 `member-credential-rebound` event, `member_did` **MUST** equal that event's `subject_did`, and the new KeyPackage **MUST** bind the selected new-DID device;
-- Every rebind-path Add for selected new-DID devices **MUST** succeed before old-DID device leaves are removed.
+- On a DID update path, `group_state_ref` **MUST** exactly reference an accepted P4 `member-did-updated` event, `member_did` **MUST** equal that event's `subject_did`, and the new KeyPackage **MUST** bind the selected new-DID device;
+- Every DID update-path Add for selected new-DID devices **MUST** succeed before old-DID device leaves are removed.
 
 #### 9.3.4 Successful Response
 
@@ -894,7 +894,7 @@ Notes:
 
 #### 9.4.1 Semantics
 
-The owner executes MLS `remove` to remove exactly one device leaf. The trigger may be P4 removal of the DID, loss of device eligibility while the DID remains active, group policy, or an accepted Handle rebind orchestration.
+The owner executes MLS `remove` to remove exactly one device leaf. The trigger may be P4 removal of the DID, loss of device eligibility while the DID remains active, group policy, or an accepted member DID update orchestration.
 
 #### 9.4.2 Caller
 
@@ -927,7 +927,7 @@ Rules:
 - The exact `(member_did, member_device_id)` leaf **MUST** exist in the current MLS state;
 - If P4 marks `member_did` as `removed` or `left`, the owner **MUST** issue an ordered Remove for every current device leaf of that DID;
 - If P4 keeps the DID `active`, removal is allowed only for the named device after it loses current P2 eligibility or group policy removes that leaf; sibling leaves and P4 membership remain unchanged;
-- On a rebind path, `member_did` **MUST** equal `previous_subject_did` in the referenced P4 event, selected new-DID device Adds must already have succeeded, and the owner must remove every old-DID device leaf before resuming application messages.
+- On a DID update path, `member_did` **MUST** equal `previous_subject_did` in the referenced P4 event, selected new-DID device Adds must already have succeeded, and the owner must remove every old-DID device leaf before resuming application messages.
 
 #### 9.4.4 Successful Response
 
@@ -1008,7 +1008,7 @@ owner **MUST** be known via trusted state observation:
 - A member has become `active` at the business level;
 - A member has become `left` or `removed` at the business level;
 - An eligible device needs a leaf, or a current leaf's device loses P2 eligibility;
-- A Handle-backed Member has produced `member-credential-rebound`.
+- A P4 member has produced `member-did-updated`.
 
 The status observation method **MAY** be:
 
@@ -1057,23 +1057,27 @@ Once the Host determines that a current leaf must be removed, it **MUST** pause 
 
 Removing a device leaf is a **group-scoped** cryptographic action, and it is a different state machine from **identity-scoped** P2 device removal. Removing a leaf does not remove the device from its DID's `deviceManifest` and does not retire its `device_id`. A device that remains a current eligible Manifest entry keeps the same `device_id` after its leaf is removed, and **MAY** later rejoin this or any other group under that same `device_id` with a fresh KeyPackage, as described in Section 10.3. Conversely, a device removed from the P2 Manifest **MUST** re-enroll under a new device ID and new device keys and **MUST NOT** reuse the retired identifier. Implementations **MUST NOT** conflate the two: group leaf removal is per-group and reversible, while Manifest device removal is identity-scoped and permanent.
 
-### 10.5 Member Credential Rebind Coupling Rules
+### 10.5 Member DID Update Coupling Rules
 
-When the owner observes a P4 `member-credential-rebound` event, its `subject_did` identifies the new DID and its `previous_subject_did` identifies the old DID. If old-DID leaves remain in the MLS membership set, the owner **MUST** orchestrate the existing methods in this order:
+Before starting Add/Remove orchestration, the MLS Controller **MUST** obtain and verify the P4 `member-did-updated` event and `group_receipt`, independently verify the P2 transition from `previous_subject_did` to `subject_did`, retain the actual assurance, confirm that the P4 roster already contains `subject_did`, and resolve the new DID's current eligible devices and KeyPackages. `provider_asserted` is accepted or rejected by P6's own business policy; it is not a protocol-mandated failure and **MUST NOT** be represented as a higher assurance.
+
+When the owner observes a P4 `member-did-updated` event, its `subject_did` identifies the new DID and its `previous_subject_did` identifies the old DID. If old-DID leaves remain in the MLS membership set, the owner **MUST** orchestrate the existing methods in this order:
 
 1. Call `group.e2ee.add` once for each selected new-DID device and its KeyPackage;
 2. After all selected Adds succeed, call `group.e2ee.remove` once for each old-DID device leaf;
-3. Complete the cryptographic rebind after every Remove succeeds.
+3. Complete the cryptographic DID update after every Remove succeeds.
 
-All requests **MUST** exactly reference the same P4 `member-credential-rebound` `group_state_ref`. Every selected Add **MUST** succeed before the first Remove. Remove may delete only device leaves of the event's `previous_subject_did` and **MUST NOT** use the rebind workflow to remove another member.
+All requests **MUST** exactly reference the same P4 `member-did-updated` `group_state_ref`. Every selected Add **MUST** succeed before the first Remove. Remove may delete only device leaves of the event's `previous_subject_did` and **MUST NOT** use the DID update workflow to remove another member.
 
-During rebind orchestration, the Group Host **MUST** serialize P6 member-change control actions. Except for an idempotent retry of the current step and the matching Remove immediately after Add succeeds, the Group Host **MUST NOT** accept an unrelated `group.e2ee.add` or `group.e2ee.remove` until the rebind completes.
+During DID update orchestration, the Group Host **MUST** serialize P6 member-change control actions. Except for an idempotent retry of the current step and the matching Remove immediately after Add succeeds, the Group Host **MUST NOT** accept an unrelated `group.e2ee.add` or `group.e2ee.remove` until the DID update completes.
 
-From acceptance of the P4 rebind event until the final Remove succeeds, the Group Host **MUST** pause acceptance of new `group.e2ee.send` operations for the group. Intermediate epochs produced by Adds and Removes **MUST NOT** carry application messages. If a step fails, the implementation **MUST** remain paused and retry that step.
+From acceptance of the P4 DID update event until the final Remove succeeds, the Group Host **MUST** pause acceptance of new `group.e2ee.send` operations for the group. Intermediate epochs produced by Adds and Removes **MUST NOT** carry application messages. If a step fails, the implementation **MUST** remain paused and retry that step.
 
-A P6 failure **MUST NOT** roll back the P4 rebind, restore the old DID's P4 authority, or create a new P6 business-membership state. P4 membership, role, status, join time, and member count remain determined by the original rebind event.
+A P6 failure **MUST NOT** roll back the P4 DID update, restore the old DID's P4 authority, or create a new P6 business-membership state. P4 membership, role, status, join time, and member count remain determined by the original DID update event.
 
-If the rebind target is the owner, an eligible device selected for the new DID **MUST** use its own device-bound `origin_proof`. Transitional Add Commits **MAY** be generated from the retained MLS state of an old-owner device leaf. After at least one new-owner device leaf joins, subsequent old-DID Removes **MUST** be generated by an eligible new-owner device leaf with current state. If no authorized owner device retains or obtains the required current state, the system **MUST** fail closed and keep the E2EE message plane paused.
+If P4 accepted `provider_asserted` but P6 policy rejects it, the P4 roster remains authoritative and is not rolled back; P6 **MUST** keep the E2EE message plane paused until its policy requirements are satisfied.
+
+If the DID update target is the owner, an eligible device selected for the new DID **MUST** use its own device-bound `origin_proof`. Transitional Add Commits **MAY** be generated from the retained MLS state of an old-owner device leaf. After at least one new-owner device leaf joins, subsequent old-DID Removes **MUST** be generated by an eligible new-owner device leaf with current state. If no authorized owner device retains or obtains the required current state, the system **MUST** fail closed and keep the E2EE message plane paused.
 
 ### 10.6 Message sending rules
 
@@ -1178,7 +1182,7 @@ When executing `group.e2ee.add`, the owner's local MLS runtime **MUST**:
 
 1. Obtain the `group_key_package` for the exact `(member_did, member_device_id)` pair;
 2. Verify the KeyPackage, device binding, Section 6.3.1 extension, and current P2 Manifest eligibility;
-3. Verify that the target DID is either a P4 `active` member on an ordinary path or the `subject_did` in the referenced P4 `member-credential-rebound` event;
+3. Verify that the target DID is either a P4 `active` member on an ordinary path or the `subject_did` in the referenced P4 `member-did-updated` event;
 4. Verify that this exact DID/device pair is not already a leaf; a sibling device of the same DID is not a conflict;
 5. Execute one MLS `Add`, generate a new `Commit`, and generate one `Welcome` for that device leaf;
 6. Export or construct ratchet-tree material sufficient for that device to bootstrap;
@@ -1202,14 +1206,14 @@ To reduce implementation ambiguity, v2 stipulates:
 - `ratchet_tree_b64u` **MUST** be provided explicitly, and only to new members;
 - `welcome-delivery` **MUST NOT** rely on the library-level optional behavior "Welcome may come with ratchet tree internally".
 
-In credential-rebind orchestration, each Add in this section **MUST** reference the P4 rebind event's `group_state_ref`, add one selected device leaf bound to the new DID, and deliver the Welcome only to that DID/device pair. All selected new-DID device Adds precede removal of any old-DID device leaf.
+In DID update orchestration, each Add in this section **MUST** reference the P4 DID update event's `group_state_ref`, add one selected device leaf bound to the new DID, and deliver the Welcome only to that DID/device pair. All selected new-DID device Adds precede removal of any old-DID device leaf.
 
 ### 11.6 MLS Semantics of `group.e2ee.remove`
 
 When executing `group.e2ee.remove`, the owner's local MLS runtime **MUST**:
 
 1. Verify that the exact `(member_did, member_device_id)` pair is a current leaf;
-2. Verify one allowed trigger: the DID is `removed` or `left` in P4, the named device is no longer eligible under the current P2 Manifest or group policy, or the pair is an old-DID leaf in the referenced P4 rebind event;
+2. Verify one allowed trigger: the DID is `removed` or `left` in P4, the named device is no longer eligible under the current P2 Manifest or group policy, or the pair is an old-DID leaf in the referenced P4 DID update event;
 3. Execute one MLS `Remove` for that leaf, generate a new `Commit`, advance the `epoch`, and update the owner's local device state;
 4. Ensure that the removed device leaf cannot decrypt subsequent messages.
 
@@ -1226,7 +1230,7 @@ The line protocol output for `group.e2ee.remove` **MUST** contain at least:
 - `member_did`
 - `member_device_id`
 
-In credential-rebind orchestration, Removes may start only after all selected new-DID device Adds have succeeded with the same `group_state_ref`; each Remove may delete only one old-DID device leaf identified by that P4 event.
+In DID update orchestration, Removes may start only after all selected new-DID device Adds have succeeded with the same `group_state_ref`; each Remove may delete only one old-DID device leaf identified by that P4 event.
 
 ### 11.7 Encryption semantics of `group.e2ee.send`
 
@@ -1320,7 +1324,7 @@ Each owner device that maintains MLS state **SHOULD** persist at least:
 - Current `epoch`
 - Its own current MLS group state
 - The synchronized member set view of the current business layer
-- Reference to the most recently accepted `add/remove` result, including every operation in credential-rebind orchestration
+- Reference to the most recently accepted `add/remove` result, including every operation in DID update orchestration
 
 An owner device **MUST NOT** synchronize its MLS private keys, epoch secrets, or private tree state to a sibling device as protocol state.
 
@@ -1347,7 +1351,7 @@ The Group Host **SHOULD** persist at least:
 - Outer binding reference to `crypto_group_id`, `epoch`
 - The current public `(DID, device_id)`-to-leaf projection derived from accepted `create/add/remove` operations; this projection **MUST NOT** contain MLS private keys or epoch secrets
 - The Section 12.6 Device Delivery Queue state for envelopes not yet transport-confirmed, limited to public metadata, any preserved public origin proofs, and opaque ciphertext
-- Internal progress indicating whether credential-rebind orchestration is at Add or Remove; this progress is not a new protocol-level membership state
+- Internal progress indicating whether DID update orchestration is at Add or Remove; this progress is not a new protocol-level membership state
 
 By default, the Group Host is **not required** to persist MLS private state capable of decrypting group messages.
 
@@ -1361,11 +1365,11 @@ In addition to the exclusions listed in Section 11.2, this Profile v2 does not s
 - Let non-owner members submit `Commit` that changes the membership set
 - Let the Group Host complete the final MLS validity judgment on behalf of the members
 
-### 11.12 Handle-backed Member Rebind MLS Orchestration
+### 11.12 P4 Member DID Update MLS Orchestration
 
 The owner's local MLS runtime **MUST**:
 
-1. Verify the corresponding P4 `member-credential-rebound` state event and its old DID, new DID, and `group_state_ref`;
+1. Verify the corresponding P4 `member-did-updated` state event and its old DID, new DID, and `group_state_ref`;
 2. Enumerate every current old-DID device leaf and the selected eligible new-DID devices;
 3. Obtain and fully verify a separate KeyPackage and device binding for each selected new-DID device;
 4. Execute one `group.e2ee.add` Commit per selected new-DID device, delivering its Welcome and ratchet tree only to that device;
@@ -1373,9 +1377,9 @@ The owner's local MLS runtime **MUST**:
 6. Deliver each Commit independently to every retained device leaf, and deliver each old-DID Remove Commit additionally to that removed old-DID leaf as its final notice under Section 12.3;
 7. Resume application messages only after the final Remove succeeds.
 
-Every Add and Remove Commit **MUST** bind the same P4 `group_state_ref`. Every intermediate epoch exists only to complete the rebind and **MUST NOT** carry application messages. New-DID devices obtain only current and subsequent state through their own Welcomes; this Profile **MUST NOT** restore lost historical epoch secrets or share private MLS state between devices.
+Every Add and Remove Commit **MUST** bind the same P4 `group_state_ref`. Every intermediate epoch exists only to complete the DID update and **MUST NOT** carry application messages. New-DID devices obtain only current and subsequent state through their own Welcomes; this Profile **MUST NOT** restore lost historical epoch secrets or share private MLS state between devices.
 
-If the rebind target is the owner, transitional Add Commits **MAY** be generated by an eligible old-owner device retaining current state. After a new-owner device leaf joins, subsequent old-DID Removes **MUST** be generated by an eligible new-owner device with current state. If no authorized owner device retains or obtains current state, the implementation **MUST** fail closed. This Profile provides no automatic owner MLS recovery, and the Group Host **MUST NOT** release current or historical epoch secrets.
+If the DID update target is the owner, transitional Add Commits **MAY** be generated by an eligible old-owner device retaining current state. After a new-owner device leaf joins, subsequent old-DID Removes **MUST** be generated by an eligible new-owner device with current state. If no authorized owner device retains or obtains current state, the implementation **MUST** fail closed. This Profile provides no automatic owner MLS recovery, and the Group Host **MUST NOT** release current or historical epoch secrets.
 
 ---
 
@@ -1450,7 +1454,7 @@ The rules are as follows:
 - `ratchet_tree_b64u` **MUST** be the TLS-serialized raw bytes of the ratchet tree;
 - This notice **MUST** target exactly the added `(subject_did, subject_device_id)` pair and **MUST NOT** be sent to a sibling device;
 - The new device **MUST** use `welcome_b64u + ratchet_tree_b64u` to complete its own local bootstrap;
-- For an Add in credential-rebind orchestration, the target DID **MUST** equal the event's `subject_did`; a Welcome **MUST NOT** be sent to `previous_subject_did` or to an unselected new-DID device.
+- For an Add in DID update orchestration, the target DID **MUST** equal the event's `subject_did`; a Welcome **MUST NOT** be sent to `previous_subject_did` or to an unselected new-DID device.
 
 ### 12.5 Relationship to P4 Notifications
 
@@ -1566,7 +1570,7 @@ When the owner generates `commit_b64u` locally for `group.e2ee.add/remove`, it *
 
 All default optional fields **MUST** be omitted directly and **MUST NOT** be represented by `null`, an empty string, or another placeholder. `member_did` and `member_device_id` **MUST** always identify the exact target leaf of the actual Add or Remove operation.
 
-For credential-rebind orchestration, every Commit **MUST** use the binding above and reference the same P4 `group_state_ref`: each Add's `member_did` **MUST** equal the event's `subject_did`, and each Remove's `member_did` **MUST** equal the event's `previous_subject_did`. P6 requests add no `member_handle`, `handle_binding_generation`, `previous_member_did`, or `new_member_did` fields; those continuity fields are provided by the referenced P4 event.
+For DID update orchestration, every Commit **MUST** use the binding above and reference the same P4 `group_state_ref`: each Add's `member_did` **MUST** equal the event's `subject_did`, and each Remove's `member_did` **MUST** equal the event's `previous_subject_did`. P6 requests add no duplicate DID-continuity fields; `previous_subject_did` and `subject_did` are provided by the referenced P4 event.
 
 ### 13.2 KeyPackage verification
 
@@ -1583,7 +1587,7 @@ Before the receiver accepts a KeyPackage for joining the group, **MUST**:
 9. Verify that the device occurs exactly once in the current P2 Manifest, is eligible for this Profile, and uses the current Manifest signing key;
 10. Verify that the leaf signature public key is consistent with `did_wba_binding.leaf_signature_key_b64u`.
 
-If a KeyPackage has been successfully used for `group.e2ee.add`, including the Add step of rebind orchestration, and accepted by the Group Host, implementations **MUST NOT** treat it as reusable valid join material unless the deployment explicitly declares a last-resort exception.
+If a KeyPackage has been successfully used for `group.e2ee.add`, including the Add step of DID update orchestration, and accepted by the Group Host, implementations **MUST NOT** treat it as reusable valid join material unless the deployment explicitly declares a last-resort exception.
 
 ### 13.3 `group.e2ee.send` Request Verification
 
@@ -1615,11 +1619,11 @@ Before the Group Host accepts an `group.e2ee.add` or `group.e2ee.remove`, **MUST
 
 In addition:
 
-- An ordinary Add **MUST** target a current P4 `active` DID and an eligible Manifest device whose exact DID/device pair is not yet a leaf. A rebind Add **MUST** exactly reference a P4 `member-credential-rebound`, target its `subject_did`, and verify that the KeyPackage binds the named device of that DID;
-- An ordinary Remove **MUST** target an existing leaf whose DID is P4 `removed` or `left`, or whose named device has lost Manifest eligibility or is removed by group policy while the DID remains `active`. A rebind Remove **MUST** target an old-DID device leaf under the same event and `group_state_ref`, after all selected new-DID device Adds have succeeded;
-- The Group Host **MUST** reject a rebind Remove that precedes its corresponding Add and **MUST** reject use of the rebind exception to remove another `active` member;
-- During a rebind, the Group Host **MUST** serialize all selected Adds and all old-leaf Removes and reject or defer unrelated Add/Remove operations;
-- Add and Remove retries for the same P4 rebind event **MUST** have idempotent semantics.
+- An ordinary Add **MUST** target a current P4 `active` DID and an eligible Manifest device whose exact DID/device pair is not yet a leaf. A DID update Add **MUST** exactly reference a P4 `member-did-updated`, target its `subject_did`, and verify that the KeyPackage binds the named device of that DID;
+- An ordinary Remove **MUST** target an existing leaf whose DID is P4 `removed` or `left`, or whose named device has lost Manifest eligibility or is removed by group policy while the DID remains `active`. A DID update Remove **MUST** target an old-DID device leaf under the same event and `group_state_ref`, after all selected new-DID device Adds have succeeded;
+- The Group Host **MUST** reject a DID update Remove that precedes its corresponding Add and **MUST** reject use of the DID update exception to remove another `active` member;
+- During a DID update, the Group Host **MUST** serialize all selected Adds and all old-leaf Removes and reject or defer unrelated Add/Remove operations;
+- Add and Remove retries for the same P4 DID update event **MUST** have idempotent semantics.
 
 These Group Host checks **MUST NOT** replace final Commit and Welcome validation by member MLS runtimes. Those runtimes **MUST** verify that the Commit delta adds or removes exactly the bound `(member_did, member_device_id)` leaf.
 
@@ -1805,7 +1809,7 @@ sequenceDiagram
     H-->>M: independent P6 group.incoming(recipient_device_id, same PrivateMessage)
 ```
 
-### 15.6 Handle-backed Member Credential Rebind Process
+### 15.6 P4 Member DID Update Process
 
 ```mermaid
 sequenceDiagram
@@ -1815,8 +1819,8 @@ sequenceDiagram
     participant M as Retained Device Leaves
     participant P as Removed Old-DID Leaves
 
-    N->>H: P4 group.rebind_member
-    H-->>O: group.state_changed(member-credential-rebound)
+    H->>H: P4 Host accepts member DID update
+    H-->>O: group.state_changed(member-did-updated)
     Note over H: Pause new E2EE messages
     loop each selected new-DID device
         O->>H: group.e2ee.add(new DID, device ID)
@@ -1845,7 +1849,7 @@ The Group Host **MUST NOT** be presumed to have access to group plaintext merely
 - `auth.origin_proof` proves which DID/device pair requested the action at the application layer, using that device's current Manifest signing key;
 - The MLS signature or sender data proves which device-bound MLS leaf produced the ciphertext or Commit.
 
-For ordinary actions, both bindings **MUST** resolve to the same DID/device pair and **MUST NOT** replace each other. The only exception is the transitional owner-rebind Add in Sections 10.5 and 11.12: the Origin Proof binds an eligible current new-owner device, the Commit may be generated by a retained old-owner device leaf, and both are bound to the same accepted P4 rebind event.
+For ordinary actions, both bindings **MUST** resolve to the same DID/device pair and **MUST NOT** replace each other. The only exception is the transitional owner-DID update Add in Sections 10.5 and 11.12: the Origin Proof binds an eligible current new-owner device, the Commit may be generated by a retained old-owner device leaf, and both are bound to the same accepted P4 DID update event.
 
 An `origin_proof` preserved in a P6 `group.incoming` envelope proves who submitted the referenced `group.e2ee.send`. It is not evidence of delivery time, delivery order, or the recipient device, and its freshness parameters do not constrain the receiver's acceptance of a redelivered envelope. Section 13.6 defines that split. A standard `group.e2ee.notice` carries no preserved proof; its Commit and Welcome payloads are authenticated by their MLS signatures.
 
@@ -1872,13 +1876,13 @@ As long as v2 is not extended to the multi-controller model, then:
 - admin cannot call these methods directly
 - The business layer actions of admin only affect the P4 status, and are eventually implemented to MLS by owner
 
-### 16.6 Future Secrecy and Historical Boundary After Rebind
+### 16.6 Future Secrecy and Historical Boundary After DID Update
 
 - After a device-leaf Remove Commit is accepted, that device leaf **MUST NOT** decrypt messages from the new epoch or later epochs;
 - P4 removal or leaving of a DID **MUST** converge by removing every leaf of that DID; loss of one device's eligibility removes that leaf without changing sibling leaves or P4 membership;
-- Every intermediate epoch during multi-device rebind **MUST NOT** carry application messages;
+- Every intermediate epoch during multi-device DID update **MUST NOT** carry application messages;
 - Each selected new-DID device receives only the new epoch and later state through its own Welcome. This Profile **MUST NOT** redistribute lost historical epoch secrets;
-- Historical ciphertext, sender DIDs, MLS credentials, and receipts **MUST NOT** be rewritten because of a rebind;
+- Historical ciphertext, sender DIDs, MLS credentials, and receipts **MUST NOT** be rewritten because of a DID update;
 - Applications that require historical plaintext recovery need an explicit encrypted backup mechanism outside this Profile.
 
 ---
@@ -1904,7 +1908,7 @@ On the premise of following the ANP Core public error model, this Profile recomm
 | 5012 | `group.e2ee.key_package_consumed` | KeyPackage has been consumed and cannot be reused |
 | 5013 | `group.e2ee.leaf_not_current` | The sender device is not a current MLS leaf of this group, while its DID may remain a P4 member |
 
-Credential-rebind orchestration defines no dedicated error codes. If state is not ready, a Commit is invalid, an epoch conflicts, or the caller is not the controller, implementations reuse `group.e2ee.state_not_ready`, `group.e2ee.commit_invalid`, `group.e2ee.epoch_conflict`, and `group.e2ee.controller_required`, respectively.
+DID update orchestration defines no dedicated error codes. If state is not ready, a Commit is invalid, an epoch conflicts, or the caller is not the controller, implementations reuse `group.e2ee.state_not_ready`, `group.e2ee.commit_invalid`, `group.e2ee.epoch_conflict`, and `group.e2ee.controller_required`, respectively.
 
 Missing, invalid, ineligible, or stale device bindings reuse the P1 Core errors `anp.device_binding_required`, `anp.device_binding_invalid`, `anp.device_not_eligible`, and `anp.device_state_changed`. This Profile does not define a second error-envelope shape or duplicate those Core codes.
 
@@ -1928,8 +1932,8 @@ An implementation conforming to this Profile MUST support at least:
 12. DID-and-device-addressed notification model of `group.e2ee.notice` and P6 `group.incoming`
 13. owner as sole MLS controller
 14. Drive `create/add/remove` through P4 business state
-15. Drive all selected `add(new DID, device)` operations followed by all `remove(old DID, device)` operations from P4 `member-credential-rebound`, with every step bound to the same `group_state_ref`
-16. Pause application messages from acceptance of the P4 rebind until the final Remove completes, and serialize member-change control actions throughout
+15. Drive all selected `add(new DID, device)` operations followed by all `remove(old DID, device)` operations from P4 `member-did-updated`, with every step bound to the same `group_state_ref`
+16. Pause application messages from acceptance of the P4 DID update until the final Remove completes, and serialize member-change control actions throughout
 17. `group.e2ee.send` directly sends MLS ciphertext without being packaged by `group.send`
 18. `group.e2ee.notice` is used for `welcome-delivery` and `commit-delivery`
 19. Explicit delivery of `ratchet_tree_b64u` in `welcome-delivery`
@@ -2213,9 +2217,9 @@ This Profile v2 does **not** require:
 }
 ```
 
-### 19.6 Handle-backed Member Rebind Orchestration Example
+### 19.6 P4 Member DID Update Orchestration Example
 
-After P4 `member-credential-rebound` is accepted and the message plane is paused, the owner submits the following Add for one selected new-DID device (and repeats it for any other selected device):
+After P4 `member-did-updated` is accepted and the message plane is paused, the owner submits the following Add for one selected new-DID device (and repeats it for any other selected device):
 
 ```json
 {
@@ -2239,7 +2243,7 @@ After P4 `member-credential-rebound` is accepted and the message plane is paused
       "scheme": "anp-rfc9421-origin-proof-v1",
       "origin_proof": {
         "contentDigest": "sha-256=:BASE64_DIGEST:",
-        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797900;expires=1774797960;nonce=\"n-rebind-add\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#dev-a-sign\"",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797900;expires=1774797960;nonce=\"n-did-update-add\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#dev-a-sign\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
     },
@@ -2297,7 +2301,7 @@ After every selected Add is accepted, the Group Host keeps application messages 
       "scheme": "anp-rfc9421-origin-proof-v1",
       "origin_proof": {
         "contentDigest": "sha-256=:BASE64_DIGEST:",
-        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797960;expires=1774798020;nonce=\"n-rebind-remove\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#dev-a-sign\"",
+        "signatureInput": "sig1=(\"@method\" \"@target-uri\" \"content-digest\");created=1774797960;expires=1774798020;nonce=\"n-did-update-remove\";keyid=\"did:wba:a.example:agents:alice:e1_<fingerprint>#dev-a-sign\"",
         "signature": "sig1=:BASE64_SIGNATURE:"
       }
     },
@@ -2436,10 +2440,10 @@ Subsequent versions of this standard **SHOULD** establish the following registry
 
 When implementing this Profile, the implementer should regard it as:
 
-- MLS control layer that works closely with `anp.group.base.v1`;
+- MLS control layer that works closely with `anp.group.base.v2`;
 - A group E2EE model in which the owner is responsible for member change control and members are responsible for sending ordinary messages;
 - Convergent scheme that drives `create/add/remove` through state changes;
-- An ordered workflow of per-device add(new DID) Commits followed by per-device remove(old DID) Commits, driven by the P4 `member-credential-rebound` event;
+- An ordered workflow of per-device add(new DID) Commits followed by per-device remove(old DID) Commits, driven by the P4 `member-did-updated` event;
 - Independent MLS leaf and private state per device, with one encrypted-delivery envelope per current leaf;
 - Delivery of `commit` and `welcome` through device-targeted independent `group.e2ee.notice` envelopes;
 - A durable per-device delivery queue that redelivers the exact stored envelope, rather than a history service that reconstructs one;

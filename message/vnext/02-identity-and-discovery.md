@@ -284,7 +284,7 @@ If there are multiple controllers, the internal collaboration mechanism between 
 
 ### 6.3 Group governance verification relationship
 
-For Group DID documents that support `anp.group.base.v1`:
+For Group DID documents that support `anp.group.base.v2`:
 
 - `assertionMethod` **MUST** exist;
 - `capabilityInvocation` **MAY** exist as an additional governance capability delegation relationship, but does not replace `assertionMethod`.
@@ -656,14 +656,71 @@ In the same way, `serviceDid` only represents the service calling identity and s
 
 ---
 
-## 12. Privacy and Minimum Disclosure
+## 12. Agent DID Transition Verification
 
-### 12.1 Service Endpoint Minimization
+### 12.1 Method-specific transition Profile
+
+P2 defines the common calling semantics for Agent DID transitions. The proof rules remain owned by the applicable DID method specification. An implementation **SHOULD** expose an internal operation equivalent to:
+
+```text
+resolve_current_agent_did(input_did, trusted_cache)
+  -> { requested_did, current_did, transition_status, assurance }
+  | error
+```
+
+This result is implementation-internal and **MUST NOT** add `stable_subject_id`, a stable subject path, or another identity field to ANP Messaging wire objects.
+
+### 12.2 `e1_` path-type did:wba transitions
+
+The first registered automatic-transition path in this draft is a path-type did:wba DID whose last segment uses the `e1_` fingerprint Profile. Starting from the previously trusted DID, the resolver **MUST**:
+
+1. obtain each DID Document and verify that its `id` equals the requested DID;
+2. verify the `e1_` binding fingerprint, the active document proof, and the applicable did:wba proof rules;
+3. when the document is deactivated, require `successorDid` and verify the old document's transition proof;
+4. require the old and successor DIDs to have the same stable subject path;
+5. obtain and verify the direct successor DID Document, including its binding fingerprint and document proof;
+6. continue hop by hop until reaching the final active DID;
+7. reject cycles, conflicting successors, and trusted-cache conflicts.
+
+The verifier **MUST NOT** begin from an untrusted new DID and infer continuity merely because its path resembles an existing identity.
+
+### 12.3 Continuity assurance
+
+A transition result **MUST** preserve its actual assurance:
+
+- `verified`: the old DID's bound root key signs the deactivation and successor relationship;
+- `recovery_verified`: a recovery key that was authorized in a previously trusted old document establishes the transition;
+- `provider_asserted`: the provider supplies the applicable method-defined assertion without old-root or pre-authorized recovery-key proof;
+- `unverified`: no accepted continuity evidence exists.
+
+The transition resolver and verification layer **MUST NOT** itself merge identities or make a high-trust business authorization decision from `provider_asserted`; it reports that assurance unchanged to the owning business layer. Any automated inheritance based on `provider_asserted` occurs only because that business system has an explicit policy accepting the provider-compromise and account-recovery tradeoff, not because the assertion was upgraded to cryptographic continuity.
+
+An owning business Profile **MUST NOT** treat `provider_asserted` as `verified` or `recovery_verified`. It also **MUST NOT** fail solely because the assurance is `provider_asserted`: the owning business system decides whether that assurance is sufficient and which business relationships or authorizations to inherit. `unverified` does not establish transition continuity.
+
+### 12.4 Hints and unsupported transition Profiles
+
+`alsoKnownAs` and a matching stable subject path **MAY** identify candidates, but neither can independently authorize a transition, role, membership, ACL, attachment grant, or E2EE eligibility.
+
+For bare-domain did:wba DIDs, `k1_` DIDs, historical paths without a binding fingerprint, `did:web`, and other DID methods without a registered ANP transition-verification Profile:
+
+- an active and verifiable DID continues to be used exactly as written;
+- implementations **MUST NOT** derive cross-DID continuity from a name, path, or `alsoKnownAs` alone;
+- a deactivated DID **MUST** fail closed with `anp.did_transition_invalid` and `reason = transition_profile_not_supported`.
+
+### 12.5 Group DID boundary
+
+This draft does not define automatic Group DID transitions. If the exact `group_did` is deactivated, the Group Host **MUST** reject new group operations and P6 application-message processing. It **MUST NOT** follow a Group DID successor automatically. Historical receipts and signatures remain verifiable against the historical Group DID.
+
+---
+
+## 13. Privacy and Minimum Disclosure
+
+### 13.1 Service Endpoint Minimization
 
 The `service` section in the DID document **SHOULD** be minimized.
 If a service is not required for public discovery, it **SHOULD NOT** appear in the DID document.
 
-### 12.2 Relevance control
+### 13.2 Relevance control
 
 Implementers **SHOULD** avoid:
 
@@ -671,18 +728,18 @@ Implementers **SHOULD** avoid:
 - Place descriptions in the DID document that can directly infer the organizational structure, deployment topology, and internal role distribution;
 - Expose message volume, activity, online status or internal replica structure through DID documents.
 
-### 12.3 Separation of public and restricted
+### 13.3 Separation of public and restricted
 
 Information necessary for public discovery **MAY** be placed into the DID document;
 Information requiring access control **SHOULD** returned by restricted service endpoint.
 
-### 12.4 Device Manifest minimization
+### 13.4 Device Manifest minimization
 
 When a Manifest is required for a device-addressed E2EE Profile, its public content **MUST** remain limited to the four device-entry fields in Section 5.5. Implementations should use opaque, non-user-facing `device_id` values and must keep device labels, hardware details, presence, local policy, and recovery data outside the DID document.
 
 ---
 
-## 13. Minimum Interoperability Requirements
+## 14. Minimum Interoperability Requirements
 
 An implementation conforming to this Profile MUST at least:
 
@@ -696,12 +753,16 @@ An implementation conforming to this Profile MUST at least:
 8. Keep ordinary Base discovery and delivery DID-level, without device selectors or a required Manifest;
 9. When advertising a device-addressed E2EE Profile, publish and validate the minimum `deviceManifest` defined in Section 5.5;
 10. Do not introduce Device DIDs, device business membership, or product-internal replica semantics.
+11. Return the actual assurance for a registered Agent DID transition without adding a second wire identity;
+12. Support the `e1_` did:wba transition-verification rules in Section 12 when claiming that transition Profile;
+13. Keep `alsoKnownAs` candidate-only and fail closed for deactivated DIDs without a registered transition Profile;
+14. Do not automatically transition a Group DID.
 
 ---
 
-## 14. Example
+## 15. Example
 
-### 14.1 Agent DID document fragment example
+### 15.1 Agent DID document fragment example
 
 The following fragment shows one Agent DID with two cryptographic Device Endpoints for Direct E2EE. The two entries do not create two Agents, and the ordinary Base Profiles listed by the service remain DID-addressed.
 
@@ -811,7 +872,7 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
 }
 ```
 
-### 14.2 Group DID document fragment example
+### 15.2 Group DID document fragment example
 
 ```json
 {
@@ -844,7 +905,7 @@ The following fragment shows one Agent DID with two cryptographic Device Endpoin
       "profiles": [
         "anp.core.binding.v1",
         "anp.identity.discovery.v1",
-        "anp.group.base.v1",
+        "anp.group.base.v2",
         "anp.group.e2ee.v2"
       ],
       "securityProfiles": [
@@ -860,7 +921,7 @@ The Group DID remains the group business identity and therefore has no `deviceMa
 
 ---
 
-## 15. Registry Placeholder
+## 16. Registry Placeholder
 
 Subsequent versions of this standard **SHOULD** establish the following registry:
 
@@ -871,7 +932,7 @@ Subsequent versions of this standard **SHOULD** establish the following registry
 
 ---
 
-## 16. Reference Implementation Notes (Non-Normative)
+## 17. Reference Implementation Notes (Non-Normative)
 
 Implementers should adopt the following principles when implementing this Profile:
 

@@ -201,6 +201,14 @@ The following internal details of the receiver **MUST NOT** be exposed as wire p
 - Number of internal devices;
 - Internal forwarding path.
 
+### 5.5 Superseded Agent DIDs
+
+If `meta.target.did` has been superseded, an ANP application-layer receiver **MUST** return `anp.did_superseded` rather than silently rewriting the target. The sender **MUST** verify the transition from the requested DID under P2, apply its business policy to the returned assurance, replace `meta.target.did` only after accepting that transition, rebuild the Signed Request Object and `contentDigest`, and sign the new request again. The logical `message_id` and `operation_id` remain unchanged for the retry.
+
+`provider_asserted` is not a protocol-mandated failure; the Direct product's business policy decides whether that assurance is sufficient to continue addressing or associate identities.
+
+A request from a successor sender DID is authenticated as that current DID. Whether a product associates it with an earlier contact, conversation, or internal account is a local business decision made after transition verification; P3 adds no stable-subject or name field. Historical messages, sender DIDs, signatures, and receipts **MUST NOT** be rewritten.
+
 ---
 
 ## 6. Content Model
@@ -456,6 +464,8 @@ For `direct.send`, when the sender retries the same message:
 - `message_id` **MUST** remain unchanged;
 - The business payload **MUST** remain semantically equivalent.
 
+When the target DID changes after an accepted transition, the retry is a newly signed request and is not an exact retry under the old idempotency tuple. An implementation **MAY** use the accepted transition and equivalent business payload to deduplicate the same logical `message_id`, but it **MUST NOT** treat an unverified `current_did` hint as authorization to merge identities or operations.
+
 For `direct.incoming`, if the service chooses to push the same accepted message again:
 
 - `params.meta.operation_id` **SHOULD** remain unchanged;
@@ -615,6 +625,7 @@ An implementation conforming to this Profile MUST support at least:
 10. Signed Request Object normalization and summary calculation rules defined in this Profile
 11. Operation mode based on secure transmission
 12. DID-level addressing without device selectors or per-device results
+13. Superseded-DID handling that verifies the transition, rebuilds the signed request, and never silently rewrites historical or in-flight messages
 
 `conversation_id`, `reply_to_message_id` and `annotations` are commonly used optional fields, but do not belong to the strong minimum interoperability constraints of v1.
 

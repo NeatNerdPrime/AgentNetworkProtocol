@@ -1513,6 +1513,14 @@ When a device is removed, changes its Manifest keys, or loses the P5 Profile, im
 
 A newly added device receives only messages that the application chooses to send after it becomes eligible. P5 does not copy another device's Ratchet state or automatically grant historical plaintext.
 
+### 12.5 Agent DID transitions
+
+An accepted Agent DID transition changes the P5 cryptographic identity even when the owning business system treats the old and new DIDs as one continuing account or contact.
+
+After accepting the P2 transition assurance, the sender **MUST** stop creating new ciphertext under Sessions bound to the old DID, resolve the successor DID's current `deviceManifest`, obtain and verify fresh PreKey material, establish a new Session for each selected device pair, and rebuild every DID-bound AAD, ciphertext, and outer request field.
+
+The business system decides whether `provider_asserted` is sufficient to inherit the contact or conversation relationship. Regardless of that decision, P5 **MUST NOT** copy or reuse an old-DID Session, Ratchet state, private key, skipped-message key, or replay state under the successor DID. Historical ciphertext, headers, signatures, and DIDs remain unchanged; retained old Sessions may be used only to process their existing historical ciphertext according to local retention policy.
+
 
 ---
 

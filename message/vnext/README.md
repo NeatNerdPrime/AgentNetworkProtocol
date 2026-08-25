@@ -13,7 +13,7 @@ The documents in this directory form the candidate ANP Messaging 1.2 specificati
 - A **Profile major version** identifies one independently negotiated wire contract, such as `anp.direct.base.v1` or `anp.direct.e2ee.v2`.
 - The **Messaging specification-set version** identifies a coordinated documentation and catalog release. ANP Messaging 1.2 intentionally contains both v1 and v2 Profile identifiers.
 - Profiles have independent lifecycles. A dependency on a new Profile does not require lockstep major-version changes in the rest of its dependency chain.
-- P1, P2, P3, P4, P7, P8, and the P9 Mention binding retain their v1 contracts. Their 1.2 changes clarify device boundaries or define additive registered extensions.
+- P1, P2, P3, P7, P8, and the P9 Mention binding retain their v1 contracts. P4 uses v2 because removing Handle-backed membership and the public rebind method, and adding Host-coordinated DID updates, changes its wire contract and state machine.
 - P5 Direct E2EE and P6 Group E2EE use v2 because their multi-device wire contracts and cryptographic state machines are not compatible with v1.
 - The Agent DID remains the business identity. Messaging 1.2 introduces `device_id` only for a Profile that requires a cryptographic device endpoint under that DID.
 - Ordinary non-E2EE Direct, Group, Mention, and Attachment operations remain DID-addressed and do not require or carry device selectors. Device fan-out for those operations is local to the receiving DID's domain.
@@ -30,12 +30,12 @@ Draft presence does not indicate SDK, service, or product implementation support
 | P1 | `anp.core.binding.v1` | [Core Binding](01-core-binding.md) | Common DID metadata plus conditional device selectors, signed binding, capability negotiation, idempotence, and shared errors |
 | P2 | `anp.identity.discovery.v1` | [Identity and Discovery](02-identity-and-discovery.md) | Root-protected `deviceManifest`, key references, eligibility, and discovery for device-addressed security Profiles |
 | P3 | `anp.direct.base.v1` | [Direct Messaging Base](03-direct-messaging-base-semantics.md) | One DID-to-DID ordinary delivery, DID-level acceptance, and message correlation |
-| P4 | `anp.group.base.v1` | [Group Messaging Base](04-group-messaging-base-semantics.md) | DID-scoped membership, governance, sends, and DID-addressed notifications |
+| P4 | `anp.group.base.v2` | [Group Messaging Base](04-group-messaging-base-semantics.md) | DID-only membership plus Host-coordinated member DID updates, governance, sends, and DID-addressed notifications |
 | P5 | `anp.direct.e2ee.v2` | [Direct E2EE](05-direct-end-to-end-encryption.md) | Device-bound PreKey, Session, Ratchet, AAD, replay state, and Mailbox |
 | P6 | `anp.group.e2ee.v2` | [Group E2EE](06-group-end-to-end-encryption.md) | Multiple independent device leaves for one member DID |
 | P7 | `anp.attachment.v1` | [Attachments and Object Transfer](07-attachments-and-object-transfer.md) | DID-addressed manifest, object-control, and Bearer Ticket flows; encrypted object-key distribution is inherited from P5/P6 |
 | P8 | `anp.federation.relay.v1` | [Federation and Cross-Domain](08-federation-and-cross-domain.md) | Preserve selectors and validate eligibility only when the enclosing Profile declares device addressing |
-| P9 | v1 binding extension | [Message Mentions](09-message-mentions.md) | Keep mention targets DID/group-selector scoped and compose the unchanged payload with P4 v1 or P6 v2 |
+| P9 | v1 binding extension | [Message Mentions](09-message-mentions.md) | Keep mention targets DID/group-selector scoped and compose the unchanged payload with P4 v2 or P6 v2 |
 
 The v2 E2EE dependency chains are deliberately mixed-version:
 
@@ -48,7 +48,7 @@ anp.direct.e2ee.v2
 anp.group.e2ee.v2
   -> anp.core.binding.v1
   -> anp.identity.discovery.v1
-  -> anp.group.base.v1
+  -> anp.group.base.v2
 ```
 
 ## 3. Mixed-version capability declaration
@@ -61,7 +61,7 @@ A service that supports ordinary v1 messaging and multi-device E2EE v2 can decla
     "anp.core.binding.v1",
     "anp.identity.discovery.v1",
     "anp.direct.base.v1",
-    "anp.group.base.v1",
+    "anp.group.base.v2",
     "anp.attachment.v1",
     "anp.federation.relay.v1",
     "anp.direct.e2ee.v2",
@@ -70,7 +70,7 @@ A service that supports ordinary v1 messaging and multi-device E2EE v2 can decla
 }
 ```
 
-This is one valid capability set; it does not require Base, Attachment, or Federation v2 identifiers. Each concrete request still selects exactly one Profile: Direct Base v1 for ordinary direct messaging, Direct E2EE v2 for encrypted direct messaging, Group Base v1 for ordinary group messaging, or Group E2EE v2 for encrypted group messaging.
+This is one valid capability set; it does not require Direct Base, Attachment, or Federation v2 identifiers. Each concrete request still selects exactly one Profile: Direct Base v1 for ordinary direct messaging, Direct E2EE v2 for encrypted direct messaging, Group Base v2 for ordinary group messaging, or Group E2EE v2 for encrypted group messaging.
 
 ## 4. Profile versioning rules
 
@@ -94,6 +94,9 @@ All vNext Profiles use the following interpretation:
 8. A device removed from its DID's `deviceManifest` cannot be restored with its former `device_id` or device keys. Re-enrollment uses a new ID and new keys. This is identity-scoped and permanent. It **MUST NOT** be confused with an overlay-scoped endpoint change, such as P6 removing one device's MLS leaf from one group: a device that remains a current eligible Manifest entry keeps its `device_id` and may re-establish that overlay endpoint with fresh cryptographic material.
 9. P6 Draft uses provisional private-use MLS ExtensionType `0xF0A1` for the mandatory LeafNode device binding. This is not an IANA assignment; a stable registered code point is a release gate.
 10. New requests omit deprecated `meta.anp_version`. A receiver may retain it only for compatibility or diagnostics and **MUST NOT** use it to select a Profile or infer support for a Profile set.
+11. Messaging wire identities are complete DIDs. Human-readable names and name resolution are outside the Messaging wire protocol and do not define membership or authorization continuity.
+12. For method-specific DID transitions, callers and services begin from the previously trusted DID, verify the registered transition chain, and use the resulting assurance according to the owning business policy. `alsoKnownAs` or a matching path alone does not authorize continuity.
+13. P4 v2 stores only the current member DID and ordinary membership metadata. A verified or policy-accepted Agent DID transition updates the same internal membership record and emits `member-did-updated`; it does not rewrite historical messages, receipts, signatures, or DIDs.
 
 ## 6. Reading and review order
 

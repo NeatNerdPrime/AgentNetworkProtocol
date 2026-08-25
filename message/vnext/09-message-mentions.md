@@ -6,11 +6,11 @@
 - Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Binding Version: v1 extension; it does not define an independent `meta.profile`
-- Applicability: This Profile defines an application-payload extension for expressing human-readable and machine-readable mentions in ANP group messages. It applies to `anp.group.base.v1`, `anp.group.e2ee.v1`, and `anp.group.e2ee.v2` when the carried application payload is structured JSON.
+- Applicability: This Profile defines an application-payload extension for expressing human-readable and machine-readable mentions in ANP group messages. In this vNext set it composes with `anp.group.base.v2` and `anp.group.e2ee.v2` when the carried application payload is structured JSON.
 - Dependencies:
   - `anp.core.binding.v1`
-  - `anp.group.base.v1` when used with group non-E2EE messages
-  - `anp.group.e2ee.v1` or `anp.group.e2ee.v2` when used with group E2EE messages
+  - `anp.group.base.v2` when used with group non-E2EE messages
+  - `anp.group.e2ee.v2` when used with group E2EE messages
 
 ---
 
@@ -70,7 +70,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **Mention Target**: The machine-readable target of a mention. It may be a human DID, an agent DID, or a group selector.
 - **Group Selector Mention**: A mention whose target is a group-scoped selector, such as `all`, `agents`, or `humans`.
 - **Terminal-side Validation**: Local validation and processing performed by the receiving client, user agent, or Agent runtime after it receives or decrypts the application payload. This term does not introduce a device-level or terminal-level protocol identity.
-- **Group Host Service**: The group service defined by `anp.group.base.v1`. In this Profile, it does not validate mention semantics.
+- **Group Host Service**: The group service defined by `anp.group.base.v2`. In this Profile, it does not validate mention semantics.
 
 ---
 
@@ -155,6 +155,12 @@ A single-target Mention identifies a human or Agent DID, and a group-selector Me
 
 P6 exclusively owns any sender- or recipient-device binding in the enclosing Group E2EE message. Mention objects **MUST NOT** copy, infer, or override those outer device selectors.
 
+### 3.7 Historical Mentions and DID transitions
+
+A historical Mention target remains the exact DID carried by the accepted message. A Group Host, relay, or client **MUST NOT** rewrite a signed or encrypted historical Mention payload after that DID changes.
+
+A receiving product **MAY** verify the P2 transition from the historical DID to a current DID and, after its business policy accepts the returned assurance, associate the historical surface or notification behavior with the current identity. This association is local and does not change the payload. Newly created Mentions **MUST** use the current complete target DID.
+
 ---
 
 ## 4. Profile Binding Model
@@ -175,8 +181,8 @@ This Profile **MUST NOT** replace the outer `params.meta.profile` of the enclosi
 
 The enclosing group message operation keeps its original Profile name, for example:
 
-- `anp.group.base.v1` for `group.send` without Group E2EE;
-- `anp.group.e2ee.v1` or `anp.group.e2ee.v2` for `group.e2ee.send`, according to the negotiated enclosing E2EE Profile.
+- `anp.group.base.v2` for `group.send` without Group E2EE;
+- `anp.group.e2ee.v2` for `group.e2ee.send`.
 
 ### 4.3 Content type
 
@@ -487,7 +493,7 @@ Implementations **MUST NOT** infer `human` or `agent` solely from a P4 governanc
 
 ### 7.1 Group Base without E2EE
 
-For `group.send` under `anp.group.base.v1`:
+For `group.send` under `anp.group.base.v2`:
 
 - `params.meta.content_type` **MUST** be `application/json`;
 - `params.body.payload` **MUST** carry the mention-bearing message object;
@@ -505,7 +511,7 @@ Example:
   "method": "group.send",
   "params": {
     "meta": {
-      "profile": "anp.group.base.v1",
+      "profile": "anp.group.base.v2",
       "security_profile": "transport-protected",
       "sender_did": "did:wba:example.com:user:alice",
       "target": {
@@ -820,6 +826,7 @@ An implementation conforming to this Profile MUST support at least:
 11. preservation of existing sender-proof and send-permission semantics from the enclosing ANP Message Profile;
 12. no server-side mention authorization or selector expansion in v1;
 13. DID and group-selector Mention targets with device binding left to the enclosing P6 message.
+14. historical Mention DIDs remain unchanged, while any association with a current DID requires P2 transition verification and local business-policy acceptance.
 
 ---
 

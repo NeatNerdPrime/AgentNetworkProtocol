@@ -13,7 +13,7 @@
 - **Profile 主版本**标识一个独立协商的 wire contract，例如 `anp.direct.base.v1` 或 `anp.direct.e2ee.v2`。
 - **Messaging 规范集版本**标识一次协同发布的文档与目录。ANP Messaging 1.2 有意同时包含 v1 与 v2 Profile 标识。
 - 各 Profile 拥有独立生命周期。依赖一个新 Profile，不要求依赖链中的其它 Profile 锁步升级主版本。
-- P1、P2、P3、P4、P7、P8 与 P9 Mention binding 保持 v1 contract；它们在 1.2 中的变化是设备边界澄清或向后兼容的注册型扩展。
+- P1、P2、P3、P7、P8 与 P9 Mention binding 保持 v1 contract。P4 使用 v2，因为删除 Handle-backed 成员模式和公开换绑方法，并增加由 Host 协调的 DID 更新，会改变其 wire contract 和状态机。
 - P5 Direct E2EE 与 P6 Group E2EE 使用 v2，因为其多设备 wire contract 和密码学状态机与 v1 不兼容。
 - Agent DID 仍是业务身份。Messaging 1.2 只在 Profile 要求该 DID 下的密码学设备端点时引入 `device_id`。
 - 普通非 E2EE 私聊、群聊、Mention 和附件操作保持 DID 定址，不要求也不携带设备 selector。这些操作的设备 fan-out 由接收 DID 所属域在本地完成。
@@ -30,12 +30,12 @@
 | P1 | `anp.core.binding.v1` | [核心绑定](01-核心绑定.md) | 通用 DID 元数据、条件式设备 selector、签名绑定、能力协商、幂等和共享错误 |
 | P2 | `anp.identity.discovery.v1` | [身份与发现](02-身份与发现.md) | 面向设备定址安全 Profile 的根保护 `deviceManifest`、key 引用、资格和发现 |
 | P3 | `anp.direct.base.v1` | [私聊基础语义](03-私聊基础语义.md) | 一次 DID-to-DID 普通投递、DID 级接受和消息关联 |
-| P4 | `anp.group.base.v1` | [群组基础语义](04-群组基础语义.md) | DID 级成员关系、治理、发送和 DID 定址通知 |
+| P4 | `anp.group.base.v2` | [群组基础语义](04-群组基础语义.md) | DID-only 成员关系、Host 协调的成员 DID 更新、治理、发送和 DID 定址通知 |
 | P5 | `anp.direct.e2ee.v2` | [私聊端到端加密](05-私聊端到端加密.md) | 设备绑定 PreKey、Session、Ratchet、AAD、重放状态和 Mailbox |
 | P6 | `anp.group.e2ee.v2` | [群组端到端加密](06-群组端到端加密.md) | 同一成员 DID 的多个独立设备 Leaf |
 | P7 | `anp.attachment.v1` | [附件与对象传输](07-附件与对象传输.md) | DID 定址的 manifest、对象控制与 Bearer Ticket 流程；加密 object key 分发继承 P5/P6 |
 | P8 | `anp.federation.relay.v1` | [联邦与跨域](08-联邦与跨域.md) | 仅在外层 Profile 声明设备定址时保留 selector 并校验资格 |
-| P9 | v1 binding 扩展 | [消息 Mention 扩展](09-消息Mention扩展.md) | 保持 Mention target 为 DID / group selector，并让不变的 payload 与 P4 v1 或 P6 v2 组合 |
+| P9 | v1 binding 扩展 | [消息 Mention 扩展](09-消息Mention扩展.md) | 保持 Mention target 为 DID / group selector，并让不变的 payload 与 P4 v2 或 P6 v2 组合 |
 
 E2EE v2 有意采用混合版本依赖链：
 
@@ -48,7 +48,7 @@ anp.direct.e2ee.v2
 anp.group.e2ee.v2
   -> anp.core.binding.v1
   -> anp.identity.discovery.v1
-  -> anp.group.base.v1
+  -> anp.group.base.v2
 ```
 
 ## 3. 混合版本能力声明
@@ -61,7 +61,7 @@ anp.group.e2ee.v2
     "anp.core.binding.v1",
     "anp.identity.discovery.v1",
     "anp.direct.base.v1",
-    "anp.group.base.v1",
+    "anp.group.base.v2",
     "anp.attachment.v1",
     "anp.federation.relay.v1",
     "anp.direct.e2ee.v2",
@@ -70,7 +70,7 @@ anp.group.e2ee.v2
 }
 ```
 
-这是一组合法能力，不要求存在 Base、Attachment 或 Federation v2。每个具体请求仍只选择一个 Profile：普通私聊使用 Direct Base v1，加密私聊使用 Direct E2EE v2，普通群聊使用 Group Base v1，加密群聊使用 Group E2EE v2。
+这是一组合法能力，不要求存在 Direct Base、Attachment 或 Federation v2。每个具体请求仍只选择一个 Profile：普通私聊使用 Direct Base v1，加密私聊使用 Direct E2EE v2，普通群聊使用 Group Base v2，加密群聊使用 Group E2EE v2。
 
 ## 4. Profile 版本规则
 
@@ -94,6 +94,9 @@ Profile wire 标识只使用 `.v1`、`.v2` 这样的主版本。1.1、1.2 等小
 8. 已从其 DID `deviceManifest` 移除的设备不得用原 `device_id` 或设备 key 原地恢复；重新注册必须使用新 ID 和新 key。这是身份作用域且永久的，**MUST NOT** 与 Overlay 作用域的端点变化混淆，例如 P6 把某台设备的 MLS leaf 从某个群移除：仍然是当前合格 Manifest 条目的设备保留其 `device_id`，并可用新的密码学材料重建该 Overlay 端点。
 9. P6 草案暂用私用 MLS ExtensionType `0xF0A1` 承载强制 LeafNode 设备绑定；该值不是 IANA 分配，取得稳定注册 code point 是发布 gate。
 10. 新请求省略已废弃的 `meta.anp_version`。接收方只可为兼容或诊断保留该字段，且 **MUST NOT** 用它选择 Profile 或推断支持某个 Profile 集。
+11. Messaging wire identity 只使用完整 DID。人类可读名称及名称解析位于 Messaging wire protocol 之外，不定义成员关系或授权连续性。
+12. 对方法特定的 DID 迁移，调用方和服务从此前可信的 DID 出发验证已注册的迁移链，并由所属业务策略使用得到的 assurance。仅凭 `alsoKnownAs` 或相同路径不能授权连续性。
+13. P4 v2 只保存成员当前 DID 和普通成员元数据。经验证或业务策略接受的 Agent DID 迁移更新同一内部成员记录并产生 `member-did-updated`，不会重写历史消息、回执、签名或 DID。
 
 ## 6. 阅读与评审顺序
 

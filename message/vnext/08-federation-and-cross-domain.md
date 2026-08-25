@@ -6,7 +6,7 @@
 - Specification Set: ANP Messaging 1.2 Draft
 - Language: English
 - Profile: `anp.federation.relay.v1`
-- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`, `anp.direct.base.v1`, `anp.group.base.v1`
+- Dependencies: `anp.core.binding.v1`, `anp.identity.discovery.v1`, `anp.direct.base.v1`, `anp.group.base.v2`
 - Applicability: This profile applies to ANP cross-domain service discovery, service-to-service invocation, group-event distribution, and cross-domain invocation of the object control plane.
 
 ---
@@ -149,7 +149,7 @@ This Profile **MUST** depend on the following Profiles:
 - `anp.core.binding.v1`
 - `anp.identity.discovery.v1`
 - `anp.direct.base.v1`
-- `anp.group.base.v1`
+- `anp.group.base.v2`
 
 This Profile **MAY** be used with the following overlays/extensions:
 
@@ -231,7 +231,7 @@ Applicable methods include but are not limited to:
 - `group.e2ee.remove`
 - `group.e2ee.send`
 
-For `group.join` and `group.add` in the current P4 v1 core, the cross-domain Success Semantics is subject to the business results returned by the Group Host; under the current v1 mainline, success means that the corresponding business member status has been established. If the deployer introduces additional out-of-band credentials, approval flow or other governance intermediate states, it is an expansion path and does not belong to the v1 core Success Semantics of this Profile.
+For `group.join` and `group.add` in the current P4 v2 core, the cross-domain Success Semantics is subject to the business results returned by the Group Host; success means that the corresponding business member status has been established. If the deployer introduces additional out-of-band credentials, approval flow, or other governance intermediate states, that is an extension path and does not belong to P4 v2 core success semantics.
 
 
 ### 5.3 For Object Service
@@ -448,6 +448,16 @@ Any other fields, especially E2EE-protected business content, that the intermedi
 
 Either party in the cross-origin call link **MUST NOT** silently downgrade the original request from a higher security profile to a lower security profile without explicit negotiation.
 
+### 6.7 DID-transition errors and rewrite prohibition
+
+When a deactivated DID is detected before JSON-RPC application processing, the did:wba HTTP layer may return its method-defined HTTP `409` response. When an ANP method has entered application processing and a DID in its routing, body, or stored state is superseded, the final business service returns P1 `anp.did_superseded`. One request **MUST NOT** return both layers of error.
+
+Federated services **MUST** preserve the final service's DID-transition error and must not treat `currentDid` or `current_did` as a trusted redirect. The original caller verifies the transition, rebuilds every affected request field and authenticated context, signs again, and retries.
+
+An intermediary **MUST NOT** rewrite `meta.sender_did`, `meta.target.did`, a P4 `body.member_did`, a P5/P6 DID or device binding, Mention payloads, encrypted AAD, or the original `auth.origin_proof`. After P4 has accepted a member DID update, a Group Host may generate a new `group.incoming` or `group.state_changed` notification addressed to the current DID because the Host is the originator of that notification; this is not relay rewriting.
+
+Federated services **SHOULD** refresh DID Documents and service-selection caches after a superseded response, signature failure, endpoint failure, deactivation, or capability conflict.
+
 ---
 
 ## 7. Idempotence and retry
@@ -469,6 +479,8 @@ When a network failure, timeout, or indeterminate result occurs, the sending dom
 - If called for object control, **SHOULD** keep the original `attachment_id` and related context unchanged;
 - The business payload **MUST** remain semantically equivalent.
 - For a P5/P6 operation, every declared device selector **MUST** remain unchanged; Base retries remain DID-scoped.
+
+If an accepted DID transition changes a sender or target DID, the caller—not an intermediary—creates a new authenticated request. It keeps the logical `message_id` / `operation_id` as required by the owning Profile but rebuilds the signature, digest, ciphertext, or AAD that binds the DID.
 
 ### 7.3 Implementation-Internal Tracking Fields
 
@@ -495,7 +507,7 @@ For cross-domain `direct.send`:
 For P4 control operations such as `group.join`, `group.add`, `group.remove`, `group.update_profile`, `group.update_policy`:
 
 - When the final Group Host Service accepts ordering, the sender domain service **MAY** return success to the local caller;
-- For the current P4 v1 core, the success of `group.join`/`group.add` means that the corresponding business member status has been established;
+- For the current P4 v2 core, the success of `group.join`/`group.add` means that the corresponding business member status has been established;
 - Member domain synchronization and cryptographic implementation with P6 are subsequent asynchronous stages.
 
 ### 8.3 P6 Cryptographic Control Operations
@@ -636,6 +648,9 @@ An implementation conforming to this Profile MUST support at least:
 11. Declare `serviceDid` for `ANPMessageService` participating in cross-domain calls, and verify the outer HTTP Message Signatures according to the method-level caller anchor;
 12. For `did:wba` deployment, support using bare-domain DID as domain-level federation service DID.
 13. Preserve and validate device selectors only for P5/P6 operations that declare them, and never synthesize selectors for P3/P4/P7 Base operations.
+14. Preserve HTTP `409` versus JSON-RPC `anp.did_superseded` layering and forward the final service's error unchanged;
+15. Never rewrite DID-bound signed or encrypted business fields while relaying;
+16. Refresh DID and service caches on transition, signature, endpoint, deactivation, or capability conflicts.
 
 ## 11. Reference Implementation Notes (Non-Normative)
 
