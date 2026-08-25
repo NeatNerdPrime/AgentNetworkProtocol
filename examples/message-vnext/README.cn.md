@@ -14,8 +14,11 @@
 | [`04-mls-two-device-leaves.json`](04-mls-two-device-leaves.json) | 同一个 DID 级业务成员的两个设备绑定 MLS Leaf |
 | [`05-device-revocation.json`](05-device-revocation.json) | 移除一个设备及其 key 引用前后的公开 DID Document 片段 |
 | [`06-device-state-changed-error.json`](06-device-state-changed-error.json) | 要求重新解析当前 DID、但不泄露内部 checkpoint 的可重试 P5/P6 设备状态错误；Base 消息不使用该错误 |
+| [`07-did-transition-retry.json`](07-did-transition-retry.json) | 最小 P3 superseded-DID 流程：把 `current_did` 仅当作提示，验证直接后继，再保留逻辑 message/operation ID 并重建 digest 和签名 |
 
 中英文 Profile 规范仍是权威来源。未来的一致性向量任务必须用可复现输入和预期字节替换所有密码学占位值。
+
+transition 示例特意不是密码学向量。尤其是 `alsoKnownAs` 和 1019 `current_did` 都不能建立连续性；示例中的 `verified` 结果依赖独立验证两个 E1 文档和 predecessor 的旧 binding-key proof。
 
 ## 版权声明
 

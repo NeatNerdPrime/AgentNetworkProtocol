@@ -1,0 +1,56 @@
+{
+  "scenario": "verified did:wba successor retry",
+  "initial_error": {
+    "jsonrpc": "2.0",
+    "id": "req-direct-alice-bob",
+    "error": {
+      "code": 1019,
+      "message": "Target DID has been superseded",
+      "data": {
+        "anp_code": "anp.did_superseded",
+        "retryable": true,
+        "details": {
+          "requested_did": "did:wba:example.com:users:bob:e1_old-fingerprint",
+          "current_did": "did:wba:example.com:users:bob:e1_new-fingerprint"
+        }
+      }
+    }
+  },
+  "verified_transition": {
+    "predecessor_document": {
+      "id": "did:wba:example.com:users:bob:e1_old-fingerprint",
+      "deactivated": true,
+      "successorDid": "did:wba:example.com:users:bob:e1_new-fingerprint",
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:example.com:users:bob:e1_old-fingerprint#binding-key",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-08-25T00:00:00Z",
+        "proofValue": "zOLD_BINDING_KEY_SIGNATURE_PLACEHOLDER"
+      }
+    },
+    "successor_document": {
+      "id": "did:wba:example.com:users:bob:e1_new-fingerprint",
+      "alsoKnownAs": [
+        "did:wba:example.com:users:bob:e1_old-fingerprint"
+      ],
+      "proof": {
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:wba:example.com:users:bob:e1_new-fingerprint#binding-key",
+        "proofPurpose": "assertionMethod",
+        "created": "2026-08-25T00:00:01Z",
+        "proofValue": "zNEW_BINDING_KEY_SIGNATURE_PLACEHOLDER"
+      }
+    },
+    "assurance": "verified"
+  },
+  "retry_invariants": {
+    "message_id": "msg-01JTRANSITIONEXAMPLE",
+    "operation_id": "op-01JTRANSITIONEXAMPLE",
+    "new_target_did": "did:wba:example.com:users:bob:e1_new-fingerprint",
+    "content_digest": "sha-256=:REBUILT_DIGEST_PLACEHOLDER:",
+    "origin_proof": "REBUILT_SIGNATURE_PLACEHOLDER"
+  }
+}
