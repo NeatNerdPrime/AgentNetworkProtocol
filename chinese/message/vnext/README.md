@@ -36,6 +36,7 @@
 | P7 | `anp.attachment.v1` | [附件与对象传输](07-附件与对象传输.md) | DID 定址的 manifest、对象控制与 Bearer Ticket 流程；加密 object key 分发继承 P5/P6 |
 | P8 | `anp.federation.relay.v1` | [联邦与跨域](08-联邦与跨域.md) | 仅在外层 Profile 声明设备定址时保留 selector 并校验资格 |
 | P9 | v1 binding 扩展 | [消息 Mention 扩展](09-消息Mention扩展.md) | 保持 Mention target 为 DID / group selector，并让不变的 payload 与 P4 v2 或 P6 v2 组合 |
+| Sync | `awiki.message-sync.explicit-negotiation.v1` | [消息同步显式协商](10-消息同步显式协商.md) | 显式 per-replica lane 协商、lane-local 隔离、有界 Ordinary Snapshot 与 Core 调度上限 |
 
 E2EE v2 有意采用混合版本依赖链：
 
@@ -100,7 +101,7 @@ Profile wire 标识只使用 `.v1`、`.v2` 这样的主版本。1.1、1.2 等小
 
 ## 6. 阅读与评审顺序
 
-先读 P1/P2，再读 Direct 的 P3/P5、Group 的 P4/P6，最后读 P7/P8/P9。评审时应同时检查中英文文件；任何字段、依赖、错误名或示例不一致都属于草案缺陷。
+先读 P1/P2，再读 Direct 的 P3/P5、Group 的 P4/P6、P7/P8/P9，最后阅读独立的消息同步 Profile。评审时应同时检查中英文文件；任何字段、依赖、错误名或示例不一致都属于草案缺陷。
 
 多设备示例集中在 [examples/message-vnext](../../../examples/message-vnext/README.cn.md)。
 

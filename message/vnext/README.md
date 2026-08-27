@@ -36,6 +36,7 @@ Draft presence does not indicate SDK, service, or product implementation support
 | P7 | `anp.attachment.v1` | [Attachments and Object Transfer](07-attachments-and-object-transfer.md) | DID-addressed manifest, object-control, and Bearer Ticket flows; encrypted object-key distribution is inherited from P5/P6 |
 | P8 | `anp.federation.relay.v1` | [Federation and Cross-Domain](08-federation-and-cross-domain.md) | Preserve selectors and validate eligibility only when the enclosing Profile declares device addressing |
 | P9 | v1 binding extension | [Message Mentions](09-message-mentions.md) | Keep mention targets DID/group-selector scoped and compose the unchanged payload with P4 v2 or P6 v2 |
+| Sync | `awiki.message-sync.explicit-negotiation.v1` | [Message Sync Explicit Negotiation](10-message-sync-explicit-negotiation.md) | Explicit per-replica lane negotiation, lane-local isolation, bounded Ordinary Snapshot, and Core scheduling limits |
 
 The v2 E2EE dependency chains are deliberately mixed-version:
 
@@ -100,7 +101,7 @@ All vNext Profiles use the following interpretation:
 
 ## 6. Reading and review order
 
-Read P1 and P2 first, then P3/P5 for Direct, P4/P6 for Group, and finally P7/P8/P9. Reviewers should verify the English and Chinese files together and treat any field, dependency, error-name, or example mismatch as a draft defect.
+Read P1 and P2 first, then P3/P5 for Direct, P4/P6 for Group, P7/P8/P9, and finally the independent Message Sync Profile. Reviewers should verify the English and Chinese files together and treat any field, dependency, error-name, or example mismatch as a draft defect.
 
 Multi-device examples are collected in [examples/message-vnext](../../examples/message-vnext/README.md).
 

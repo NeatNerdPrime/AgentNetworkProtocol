@@ -15,6 +15,7 @@ These files accompany the mixed-version [ANP Messaging 1.2 drafts](../../message
 | [`05-device-revocation.json`](05-device-revocation.json) | Before/after public DID Document fragments for removing one device and its key references |
 | [`06-device-state-changed-error.json`](06-device-state-changed-error.json) | Retryable P5/P6 device-state error requiring current DID resolution without private checkpoints; it is not used by Base messaging |
 | [`07-did-transition-retry.json`](07-did-transition-retry.json) | Minimal P3 superseded-DID flow: treat `current_did` as a hint, verify the direct successor, then rebuild the digest and signature while retaining the logical message/operation IDs |
+| [`message-sync-v1-a/`](message-sync-v1-a/README.md) | Portable closed-shape negotiation and durable lane-handoff contract fixtures for `awiki.message-sync.explicit-negotiation.v1` |
 
 The English and Chinese Profile documents remain authoritative. A future conformance-vector task must replace placeholder cryptographic values with reproducible inputs and expected bytes.
 

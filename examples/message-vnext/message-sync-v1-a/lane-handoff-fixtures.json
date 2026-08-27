@@ -1,0 +1,103 @@
+{
+  "profile": "awiki.message-sync.explicit-negotiation.v1",
+  "payload_limit_bytes": 1048576,
+  "cases": [
+    {
+      "name": "p5-positive",
+      "envelope": {
+        "lane_kind": "p5_device",
+        "lane_epoch": "1",
+        "position": "7",
+        "event_id": "p5-delivery-7",
+        "event_type": "p5.delivery",
+        "raw_payload": {"ciphertext_b64u": "fixture-p5-ciphertext"},
+        "replica_binding": {
+          "account_id": "acct-alice",
+          "device_id": "alice-phone",
+          "auth_generation": "3",
+          "client_instance_id": "client-a"
+        },
+        "created_at": "2026-08-27T00:00:00Z",
+        "expires_at": "2026-09-03T00:00:00Z"
+      },
+      "expected": "commit"
+    },
+    {
+      "name": "p6-positive",
+      "envelope": {
+        "lane_kind": "p6_group",
+        "lane_epoch": "2",
+        "position": "11",
+        "event_id": "p6-commit-11",
+        "event_type": "p6.delivery",
+        "raw_payload": {"mls_message_b64u": "fixture-p6-commit"},
+        "replica_binding": {
+          "account_id": "acct-alice",
+          "device_id": "alice-phone",
+          "auth_generation": "3",
+          "client_instance_id": "client-a"
+        },
+        "created_at": "2026-08-27T00:00:00Z",
+        "expires_at": "2026-09-03T00:00:00Z"
+      },
+      "expected": "commit"
+    },
+    {
+      "name": "same-event-duplicate",
+      "same_as": "p5-positive",
+      "expected": "duplicate_noop"
+    },
+    {
+      "name": "same-event-conflicting-payload",
+      "same_identity_as": "p5-positive",
+      "replacement_raw_payload": {"ciphertext_b64u": "different-ciphertext"},
+      "expected": "lane_input_conflict",
+      "cursor_advances": false
+    },
+    {
+      "name": "unsupported-envelope-version",
+      "envelope_version": 2,
+      "expected": "fail_closed",
+      "cursor_advances": false
+    },
+    {
+      "name": "payload-limit-minus-one",
+      "generated_raw_payload_bytes": 1048575,
+      "expected": "commit"
+    },
+    {
+      "name": "payload-limit",
+      "generated_raw_payload_bytes": 1048576,
+      "expected": "commit"
+    },
+    {
+      "name": "payload-limit-plus-one",
+      "generated_raw_payload_bytes": 1048577,
+      "expected": "fail_closed",
+      "cursor_advances": false
+    },
+    {
+      "name": "inbox-write-failure",
+      "inject": "sync_lane_inbox_write_failure",
+      "expected": "rollback",
+      "cursor_advances": false
+    },
+    {
+      "name": "ack-response-lost",
+      "inject": "response_lost_after_commit",
+      "expected_retry": "duplicate_noop",
+      "cursor_advances_once": true
+    },
+    {
+      "name": "consumer-pending-after-sync-commit",
+      "consumer_state": "pending",
+      "expected": "sync_committed"
+    },
+    {
+      "name": "consumer-outcome-cannot-change-cursor",
+      "consumer_state": "repair_required",
+      "attempted_cursor_mutation": true,
+      "expected": "consumer_cursor_write_rejected"
+    }
+  ]
+}
