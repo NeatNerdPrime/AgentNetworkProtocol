@@ -89,6 +89,21 @@
       "cursor_advances_once": true
     },
     {
+      "name": "zero-partial-rebootstrap-preserves-local-responsibility",
+      "preexisting": {
+        "lane_cursors": ["p5_device", "p6_group"],
+        "legacy_blocker": true,
+        "domain_sentinel": true
+      },
+      "renegotiated_capabilities": [],
+      "expected_active_poll_lanes": [],
+      "expected_preserved": [
+        "lane_cursors",
+        "legacy_blocker",
+        "domain_sentinel"
+      ]
+    },
+    {
       "name": "consumer-pending-after-sync-commit",
       "consumer_state": "pending",
       "expected": "sync_committed"
