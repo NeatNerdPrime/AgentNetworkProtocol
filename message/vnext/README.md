@@ -36,7 +36,11 @@ Draft presence does not indicate SDK, service, or product implementation support
 | P7 | `anp.attachment.v1` | [Attachments and Object Transfer](07-attachments-and-object-transfer.md) | DID-addressed manifest, object-control, and Bearer Ticket flows; encrypted object-key distribution is inherited from P5/P6 |
 | P8 | `anp.federation.relay.v1` | [Federation and Cross-Domain](08-federation-and-cross-domain.md) | Preserve selectors and validate eligibility only when the enclosing Profile declares device addressing |
 | P9 | v1 binding extension | [Message Mentions](09-message-mentions.md) | Keep mention targets DID/group-selector scoped and compose the unchanged payload with P4 v2 or P6 v2 |
-| Sync | `awiki.message-sync.explicit-negotiation.v1` | [Message Sync Explicit Negotiation](10-message-sync-explicit-negotiation.md) | Explicit per-replica lane negotiation, lane-local isolation, bounded Ordinary Snapshot, and Core scheduling limits |
+
+Implementation-defined profiles may be advertised through capability discovery, but a private
+profile is not part of the ANP Messaging specification set merely because it transports ANP
+messages or uses an ANP discovery method. In particular, identifiers outside the `anp.*`
+namespace remain owned and specified by their implementation.
 
 The v2 E2EE dependency chains are deliberately mixed-version:
 

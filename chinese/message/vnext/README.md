@@ -36,7 +36,10 @@
 | P7 | `anp.attachment.v1` | [附件与对象传输](07-附件与对象传输.md) | DID 定址的 manifest、对象控制与 Bearer Ticket 流程；加密 object key 分发继承 P5/P6 |
 | P8 | `anp.federation.relay.v1` | [联邦与跨域](08-联邦与跨域.md) | 仅在外层 Profile 声明设备定址时保留 selector 并校验资格 |
 | P9 | v1 binding 扩展 | [消息 Mention 扩展](09-消息Mention扩展.md) | 保持 Mention target 为 DID / group selector，并让不变的 payload 与 P4 v2 或 P6 v2 组合 |
-| Sync | `awiki.message-sync.explicit-negotiation.v1` | [消息同步显式协商](10-消息同步显式协商.md) | 显式 per-replica lane 协商、lane-local 隔离、有界 Ordinary Snapshot 与 Core 调度上限 |
+
+实现可以通过 capability discovery 声明私有 Profile，但私有 Profile 不会因为承载 ANP
+消息或使用 ANP discovery 方法而成为 ANP Messaging 规范集合的一部分。尤其是 `anp.*`
+命名空间之外的标识符，仍由对应实现自行拥有和定义。
 
 E2EE v2 有意采用混合版本依赖链：
 

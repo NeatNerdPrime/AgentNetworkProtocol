@@ -11,6 +11,11 @@
 - `examples/` contains sample ADP assets and API interface YAMLs.
 - `scripts/` includes dependency-free Python and JavaScript utilities for repo maintenance.
 
+## Protocol Ownership Boundary
+
+- Profile specifications indexed by this repository belong to the ANP protocol set. Do not add an implementation-owned profile outside the `anp.*` namespace to the ANP Profile index merely because it transports ANP messages or uses ANP capability discovery.
+- Vendor or product-private protocols, fixtures, storage limits, client scheduling rules, and UI watchdogs stay in the owning product repository. ANP documents may describe the generic extension mechanism without adopting a private profile as an ANP specification.
+
 ## Build, Test, and Development Commands
 
 This repository is documentation-first and has focused tests for maintenance automation.
