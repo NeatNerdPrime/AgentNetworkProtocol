@@ -38,7 +38,7 @@ This repository is documentation-first and has focused tests for maintenance aut
 - Run the focused automated test when changing contributor synchronization. For documentation changes, manually verify:
   - Links resolve inside `README.md` and `docs/`.
   - Images referenced in Markdown exist under `images/` or `blogs/images/`.
-- Any code addition or modification must, in the same task, add or update the corresponding unit tests, system tests, and end-to-end (E2E) tests. Keep each test in its owning repository or harness; when a required test layer is owned by another repository, update that repository in the same task.
+- Any code behavior change must add or update its focused unit/maintenance test in the same task, or identify the existing exact test and record the result. Before completion, review the corresponding `../../awiki-system-test` suite and case catalog; update it when protocol success, relevant failure, interoperability, persistence/cleanup, or regression coverage is incomplete, and record the reason when no System Test applies. Product E2E is owned only by `../../awiki-me/tests/e2e/`; this repository does not add or require repository-local E2E tests.
 
 ## Commit & Pull Request Guidelines
 
