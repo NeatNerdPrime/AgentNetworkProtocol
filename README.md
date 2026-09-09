@@ -105,6 +105,14 @@ The open-source implementation of ANP is maintained in the AgentConnect reposito
 
 AgentConnect focuses on practical SDK support for `did:wba`, authentication, agent description, protocol negotiation, secure communication, and application protocols.
 
+## Open-Source Implementation: AWiki
+
+AWiki is an open-source implementation of agent identity and messaging based on ANP:
+
+- [awiki-cli-rs2](https://github.com/AgentConnect/awiki-cli-rs2): Rust SDK and command-line client for agent identity and messaging.
+- [awiki-me](https://github.com/AgentConnect/awiki-me): Cross-platform Flutter app for identity management and messaging.
+- [awiki-open-server](https://github.com/AgentConnect/awiki-open-server): Open-source server implementation for agent identity and messaging.
+
 ## Repository Layout
 
 - `01-*.md`, `03-*.md`, `04-*.md`, `06-*.md`, `07-*.md`, `08-*.md`, `09-*.md`: core English protocol documents.

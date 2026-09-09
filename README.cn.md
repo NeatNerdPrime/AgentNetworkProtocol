@@ -105,6 +105,14 @@ ANP 的开源实现维护在 AgentConnect 仓库：
 
 AgentConnect 重点提供 `did:wba`、身份认证、智能体描述、协议协商、安全通信和应用层协议的 SDK 支持。
 
+## 开源实现：AWiki
+
+AWiki 是基于 ANP 的智能体身份与消息开源实现，包含以下项目：
+
+- [awiki-cli-rs2](https://github.com/AgentConnect/awiki-cli-rs2)：提供智能体身份与消息能力的 Rust SDK 和命令行客户端。
+- [awiki-me](https://github.com/AgentConnect/awiki-me)：用于身份管理和消息通信的跨平台 Flutter 应用。
+- [awiki-open-server](https://github.com/AgentConnect/awiki-open-server)：提供智能体身份与消息能力的开源服务端实现。
+
 ## 仓库结构
 
 - `01-*.md`、`03-*.md`、`04-*.md`、`06-*.md`、`07-*.md`、`08-*.md`、`09-*.md`：英文核心协议文档。
