@@ -11,6 +11,8 @@
 
 Abbreviation: WNS (WBA Name Space)
 
+This revision preserves the existing WBA name-mapping, endpoint-verification, binding-management, cache, and migration rules. Native `did:web` retains the [existing domain-declaration compatibility model in Appendix B.4](appendix-b-compatibility-with-native-did-web.md#legacy-web-handle), without migration to WBA or promotion of that result to WBA `exact-handle`. WBA hostname consistency and Section 6 exact/private endpoint flows below do not extend to Web compatibility mode. Common request authentication has moved to [ANP-02](02-anp-did-authentication-protocol-specification.md).
+
 ## Abstract
 
 This specification defines WNS (WBA Name Space), a human-readable namespace based on did:wba. WNS introduces Handles (such as `alice.example.com`) as readable aliases for `did:wba` DIDs. Through a standardized resolution flow, a Handle is mapped to a DID, and the DID is then resolved to a DID Document and service capabilities according to the [did:wba Method Specification](03-did-wba-method-design-specification.md).
@@ -162,7 +164,7 @@ sequenceDiagram
     C->>H: GET /.well-known/handle/{local-part}
     H-->>C: Handle Resolution Document (containing DID)
     Note over C: Extract DID from the Resolution Document
-    C->>D: Resolve the DID Document per Spec 03
+    C->>D: Resolve under the applicable method (WBA: 03; Web: Appendix B)
     D-->>C: DID Document
     Note over C: Obtain service endpoints from the DID Document
 ```
@@ -398,9 +400,10 @@ DID:     did:wba:example.com%3A8800:user:alice:e1_<fingerprint>
 
 In the second example, the Handle domain is `example.com`. Although the DID contains the encoded port `%3A8800`, its hostname is still `example.com`, so the mapping remains valid. The Handle itself does not carry a port number. The port only affects where the DID Document is resolved, not the textual form of the Handle.
 
+<a id="method-resolution"></a>
 ### 4.5 did:wba Standard Resolution
 
-After obtaining the DID, implementations MUST resolve the DID Document according to the [did:wba Method Specification](03-did-wba-method-design-specification.md).
+After obtaining the DID, implementations MUST resolve the DID Document according to the [did:wba Method Specification](03-did-wba-method-design-specification.md). Native `did:web` uses the existing Web method-resolution and authentication compatibility rules referenced by [ANP-02 Appendix B](02-anp-did-authentication-protocol-specification.md#web-binding); Handle binding retains the existing Appendix B.4 model.
 
 Implementers MUST NOT bypass the DID Document and directly infer service endpoints, binding keys, or other DID-related information from the Handle. The DID Document is the authoritative source of agent capabilities and services.
 
@@ -517,6 +520,7 @@ The DID holder adds an entry of type `ANPHandleService` to the `service` section
 
 Future versions may introduce stronger Name Service provider identity or privacy-preserving mechanisms such as `providerDid` and `handleCommitment`, while preserving compatibility.
 
+<a id="binding-verification"></a>
 ### 6.3 Verification Flow
 
 For the following security-sensitive scenarios, verifiers MUST perform bidirectional binding verification:
@@ -691,6 +695,7 @@ Handle Providers MUST satisfy the following requirements:
 - When returning `429 Too Many Requests`, SHOULD include `Retry-After`.
 - When a Handle is in a migration window or an underlying DID rotation window, SHOULD reduce the cache TTL.
 
+<a id="binding-management"></a>
 ### 8.2 Handle Management
 
 - Handle Providers are responsible for Handle allocation and lifecycle management.
@@ -721,7 +726,7 @@ For path-type did:wba using the default path profile, the underlying DID rotates
 - Once the new DID Document is available and the Provider's independent recovery or identity-verification policy has succeeded, the Handle Provider MUST update the Handle mapping to the new DID and strictly increase `binding_generation`.
 - `binding_generation` represents only the state of the Handle mapping; it MUST NOT be interpreted as a DID generation or as cryptographic proof of DID migration.
 - DID rebinding MUST represent a credential update for the same Handle subject and MUST NOT be used to transfer the Handle or replace its subject.
-- If a Handle Provider or client needs to treat the old and new DIDs as the same cryptographically verified continuing subject, it MUST follow Specification 03 to verify that they have the same stable subject path, that the old DID Document's `successorDid` points to the new DID, and that the corresponding document-wide `proof` is valid. It MUST NOT make that determination solely because the Handle or DID prefix is the same. Without a valid migration `proof`, the Handle Provider may update the mapping according to its recovery policy, but MUST NOT represent the relationship as having cryptographically verified continuity. It may report `provider_asserted` only when the method-level signed `providerTransitionAssertion` from Specification 03 verifies successfully; the Handle mapping by itself still yields only `unverified`.
+- If a Handle Provider or client needs to treat the old and new DIDs as the same continuing subject, it MUST follow Specification 03 from the old DID, verify the stable subject path and every direct `successorDid`, and reach a proof-valid active DID. A valid old-binding or pre-authorized recovery proof provides cryptographic continuity. Without either proof, an authenticated same-origin HTTPS complete-chain resolution may report `provider_asserted`; the Handle mapping, matching prefix, or binding generation by itself still yields only `unverified`.
 - During the rotation window, the Handle Provider SHOULD reduce the cache TTL to reduce the time during which clients may use an outdated mapping.
 - Clients MUST NOT assume that a Handle is always bound to the same DID; the current resolution result is the authoritative current DID for that Handle.
 - For security-sensitive operations, after obtaining a new DID through a Handle, the client MUST re-run bidirectional binding verification.
@@ -912,7 +917,7 @@ The following summarizes all MUST / SHOULD / MAY requirements in this specificat
 
 ## Appendix A: Native `did:web` Compatibility
 
-Reference document: [Appendix B: Compatibility with native `did:web`](../appendix-b-compatibility-with-native-did-web.md)
+Reference document: [Appendix B: Compatibility with native `did:web`](appendix-b-compatibility-with-native-did-web.md)
 
 ## References
 

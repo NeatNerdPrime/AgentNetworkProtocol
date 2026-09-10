@@ -11,7 +11,7 @@
   - `anp.core.binding.v1`
   - `anp.identity.discovery.v1`
   - `anp.direct.base.v1`
-  - `did:wba` Identity and Proof Profile (external dependency)
+  - [ANP-02 identity inputs](../../vnext/02-anp-did-authentication-protocol-specification.md#identity-input) and the applicable DID method binding (specification dependency, not a new wire Profile)
 
 ---
 
@@ -19,7 +19,7 @@
 
 This Profile defines the complete implementable solution of ANP Direct End-to-End Encryption, stipulating:
 
-1. How to connect `did:wba` identity, P2 `deviceManifest`, and service discovery to Direct E2EE;
+1. How to connect method-validated DID identity, P2 `deviceManifest`, and service discovery to Direct E2EE;
 2. How each eligible device publishes, discovers, and verifies its own Prekey Bundle;
 3. How an exact sender-device and recipient-device pair establishes an asynchronous `X3DH-like` session;
 4. How each device pair maintains independent `Double Ratchet-like` state;
@@ -36,7 +36,7 @@ This Profile does not define:
 - presence;
 -Group End-to-End Encryption;
 - Cross-device copying of device private keys, Ratchet state, or historical plaintext;
-- The parsing, updating and undoing mechanism of the `did:wba` method itself.
+- Resolution, updating, and deactivation mechanisms of the DID method itself.
 
 ---
 
@@ -90,7 +90,7 @@ For each device ciphertext, P5 owns both device selectors, the device-pair crypt
 
 The mandatory interoperability baseline of this v2 Profile continues to adopt:
 
-- Initial session establishment: `X3DH-like` (adapted for did:wba)
+- Initial session establishment: `X3DH-like` (adapted for DIDs)
 - Long-term static negotiation key: `X25519`
 - KDF: `HKDF-SHA-256`
 - Message AEAD: `ChaCha20-Poly1305`
@@ -153,7 +153,7 @@ For the "`auth.origin_proof.contentDigest` or equivalent origin proof digest" re
 
 When `Direct Init Accountability Extension` is not negotiated, this Profile's MTI **is not required** to additionally carry the P3 form of `params.auth.origin_proof`.
 
-## 4. `did:wba` integration rules
+## 4. Method-independent DID integration rules
 
 ### 4.1 Minimum requirements for DID documents
 
@@ -180,7 +180,7 @@ If either selected device no longer satisfies these rules, new material and ciph
 
 This Profile **MUST** use key role separation:
 
-1. The keys listed in `authentication` / `assertionMethod` are used for:
+1. The keys listed in `assertionMethod` are used for:
    - Sign Prekey Bundle;
    - Sign control objects that require strong identity ownership (if an extension is enabled);
 2. The keys listed in `keyAgreement` are used for:
@@ -192,10 +192,9 @@ Each Manifest device owns separate signing and X25519 private keys, SPK/OPK priv
 
 Supplementary note: In online protocols, the former is usually referenced through `proof.verificationMethod`, and the latter is usually referenced through `static_key_agreement_id` in Bundle or `sender_static_key_agreement_id` in init; the implementation should not let the same key bear both types of semantics.
 
-### 4.3 `did:wba` fingerprint binding
+### 4.3 DID method validation
 
-
-Refer to the conventions of the `did:wba` specification.
+DID Documents are validated under [P2 method validation](02-identity-and-discovery.md#method-validation) and the corresponding method specification. Device eligibility and Bundle Object Proof continue to follow Sections 4.1.1 and 6.2, respectively.
 
 ### 4.4 Key material capabilities of `ANPMessageService`
 
@@ -298,7 +297,7 @@ Field usage instructions:
 
 ### 6.2 `prekey_bundle` structure
 
-`prekey_bundle` represents **static session establishment material** published by the recipient on a long-term basis and bound by the `did:wba` identity certificate. In order to be consistent with the Signal-style OPK pay-per-view issuance model, `prekey_bundle` **MUST NOT** directly embeds `one_time_prekey`; the OPK is returned by the server when querying.
+`prekey_bundle` represents **static session establishment material** published by the recipient on a long-term basis and bound by the selected device's P1 Appendix B Object Proof. In order to be consistent with the Signal-style OPK pay-per-view issuance model, `prekey_bundle` **MUST NOT** directly embeds `one_time_prekey`; the OPK is returned by the server when querying.
 
 The recommended definition of `prekey_bundle` is as follows:
 
@@ -598,7 +597,7 @@ Idempotent and OPK allocation requirements:
 
 ---
 
-## 8. Initial Session Establishment: X3DH-like (did:wba Adapted Version)
+## 8. Initial Session Establishment: X3DH-like (DID Adapted Version)
 
 ## 8.1 Design Description
 
@@ -1331,7 +1330,7 @@ The default optional fields **MUST** be omitted directly; `conversation_id` and 
 
 The AEAD AAD of each subsequent message, recorded as `AD_msg`, **MUST** be the UTF-8 + RFC 8785 JCS encoded byte string of the following JSON object:
 
-```json
+```text
 {
   "content_type": "application/anp-direct-cipher+json",
   "message_id": "<outer meta.message_id>",
@@ -1526,7 +1525,7 @@ The business system decides whether `provider_asserted` is sufficient to inherit
 
 ## 13. Error model
 
-This Profile fixedly allocates the `5000-5012` code segment for the direct messaging E2EE error. When the server returns this error, `error.data.anp_code` **MUST** exist.
+This Profile fixedly allocates the `4000-4012` code segment for direct messaging E2EE errors. When the server returns this error, `error.data.anp_code` **MUST** exist.
 
 | `code` | `anp_code` | Meaning |
 |---|---|---|
@@ -1790,7 +1789,7 @@ An implementation conforming to this Profile MUST support at least:
 The key differences between this Profile and the original Signal X3DH are as follows:
 
 1. The long-term DH identity is assumed by the DID document `keyAgreement`, not directly by the signature identity key;
-2. Static Bundle binding reuses `did:wba` proof instead of the original XEdDSA dedicated format; OPK does not enter the static Bundle proof, but is issued by the server one by one;
+2. Static Bundle binding reuses P1 Appendix B Object Proof instead of the original XEdDSA dedicated format; OPK does not enter the static Bundle proof, but is issued by the server one by one;
 3. Agent DIDs remain the business subjects, while explicit device selectors bind public material, Sessions, AAD, and ciphertext delivery to cryptographic endpoints;
 4. This Profile does not force long-term signing of the entire init message by default, retaining security attributes closer to Signal style;
 5. This Profile explicitly reserves the upgrade path to PQXDH-like.
@@ -1799,5 +1798,5 @@ The key differences between this Profile and the original Signal X3DH are as fol
 
 1. It is recommended to add `ANP-DIRECT-E2EE-PQXDH-HYBRID-V1` as a future explicitly negotiated suite candidate;
 2. It is recommended to add a transparent directory or audit log for Bundle release;
-3. It is recommended that the normalization rules of did:wba proof be hard-coded in the identity profile to avoid implementation differences;
+3. Object-proof normalization and algorithms reference P1 Appendix B instead of copying method-specific proof rules;
 4. It is recommended to define `Direct Init Accountability Extension` for auditable deployments, but do not make it an MTI.

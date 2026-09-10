@@ -28,7 +28,7 @@
 | Profile | 标识 | 文档 | Messaging 1.2 主要职责 |
 | --- | --- | --- | --- |
 | P1 | `anp.core.binding.v1` | [核心绑定](01-核心绑定.md) | 通用 DID 元数据、条件式设备 selector、签名绑定、能力协商、幂等和共享错误 |
-| P2 | `anp.identity.discovery.v1` | [身份与发现](02-身份与发现.md) | 面向设备定址安全 Profile 的根保护 `deviceManifest`、key 引用、资格和发现 |
+| P2 | `anp.identity.discovery.v1` | [身份与发现](02-身份与发现.md) | 面向设备定址安全 Profile 的经方法保护的 `deviceManifest`、key 引用、资格和发现 |
 | P3 | `anp.direct.base.v1` | [私聊基础语义](03-私聊基础语义.md) | 一次 DID-to-DID 普通投递、DID 级接受和消息关联 |
 | P4 | `anp.group.base.v2` | [群组基础语义](04-群组基础语义.md) | DID-only 成员关系、Host 协调的成员 DID 更新、治理、发送和 DID 定址通知 |
 | P5 | `anp.direct.e2ee.v2` | [私聊端到端加密](05-私聊端到端加密.md) | 设备绑定 PreKey、Session、Ratchet、AAD、重放状态和 Mailbox |
@@ -89,11 +89,11 @@ Profile wire 标识只使用 `.v1`、`.v2` 这样的主版本。1.1、1.2 等小
 所有 vNext Profile 统一采用以下解释：
 
 1. Agent DID 是 Base 消息的 wire 身份与地址。`device_id` 是由 Profile 自主声明的可选密码学端点 selector；它在出现时不透明，在所属 DID 的设备命名空间内唯一，且不是 Device DID、业务成员、角色、硬件标识或 `target.kind`。
-2. `deviceManifest` 是宣告设备定址安全 Profile 的 DID 之完整当前公开设备集合，内嵌于根保护 DID Document，不具有独立 endpoint、proof、epoch、hash 或 CAS 协议。仅 Base 发现不要求它。
+2. `deviceManifest` 是宣告设备定址安全 Profile 的 DID 之完整当前公开设备集合，内嵌于经方法验证的 DID Document，不具有独立 endpoint、proof、epoch、hash 或 CAS 协议。仅 Base 发现不要求它。
 3. Manifest 条目只包含 `device_id`、`signing_key_id`、`e2ee_key_id` 和 `profiles[]`；严禁包含产品域内角色、token、Registry 状态、恢复状态和私钥。
 4. P3、P4、P7 普通流程与 P9 payload 语义只使用业务 DID 或 Group DID，**MUST NOT** 要求或携带 `sender_device_id`、`recipient_device_id` 或 `requester_device_id`。P5/P6 拥有 E2EE 所需的设备 selector，业务目标仍位于 `meta.target.did`。
 5. 继续复用现有 `anp-rfc9421-origin-proof-v1` 和 Data Integrity proof scheme；P5/P6 的 `.v2` Profile ID 不会自动创建 proof v2。Base Profile 认证 sender DID。P5/P6 设备字段 **MUST** 受所属 Overlay 定义的 authenticated context 覆盖：当该操作使用 `auth.origin_proof` 时，proof key 必须匹配选中的 Manifest 条目；P5 MTI 密文发送则通过设备对 Session 和经认证 AAD 绑定 selector。
-6. ANP 不公开部署私有的 `document_version`、`document_hash` 或 checkpoint 字段；资格可能变化时，调用方重新 resolve 当前根保护 DID Document。
+6. ANP 不公开部署私有的 `document_version`、`document_hash` 或 checkpoint 字段；资格可能变化时，调用方重新 resolve 当前经方法验证的 DID Document。
 7. 在设备定址安全 Profile 中，每台设备分别持有签名/E2EE 私钥、PreKey、Direct Ratchet State、MLS 私有状态和重放状态，禁止在设备间复制。
 8. 已从其 DID `deviceManifest` 移除的设备不得用原 `device_id` 或设备 key 原地恢复；重新注册必须使用新 ID 和新 key。这是身份作用域且永久的，**MUST NOT** 与 Overlay 作用域的端点变化混淆，例如 P6 把某台设备的 MLS leaf 从某个群移除：仍然是当前合格 Manifest 条目的设备保留其 `device_id`，并可用新的密码学材料重建该 Overlay 端点。
 9. P6 草案暂用私用 MLS ExtensionType `0xF0A1` 承载强制 LeafNode 设备绑定；该值不是 IANA 分配，取得稳定注册 code point 是发布 gate。
@@ -101,6 +101,7 @@ Profile wire 标识只使用 `.v1`、`.v2` 这样的主版本。1.1、1.2 等小
 11. Messaging wire identity 只使用完整 DID。人类可读名称及名称解析位于 Messaging wire protocol 之外，不定义成员关系或授权连续性。
 12. 对方法特定的 DID 迁移，调用方和服务从此前可信的 DID 出发验证已注册的迁移链，并由所属业务策略使用得到的 assurance。仅凭 `alsoKnownAs` 或相同路径不能授权连续性。
 13. P4 v2 只保存成员当前 DID 和普通成员元数据。经验证或业务策略接受的 Agent DID 迁移更新同一内部成员记录并产生 `member-did-updated`，不会重写历史消息、回执、签名或 DID。
+14. 通用 DID 请求认证遵循 [ANP-02](../../vnext/02-ANP-基于DID的身份认证协议.md)，消息绑定遵循 P1，DID 方法验证遵循 P2。`did:wba` 与 `did:web` 使用相同的消息规则、字段和签名/AAD 格式。
 
 ## 6. 阅读与评审顺序
 

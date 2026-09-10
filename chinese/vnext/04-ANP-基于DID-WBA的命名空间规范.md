@@ -11,6 +11,8 @@
 
 简称：WNS (WBA Name Space)
 
+本次修订保留 WBA 的原有名称映射、端点验证、绑定管理、缓存及迁移规则。原生 `did:web` 沿用[附录 B.4 的既有域声明兼容方案](附录B：与原生did-web-的兼容.md#legacy-web-handle)，不要求迁移为 WBA，也不把该兼容结果升级为 WBA 的 `exact-handle`。下文 WBA 主机名一致性和第 6 节的精确/私密端点流程不扩展到 Web 兼容模式。通用请求认证已提取到 [ANP-02](02-ANP-基于DID的身份认证协议.md)。
+
 ## 摘要
 
 本规范定义了 WNS（WBA Name Space），一个基于 did:wba 的人类可读命名空间。WNS 引入 Handle（如 `alice.example.com`）作为 `did:wba` DID 的可读别名，通过标准化解析流程将 Handle 映射到 DID，再按 [did:wba 方法规范](03-did-wba方法规范.md) 解析到 DID Document 与服务能力。
@@ -161,7 +163,7 @@ sequenceDiagram
     C->>H: GET /.well-known/handle/{local-part}
     H-->>C: Handle Resolution Document (含 DID)
     Note over C: 从 Resolution Document 中提取 DID
-    C->>D: 按 03 规范解析 DID Document
+    C->>D: 按适用方法解析 DID Document（WBA: 03；Web: 附录 B）
     D-->>C: DID Document
     Note over C: 从 DID Document 获取服务端点
 ```
@@ -397,9 +399,10 @@ DID:     did:wba:example.com%3A8800:user:alice:e1_<fingerprint>
 
 上例中，Handle 的 domain 为 `example.com`；第二个 DID 虽然包含编码后的端口 `%3A8800`，但其主机名仍为 `example.com`，因此映射仍然有效。Handle 本身不携带端口号；端口只影响 DID Document 的解析位置，不影响 Handle 的文本形式。
 
+<a id="method-resolution"></a>
 ### 4.5 did:wba 标准解析
 
-获得 DID 后，必须（MUST）按照 [did:wba 方法规范](03-did-wba方法规范.md) 解析 DID Document。
+获得 DID 后，必须（MUST）按照 [did:wba 方法规范](03-did-wba方法规范.md) 解析 DID Document。 原生 `did:web` 按 [ANP-02 附录 B](02-ANP-基于DID的身份认证协议.md#web-binding)引用的原有 Web 方法解析与认证兼容规则处理；Handle 绑定继续使用附录 B.4 的既有方案。
 
 实现者不得（MUST NOT）绕过 DID Document，直接由 Handle 推断服务端点、绑定密钥或其他 DID 相关信息。DID Document 是智能体能力和服务的权威来源。
 
@@ -516,6 +519,7 @@ DID 持有者在其 DID Document 的 `service` 中添加 `ANPHandleService` 类�
 
 后续版本可以在保持兼容的前提下，引入 `providerDid`、`handleCommitment` 等更强的 Name Service 提供者身份或隐私保护机制。
 
+<a id="binding-verification"></a>
 ### 6.3 验证流程
 
 对于以下安全敏感场景，验证者必须（MUST）执行双向绑定验证：
@@ -690,6 +694,7 @@ Handle Provider 必须（MUST）满足以下要求：
 - 当返回 `429 Too Many Requests` 时，应当（SHOULD）携带 `Retry-After`
 - 当 Handle 处于迁移或底层 DID 轮换窗口时，应当（SHOULD）降低缓存 TTL
 
+<a id="binding-management"></a>
 ### 8.2 Handle 管理
 
 - Handle Provider 负责 Handle 的分配和生命周期管理
@@ -720,7 +725,7 @@ Handle Provider 必须（MUST）满足以下要求：
 - Handle Provider 必须（MUST）在新的 DID Document 可用且其独立恢复或身份验证策略完成后，将 Handle 映射更新到新 DID，并严格递增 `binding_generation`
 - `binding_generation` 只表示 Handle 映射状态；它不得（MUST NOT）被解释为 DID 代际或 DID 迁移的密码学证明
 - DID 换绑必须（MUST）表示同一 Handle 主体的凭证更新，不得（MUST NOT）被用于转让 Handle 或更换 Handle 主体
-- 若 Handle Provider 或客户端需要将新旧 DID 视为经密码学验证的同一持续主体，必须（MUST）按 03 规范验证二者稳定主体路径一致、旧 DID Document 的 `successorDid` 指向新 DID，并验证相应整体 `proof`；不得（MUST NOT）仅凭 Handle 相同或前缀相同作出该判断。缺少有效迁移 `proof` 时，Handle Provider 可以依据其恢复策略更新映射，但不得将该关系表述为已通过密码学连续性验证；只有 03 规范的方法级签名 `providerTransitionAssertion` 验证成功时才可以报告 `provider_asserted`，Handle 映射本身仍只产生 `unverified`
+- 若 Handle Provider 或客户端需要将新旧 DID 视为同一持续主体，必须（MUST）按 03 规范从旧 DID 出发，验证稳定主体路径和每个直接 `successorDid`，并最终到达 proof 有效的 active DID。有效的旧 binding proof 或预授权 recovery proof 提供密码学连续性；缺少这两种 proof 时，已认证的同源 HTTPS 完整链解析可以报告 `provider_asserted`，但 Handle 映射、相同前缀或 binding generation 本身仍只产生 `unverified`
 - 在轮换窗口中，Handle Provider 应当（SHOULD）降低缓存 TTL，以减少客户端使用旧映射的时间
 - 客户端不得（MUST NOT）假定 Handle 永远绑定同一个 DID；当前解析结果才是该 Handle 的权威当前 DID
 - 对于安全敏感操作，客户端在使用 Handle 获得新的 DID 后，必须（MUST）重新执行双向绑定验证
@@ -911,7 +916,7 @@ did:wba:example.com:user:alice:e1_<new-fingerprint>
 
 ## 附录 A：原生`did:web` 兼容方案
 
-参考文档[附录B：与原生did-web-的兼容.md](/chinese/附录B：与原生did-web-的兼容.md)
+参考文档[附录B：与原生did-web-的兼容.md](附录B：与原生did-web-的兼容.md)
 
 ## 参考文献
 

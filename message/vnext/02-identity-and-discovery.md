@@ -157,6 +157,13 @@ DID documents **MUST NOT** be treated as:
 - High frequency key rotation log;
 - Agent internal replica list.
 
+<a id="method-validation"></a>
+#### 4.1.1 DID method validation
+
+This Profile resolves and validates DID Documents under [ANP-02 identity inputs](../../vnext/02-anp-did-authentication-protocol-specification.md#identity-input) and the applicable DID method binding. `did:wba`, `did:web`, and other supported methods use the same service-discovery, key-purpose, and device-eligibility rules in this Profile; method-specific Document validation is defined by the corresponding method specification.
+
+Discovery and object verification do not require the request-authentication procedure. `authentication`, `assertionMethod`, and `keyAgreement` remain subject to the operation requirements of this Profile and the owning message Profile.
+
 ### 4.2 Minimum requirements for DID documents
 
 For DID documents used by ANP:
@@ -672,15 +679,7 @@ This result is implementation-internal and **MUST NOT** add `stable_subject_id`,
 
 ### 12.2 `e1_` path-type did:wba transitions
 
-The first registered automatic-transition path in this draft is a path-type did:wba DID whose last segment uses the `e1_` fingerprint Profile. Starting from the previously trusted DID, the resolver **MUST**:
-
-1. obtain each DID Document and verify that its `id` equals the requested DID;
-2. verify the `e1_` binding fingerprint, the active document proof, and the applicable did:wba proof rules;
-3. when the document is deactivated, require `successorDid` and verify the old document's transition proof;
-4. require the old and successor DIDs to have the same stable subject path;
-5. obtain and verify the direct successor DID Document, including its binding fingerprint and document proof;
-6. continue hop by hop until reaching the final active DID;
-7. reject cycles, conflicting successors, and trusted-cache conflicts.
+The first registered automatic-transition path in this draft is a path-type did:wba DID whose last segment uses the `e1_` fingerprint Profile. Starting from the previously trusted DID, the resolver **MUST** validate every hop and the final active DID Document under the [ANP-03 method rules](../../vnext/03-did-wba-method-design-specification.md#wba-method-rules), and reject cycles, conflicting successors, and trusted-cache conflicts.
 
 The verifier **MUST NOT** begin from an untrusted new DID and infer continuity merely because its path resembles an existing identity.
 
@@ -690,10 +689,10 @@ A transition result **MUST** preserve its actual assurance:
 
 - `verified`: the old DID's bound root key signs the deactivation and successor relationship;
 - `recovery_verified`: a recovery key that was authorized in a previously trusted old document establishes the transition;
-- `provider_asserted`: a did:wba Provider supplies a `providerTransitionAssertion` that verifies under Section 2.5.6 of Specification 03, but there is no proof from the old binding key or a pre-authorized recovery key. TLS, `successorDid`, a Handle, or a 409 hint alone does not reach this level;
+- `provider_asserted`: there is no proof from the old binding key or a pre-authorized recovery key, but either authenticated same-origin HTTPS resolution verifies the complete direct-successor chain through a proof-valid active DID, or the identity Provider supplies the predecessor-to-successor fact through a separately authenticated recovery/transition authority channel. An isolated `successorDid`, a Handle/WNS mapping, a standalone unsigned hop, or a 409 hint alone does not reach this level;
 - `unverified`: no accepted continuity evidence exists.
 
-The transition resolver and verification layer **MUST NOT** itself merge identities or make a high-trust business authorization decision from `provider_asserted`; it reports that assurance unchanged to the owning business layer. Any automated inheritance based on `provider_asserted` occurs only because that business system has an explicit policy accepting the provider-compromise and account-recovery tradeoff, not because the assertion was upgraded to cryptographic continuity.
+The transition resolver reports `provider_asserted` only after authenticated complete-chain resolution succeeds; a separately authenticated Provider authority channel is evaluated by the owning business system. Neither source upgrades the result to binding-key or recovery-key cryptographic continuity. The owning business system decides which relationships and authorizations the result may inherit.
 
 An owning business Profile **MUST NOT** treat `provider_asserted` as `verified` or `recovery_verified`. It also **MUST NOT** fail solely because the assurance is `provider_asserted`: the owning business system decides whether that assurance is sufficient and which business relationships or authorizations to inherit. `unverified` does not establish transition continuity.
 

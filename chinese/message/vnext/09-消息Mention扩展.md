@@ -56,6 +56,8 @@ Mention 是一个结构化应用层对象，用于把人类可见的界面表达
 
 ---
 
+本 Profile 适用于 `did:wba`、`did:web` 及其他已支持的 DID 方法；身份解析与验证遵循 [P2](02-身份与发现.md#method-validation)。
+
 ## 2. 术语和规范性约定
 
 ### 2.1 规范性关键词
@@ -190,7 +192,7 @@ P6 独占拥有承载 Group E2EE 消息中的发送或接收设备绑定。Menti
 
 对于非 E2EE Group Base：
 
-```json
+```text
 "meta": {
   "content_type": "application/json"
 }

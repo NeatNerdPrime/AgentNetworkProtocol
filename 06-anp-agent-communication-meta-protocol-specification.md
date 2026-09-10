@@ -44,6 +44,10 @@ Agent interoperability usually starts from public descriptions: a target agent e
 
 Therefore, the new ANP-06 positions the meta-protocol as a semantic negotiation control plane. It does not carry business data; it helps both parties determine which interoperability path should be used before business execution begins.
 
+### 1.1 Design Origins
+
+The ANP meta-protocol draws inspiration from [Agora Protocol, described in *A Scalable Communication Protocol for Networks of Large Language Models*](https://arxiv.org/html/2410.11905v1), particularly the use of a meta-protocol to negotiate how agents communicate and combine natural-language flexibility with structured-protocol efficiency. ANP adapts these ideas to its own agent description, discovery, identity authentication, and Core Binding architecture; the negotiation interfaces and interoperability requirements are defined by this specification.
+
 ## 2. Design Goals and Non-Goals
 
 ### 2.1 Design Goals

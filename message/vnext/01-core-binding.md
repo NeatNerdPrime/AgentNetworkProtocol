@@ -960,7 +960,7 @@ This appendix **does not repeat definitions** of common signature algorithms, St
 * **RFC 9530**: `Content-Digest` field value format
 * **RFC 9421**: Construction and verification model of `Signature-Input`, `Signature`, signature base
 * **RFC 3986**: URI percent encoding rules
-* For `did:wba`'s DID parsing, verification method authorization relationship and path fingerprint binding verification, follow the corresponding **did:wba method specification**
+* [ANP-02](../../vnext/02-anp-did-authentication-protocol-specification.md): common identity inputs, authentication-key authorization, signature-parameter security, time, and replay requirements; the applicable method binding owns Document validation
 
 ANP only defines the following custom parts in this appendix:
 
@@ -1052,7 +1052,7 @@ Notes:
 
 ## A.4 Global component mapping
 
-When the did:wba authentication information is carried in the ANP JSON-RPC request, to ensure that the signature remains stable under cross-service forwarding, the key component **MUST** in `Signature-Input` uses the following global application layer mapping:
+When common DID authentication is bound to an ANP JSON-RPC origin proof, to ensure that the signature remains stable under cross-service forwarding, the key component **MUST** in `Signature-Input` uses the following global application layer mapping:
 
 * `@method`: mapped to `Signed Request Object.method`
 * `@target-uri`: mapped to `anp://{meta.target.kind}/{pct-encoded meta.target.did}`
@@ -1134,8 +1134,8 @@ The verifier **MUST** perform at least the following steps:
 6. Rebuild `@method` from `method`
 7. Rebuild `@target-uri` from `meta.target.kind` and `meta.target.did`
 8. Rebuild and verify signature base according to RFC 9421 model
-9. Parse the DID document pointed to by `keyid` and check that the authentication method exists and is authorized by the `authentication` relationship
-10. Verify signature, time window and anti-replay strategy according to corresponding DID method rules
+9. Validate the current DID Document under ANP-02 identity inputs and its method binding, then check that the exact `keyid` method exists and is authorized by the subject's `authentication` relationship
+10. Verify the signature, time window, and replay protection under ANP-02 common requirements and this appendix's message context
 
 If any step fails, the verifier **MUST** reject the request.
 
@@ -1146,7 +1146,7 @@ If the owning P5/P6-like E2EE Overlay declares `meta.sender_device_id` and requi
 * `keyid` **MUST** point to a parsable DID URL
 * The verifier **MUST** parse the DID document to which `keyid` belongs and check whether the verification method is authorized by the `authentication` relationship
 * The DID to which `keyid` belongs **MUST** be consistent with the business subject DID required by the applicable profile
-* For a did:wba path-type `e1_` DID, the verifier **MUST** additionally perform path fingerprint binding verification
+* The verifier **MUST** validate the Document under its method binding; method validation does not replace this appendix's authentication purpose, request signature, and message-context checks
 
 Notes:
 
@@ -1155,7 +1155,7 @@ Notes:
 
 ## A.8 Relationship with hop authentication
 
-`anp-rfc9421-origin-proof-v1` proves the identity of the service originator, not the identity of the current network one-hop caller.
+`anp-rfc9421-origin-proof-v1` proves the identity of the business originator, not the identity of the current network one-hop caller.
 
 Therefore:
 
@@ -1193,7 +1193,7 @@ More specifically:
 - JSON canonicalization algorithm, following **[RFC 8785: JSON Canonicalization Scheme (JCS)](https://www.rfc-editor.org/rfc/rfc8785)**;
 - Byte sequence encoding, following **[RFC 3629: UTF-8, a transformation format of ISO 10646](https://www.rfc-editor.org/rfc/rfc3629)**;
 - DID document model, verification relationship and basic semantics of DID URL, follow **[W3C DID Core 1.0](https://www.w3.org/TR/did-core/)**;
-- If the deployment uses `did:wba`, its method-specific parsing, path fingerprint binding and other additional verifications follow the corresponding DID method specification, such as **[did:wba Method Specification](https://agentnetworkprotocol.com/en/specs/03-did-wba-method-specification/)**.
+- Identity material is validated under [P2 method validation](02-identity-and-discovery.md#method-validation) and the applicable method binding. WBA-specific rules remain owned by [ANP-03 method clauses](../../vnext/03-did-wba-method-design-specification.md#wba-method-rules) and are not copied into the object-proof algorithm.
 
 This appendix **does not repeat definitions** of Data Integrity, `eddsa-jcs-2022`, JCS, UTF-8, DID Core, or the DID method itself.
 The ANP only harmonizes the following in this appendix:
@@ -1203,6 +1203,8 @@ The ANP only harmonizes the following in this appendix:
 3. UTF-8 + RFC 8785 JCS standardized serialization requirements;
 4. The default unified semantics of `proofPurpose = "assertionMethod"`;
 5. Share division of labor boundaries between verification steps and object-specific constraints.
+
+A DID method that does not require a document-level proof still uses the object proof and `assertionMethod` authorization specified in this appendix.
 
 ## B.1 Applicability
 
@@ -1238,7 +1240,7 @@ The recommended structure is as follows:
     "proofValue": "z..."
   }
 }
-````
+```
 
 The unified requirements for v1 are as follows:
 
@@ -1314,7 +1316,7 @@ Verifiers **MUST** perform at least the following steps for objects using this a
 3. Determine the issuer DID according to the corresponding object Profile
 4. Reconstruct "the entire object after removing the top-level `proof`" as a protected document
 5. Use UTF-8 + RFC 8785 JCS to normalize and serialize protected documents
-6. Parse issuer DID document
+6. Resolve and validate the current issuer DID Document under P2 identity inputs and the applicable method binding
 7. Check that `proof.verificationMethod` exists and is authorized by `assertionMethod` of the issuer DID document
 8. Press `DataIntegrityProof + eddsa-jcs-2022` to verify the proof
 9. Execute field integrity, time window, status reference and other business checks specified by the object Profile

@@ -10,9 +10,9 @@
 
 **Current specification set:** the core protocol documents have been organized around the ANP 1.1 release line. The released suite covers `did:wba` identity, WNS handles, agent description, agent discovery, end-to-end instant messaging, and the AP2 agent payment protocol. The meta-protocol specification remains a draft and is not released yet.
 
-**ANP Core vNext draft:** the [core protocol vNext index](vnext/README.md) holds candidate revisions for ANP-01 through ANP-09. It currently starts from ANP-03 and ANP-04 copied from the released v1.1 text. These drafts do not replace the released specifications until they are published.
+**ANP Core vNext draft:** the [core draft index](vnext/README.md) now includes ANP-02 common DID authentication, ANP-03 WBA method revisions, and ANP-04 existing WNS rules with native Web compatibility. Drafts do not replace released specifications.
 
-**ANP Messaging 1.2 draft:** the [mixed-version draft suite](message/vnext/README.md) defines multi-device cryptographic endpoints under one DID while keeping P1/P2/P3/P4/P7/P8 and the P9 Mention binding on v1. Only the incompatible Direct E2EE and Group E2EE Profiles use v2. Draft presence does not imply implementation support or public capability advertisement.
+**ANP Messaging 1.2 draft:** the [mixed-version candidate suite](message/vnext/README.md) separates DID methods from authentication and message verification through ANP-02/P1/P2. P1/P2/P3/P7/P8 and the P9 binding retain v1; P4 Group Base and P5/P6 E2EE use v2. Draft presence does not imply implementation support or public capability advertisement.
 
 **Versioning note:** `Version: 1.1` identifies the specification/document release version. It does not change the ANP payload field `protocolVersion`; examples and protocol fields that use `"protocolVersion": "1.0.0"` remain unchanged because this release does not change protocol fields, flows, or security requirements.
 
@@ -58,15 +58,16 @@ ANP is built on existing Internet infrastructure and organizes the released prot
 | Area | Document | Status | What it defines |
 | --- | --- | --- | --- |
 | Overview | [ANP Technical White Paper](01-agentnetworkprotocol-technical-white-paper.md) | White paper | Vision, design principles, and the three-layer architecture |
+| Authentication | [ANP-02: DID Authentication Protocol](vnext/02-anp-did-authentication-protocol-specification.md) | Draft / not released | Method-independent HTTP/JSON authentication and WBA/Web bindings; reuses deprecated number 02 while preserving historical did:all |
 | Identity | [ANP-03: did:wba Method Specification](03-did-wba-method-design-specification.md) | Released v1.1 + [vNext Draft](vnext/03-did-wba-method-design-specification.md) | Web-based DID method, cross-platform authentication, `e1_` Ed25519 binding, `k1_` compatibility extension |
 | Naming | [ANP-04: ANP-DID:WBA Name Space Specification](04-anp-did-wba-name-space-specification.md) | Released v1.1 + [vNext Draft](vnext/04-anp-did-wba-name-space-specification.md) | WNS handles such as `alice.example.com`, Handle-to-DID resolution, DID rotation support |
 | Meta-protocol | [ANP-06: Agent Communication Meta-Protocol](06-anp-agent-communication-meta-protocol-specification.md) | Draft / not released | Optional semantic meta-protocol negotiation, `MetaProtocolInterface` declaration, `anp.negotiate`, and interface / Profile / security profile / schema selection |
 | Description | [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) | Released v1.1 | Agent Description documents, interface descriptions, and capability publication |
-| Discovery | [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
+| Discovery | [ANP-08: Agent Discovery Protocol](08-ANP-Agent-Discovery-Protocol-Specification.md) | Released v1.1 | Active `.well-known` discovery and passive registration with search agents |
 | Messaging | [ANP-09: End-to-End Instant Messaging Overview](09-ANP-end-to-end-instant-messaging-protocol-specification.md) | Released v1.1 + vNext Draft | Profile index for direct messaging, group messaging, E2EE, attachments, federation, mentions, and the separately versioned multi-device draft |
 | Payments | [ANP-10: Agent Payment Protocol (AP2)](application/10-anp-agent-payment-protocol-specification.md) | Released v1.1 (EN); CN draft available | Agent-to-agent payments, mandates, receipts, DID-based signatures, and payment flows |
 
-The [ANP Core vNext draft index](vnext/README.md) and its [Chinese mirror](chinese/vnext/README.md) currently contain initial working drafts of ANP-03 and ANP-04. Draft presence does not modify the released 1.1 files.
+The [core vNext index](vnext/README.md) and its [Chinese mirror](chinese/vnext/README.md) add the ANP-02 authentication entry and candidate revisions of ANP-03/04 and Web integration. Released 1.1 files remain unchanged.
 
 ### Instant Messaging Profiles
 
@@ -82,18 +83,22 @@ The released ANP 1.1 end-to-end instant messaging suite is split into focused pr
 8. [P8 Federation and Cross-Domain](message/08-federation-and-cross-domain.md): cross-domain routing, relaying, and result witnessing.
 9. [P9 Message Mentions Extension](message/09-message-mentions.md): group-message mention payloads and selector semantics.
 
-The [ANP Messaging 1.2 draft index](message/vnext/README.md) and its [Chinese mirror](chinese/message/vnext/README.md) define a legal mixed-version capability set: Base, Attachment, and Federation remain v1, while Direct E2EE and Group E2EE use v2. Ordinary Direct, Group, Mention, and Attachment operations stay addressed only by business DID or Group DID; their device fan-out remains local to the receiving domain. `device_id` appears only where an E2EE v2 Profile requires a cryptographic endpoint, including independent Direct sessions and multiple MLS leaves, and P8 v1 preserves device selectors only for such enclosing Profiles. Implementations **MUST NOT** reinterpret E2EE v1 state as v2 or silently downgrade an E2EE v2 operation.
+The [ANP Messaging 1.2 draft index](message/vnext/README.md) and its [Chinese mirror](chinese/message/vnext/README.md) define a legal mixed-version capability set: P1/P2/P3, Attachment, and Federation remain v1, while P4 Group Base, Direct E2EE, and Group E2EE use v2. Ordinary Direct, Group, Mention, and Attachment operations stay addressed only by business DID or Group DID; their device fan-out remains local to the receiving domain. `device_id` appears only where an E2EE v2 Profile requires a cryptographic endpoint, including independent Direct sessions and multiple MLS leaves, and P8 v1 preserves device selectors only for such enclosing Profiles. Implementations **MUST NOT** reinterpret E2EE v1 state as v2 or silently downgrade an E2EE v2 operation.
 
 ### DID Compatibility Appendices
 
 - [Appendix A: did:wba `k1_` Compatibility Extension](appendix-a-did-wba-k1-compatibility-extension.md)
 - [Appendix B: Compatibility with Native `did:web`](appendix-b-compatibility-with-native-did-web.md)
 
+- [Native did:web integration candidate](vnext/appendix-b-compatibility-with-native-did-web.md): ANP-02 authentication, existing WNS/Web compatibility, and message composition; the released compatibility appendix remains available.
+
 ## Quick Start
 
+- For method-independent ordinary API authentication design, read the [ANP-02 candidate](vnext/02-anp-did-authentication-protocol-specification.md). It is independent of Messaging, Handles, and device Manifests and is not released.
+
 - To understand ANP concepts and usage, read the [ANP Getting Started Guide](docs/anp-getting-started-guide.md) or the [Chinese guide](docs/chinese/ANP入门指南.md).
-- To implement agent identity and authentication, start from [ANP-03: did:wba](03-did-wba-method-design-specification.md) and the two DID compatibility appendices.
-- To publish an agent, read [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) and [ANP-08: Agent Discovery Protocol](08-anp-agent-discovery-protocol-specification.md).
+- To implement identity and authentication for **released ANP 1.1**, start from [ANP-03: did:wba](03-did-wba-method-design-specification.md) and the released DID compatibility appendices. For **vNext candidate authentication**, start from ANP-02 above; candidate ANP-03 supplies only WBA method rules.
+- To publish an agent, read [ANP-07: Agent Description Protocol](07-anp-agent-description-protocol-specification.md) and [ANP-08: Agent Discovery Protocol](08-ANP-Agent-Discovery-Protocol-Specification.md).
 - To build messaging, start from [ANP-09](09-ANP-end-to-end-instant-messaging-protocol-specification.md) and then choose the required messaging profiles.
 - To run demos, see [ANP Sample Programs](docs/chinese/ANP示例程序.md).
 
@@ -116,7 +121,7 @@ AWiki is an open-source implementation of agent identity and messaging based on 
 ## Repository Layout
 
 - `01-*.md`, `03-*.md`, `04-*.md`, `06-*.md`, `07-*.md`, `08-*.md`, `09-*.md`: core English protocol documents.
-- `vnext/`: candidate drafts for core protocols 01–09; currently seeded with ANP-03 and ANP-04. `chinese/vnext/` is the Chinese mirror.
+- `vnext/`: candidate drafts for core protocols 01–09; currently including ANP-02, ANP-03, and ANP-04. `chinese/vnext/` is the Chinese mirror.
 - `application/`: application-layer protocols such as AP2.
 - `message/`: the released ANP 1.1 end-to-end instant messaging Profile suite; `message/vnext/` contains separately versioned v2 drafts.
 - `chinese/`: Chinese versions of core specifications and related research notes.
@@ -139,7 +144,7 @@ AWiki is an open-source implementation of agent identity and messaging based on 
 - [x] Release the Agent Description Protocol and Agent Discovery Protocol.
 - [ ] Release the meta-protocol after the draft is stabilized.
 - [x] Split end-to-end instant messaging into an overview plus nine interoperable profiles.
-- [ ] Stabilize and review core protocol vNext drafts (currently ANP-03 and ANP-04).
+- [ ] Stabilize and review core protocol vNext drafts (currently ANP-02, ANP-03, and ANP-04).
 - [ ] Stabilize and review the separately versioned multi-device messaging vNext draft.
 - [x] Add the AP2 agent payment protocol to the application layer.
 - [ ] Continue aligning SDK implementations and examples with the 1.1 specification set.

@@ -56,6 +56,8 @@ This Profile does not define:
 
 ---
 
+This Profile applies to `did:wba`, `did:web`, and other supported DID methods; identity resolution and validation follow [P2](02-identity-and-discovery.md#method-validation).
+
 ## 2. Terminology and Normative Conventions
 
 ### 2.1 Normative Keywords
@@ -190,7 +192,7 @@ Mention-bearing structured payloads **MUST** use ordinary JSON payload carriage.
 
 For non-E2EE Group Base:
 
-```json
+```text
 "meta": {
   "content_type": "application/json"
 }

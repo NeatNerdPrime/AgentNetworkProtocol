@@ -17,7 +17,7 @@ This Profile defines the Group End-to-End Encryption control layer of ANP, stipu
 
 1. How to bind `group_did`, `group_state_version`, and `group_event_seq` to the group cryptography state machine;
 2. How to use MLS as the basic protocol for group key establishment, member changes, and application message protection;
-3. How to bind a `did:wba` Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
+3. How to bind a method-validated Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
 4. How to define a set of independent `group.e2ee.*` JSON-RPC methods to specifically carry MLS cryptographic actions;
 5. How to work closely with `anp.group.base.v2` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
 6. How to deal with `epoch`, `Welcome`, `PrivateMessage`, `PublicMessage`, `epoch_authenticator`, fork detection and recovery.
@@ -59,8 +59,8 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **PublicMessage**: MLS message that is only signed and not encrypted.
 - **Device Leaf**: One MLS client/leaf identified externally by `(agent_did, device_id)`. It is not an additional P4 business member.
 - **Eligible Device**: A device that is currently eligible for `anp.group.e2ee.v2` under P2 `deviceManifest`, referenced keys, service capabilities, and group policy.
-- **did:wba Binding**: Binds an MLS leaf signature key, member credential, or KeyPackage to a verifiable `(agent_did, device_id)` proof object.
-- **MLS Controller**: The subject responsible for executing MLS member change control actions. Fixed to group `owner` in v2.
+- **DID Device Binding** (retained wire name `did_wba_binding`): Binds an MLS leaf signature key, member credential, or KeyPackage to a verifiable `(agent_did, device_id)` proof object.
+- **MLS Controller**: The subject responsible for general MLS member-change control actions. The group `owner` remains the controller in v2. A narrowly authorized same-DID device-removal caller defined in Sections 9.4 and 13.4 is not a general controller.
 - **State Coupling**: P4 and P6 do not do method-by-method mapping, but a coupling method that triggers cryptographic state advancement through business state changes.
 - **E2EE Notice**: P6's self-defined independent encryption notification object, used to deliver cryptographic results such as `commit` and `welcome`.
 - **Terminal Leaf**: A device leaf that has been removed from the group's MLS membership set. Its local group binding can no longer send, receive, or decrypt application messages for that `group_did`, while the device itself may remain a current eligible P2 Manifest entry.
@@ -120,12 +120,12 @@ For example:
 - A member becomes `active` in P4 and an eligible device has not yet entered the MLS membership set → owner executes `group.e2ee.add(member DID, device ID)`
 - An already-active member adds another eligible device → owner may execute another device-level `group.e2ee.add` without a P4 membership change
 - A member becomes `left` or `removed` in P4 → owner removes every MLS device leaf for that DID
-- A device loses P2 Manifest eligibility while its DID remains active → owner removes only that device leaf
+- A device loses P2 Manifest eligibility while its DID remains active → owner, or a same-DID device-management-authorized sibling with current MLS state, removes only that device leaf
 - A P4 member produces `member-did-updated` in P4 → owner adds selected new-DID device leaves and then removes every old-DID device leaf
 
-### 3.5 owner is the only MLS controller
+### 3.5 owner is the MLS controller; same-DID device removal is a narrow exception
 
-In v2, only the owner DID assumes the MLS controller role. A control request is submitted by an eligible owner device that possesses the required current MLS state; eligibility of another owner device does not give it that private state.
+In v2, only the owner DID assumes the general MLS controller role. A general control request is submitted by an eligible owner device that possesses the required current MLS state; eligibility of another owner device does not give it that private state.
 
 owner is responsible for:
 
@@ -136,6 +136,15 @@ owner is responsible for:
 - Generate `commit` corresponding to member changes;
 - Generate `welcome` for new members;
 - Advance `epoch` after member change.
+
+One narrow exception applies only to an exact revoked device leaf of the caller's own DID. An eligible current leaf whose device has authoritative same-DID device-management authorization **MAY** submit `group.e2ee.remove` for a different device leaf of that same DID after the target device has been authoritatively revoked or has lost current P2 eligibility. This exception:
+
+- **MUST NOT** remove the caller's own leaf, an active sibling device, another DID's leaf, or the P4 business member;
+- **MUST NOT** change P4 role, status, join time, or member count;
+- **MUST** use the caller's own current MLS state to generate an exact one-leaf Remove Commit; and
+- **MUST NOT** cause the Group Host to generate a Commit or release MLS private state.
+
+The device-management authorization is a trusted deployment authorization fact, not a new P6 request field. A Group Host that cannot verify it authoritatively **MUST** reject the exception and **MUST NOT** trust a caller assertion or cached presentation data.
 
 The core idea of P6 is not to put MLS objects into P4 method bodies, but to let cryptographic state advance together with business state. The following diagram summarizes this state coupling so that readers can understand the causal relationships among methods before reading the detailed constraints below.
 
@@ -194,7 +203,7 @@ By default, Group Host Service:
 
 ### 3.7 The owner manages group state; active members manage group messages
 
-The owner controls only:
+The owner controls:
 
 - Member changes;
 - Advancement of the group cryptographic state;
@@ -207,6 +216,8 @@ Every eligible device that belongs to an `active` member and currently has an ML
 - Decrypt other members' group messages.
 
 This Profile does not require that all group messages be encrypted by the owner.
+
+The same-DID exception in Section 3.5 grants no create, add, member-level removal, DID-update, or third-party control authority.
 
 ### 3.8 v2 does not support External Commit
 
@@ -347,19 +358,19 @@ Implementation **MAY** support more MLS suites, but:
 - All members within the same group **MUST** agree on the kit used;
 - If group policy restrictions allow package collection, MLS Controller **MUST** reject packages that do not satisfy the policy.
 
-### 5.4 Relationship with did:wba
+### 5.4 Relationship with DID identity
 
-The relationship between the main line of this Profile and did:wba is as follows:
+The relationship between the main line of this Profile and DID identity is as follows:
 
-- `authentication`/`assertionMethod` in the DID document is used for identity binding proof;
+- `assertionMethod` in the DID document is used for identity binding proof;
 - `keyAgreement` **SHOULD** in the DID document contains at least one X25519 entry, indicating that the Agent has E2EE capabilities;
 - P2 `deviceManifest` identifies the current device entry, its `signing_key_id`, `e2ee_key_id`, and `anp.group.e2ee.v2` eligibility;
-- The MLS group member's leaf signing key **SHOUNT** be directly equivalent to the DID long-term identity signing key;
-- The leaf signature key **SHOULD** be generated separately and bound to `(agent_did, device_id)` via `did:wba Binding`.
+- The MLS group member's leaf signing key **SHOULD NOT** be directly equivalent to the DID long-term identity signing key;
+- The leaf signature key **SHOULD** be generated separately and bound to `(agent_did, device_id)` via the Section 6 binding object.
 
 ---
 
-## 6. did:wba and MLS binding model
+## 6. Method-independent DID and MLS binding model
 
 ### 6.1 Binding target
 
@@ -380,7 +391,7 @@ Sibling leaves of the same DID therefore have the same `credential.identity` but
 
 ### 6.3 `did_wba_binding` object
 
-This Profile defines the `did_wba_binding` object used to bind the MLS leaf signature key to one eligible device under `agent_did`.
+This Profile defines the `did_wba_binding` object used to bind the MLS leaf signature key to one eligible device under `agent_did`. Neither the object name nor the `anp_did_wba_device_binding` extension name restricts the DID method of `agent_did`.
 
 The recommended structure is as follows:
 
@@ -424,7 +435,7 @@ A v2 implementation **MUST** reject a missing, duplicate, malformed, unsupported
 
 The recipient MUST complete the following verifications before accepting KeyPackage, LeafNode updates, or new members:
 
-1. `agent_did` can be parsed and the current DID document is valid;
+1. Resolve and validate the current `agent_did` DID Document under [P2 method validation](02-identity-and-discovery.md#method-validation);
 2. `device_id` occurs exactly once in the current P2 `deviceManifest` and declares `anp.group.e2ee.v2` with its dependencies;
 3. `verification_method` equals that entry's current `signing_key_id` and is authorized by `assertionMethod`;
 4. `proof` **MUST** exist and satisfy the shared Object Proof Profile of P1 Appendix B;
@@ -454,13 +465,13 @@ DID --> CID
 CID --> KP
 ```
 
-*Figure P6-2: did:wba and MLS binding chain (non-normative).*
+*Figure P6-2: DID/device and MLS binding chain (non-normative).*
 
 During verification, the recipient should not only check that the internal MLS signature is valid. It should also follow this chain to confirm that `credential.identity`, `device_id`, the leaf signature key, the current Manifest entry, and `agent_did` are fully bound.
 
-### 6.5 `e1_` is compatible with `k1_`
+### 6.5 DID methods and binding proofs
 
-- For the default `e1_` DID, `did_wba_binding.proof` **MUST** reuse the shared Object Proof Profile of P1 Appendix B;
+- For supported DID methods, `did_wba_binding.proof` **MUST** reuse the shared Object Proof Profile of P1 Appendix B;
 - For compatible `k1_` DID, `did_wba_binding.proof` **MAY** use the alternative Object Proof Profile defined by explicit extension negotiation; but when there is no explicit extension negotiation, v2 MTI **does not** bind `k1_` proof as the default interworking path;
 - MTI leaf signature keys for MLS groups still **MAY** use Ed25519 regardless of the DID's identity curve, as long as the proof of binding holds.
 
@@ -522,7 +533,7 @@ When reading the subsequent object structures and verification rules, treat thes
 
 This Profile definition group adds material packaging objects:
 
-```json
+```text
 {
   "key_package_id": "kp-001",
   "owner_did": "did:wba:example.com:agents:bob:e1_<fingerprint>",
@@ -625,7 +636,7 @@ P6 defines an independent cryptographic notification object used to deliver cryp
 
 The recommended structure is as follows:
 
-```json
+```text
 {
   "notice_id": "en-001",
   "notice_type": "commit-delivery | welcome-delivery",
@@ -894,11 +905,14 @@ Notes:
 
 #### 9.4.1 Semantics
 
-The owner executes MLS `remove` to remove exactly one device leaf. The trigger may be P4 removal of the DID, loss of device eligibility while the DID remains active, group policy, or an accepted member DID update orchestration.
+MLS `remove` removes exactly one device leaf. The trigger may be P4 removal of the DID, loss of device eligibility while the DID remains active, group policy, or an accepted member DID update orchestration. General removal remains owner-controlled; the same-DID exception below is limited to one revoked sibling device.
 
 #### 9.4.2 Caller
 
-owner only.
+Either:
+
+- an eligible owner device with the required current MLS state; or
+- an eligible current leaf with authoritative same-DID device-management authorization, only when removing a different, already-revoked or currently ineligible device leaf of its own DID.
 
 #### 9.4.3 Request Requirements
 
@@ -907,8 +921,8 @@ owner only.
 - `meta.security_profile = "group-e2ee"`
 - `meta.target.kind = "group"`
 - `meta.target.did` **MUST** equal target `group_did`
-- `meta.sender_did` **MUST** be equal to the current group `owner`
-- `meta.sender_device_id` **MUST** identify an eligible owner device with the required current MLS state
+- Under the owner branch, `meta.sender_did` **MUST** equal the current group `owner` and `meta.sender_device_id` **MUST** identify an eligible owner device with the required current MLS state;
+- Under the same-DID branch, `meta.sender_did` **MUST** equal `member_did`, the sender **MUST** remain a P4 `active` member and current MLS leaf, `meta.sender_device_id` **MUST NOT** equal `member_device_id`, and the Group Host **MUST** authoritatively verify that the sender device has current device-management authorization while the target device is revoked or currently P2-ineligible;
 - `auth.origin_proof` **MUST** exist
 
 `body` **MUST** contain at least:
@@ -927,6 +941,7 @@ Rules:
 - The exact `(member_did, member_device_id)` leaf **MUST** exist in the current MLS state;
 - If P4 marks `member_did` as `removed` or `left`, the owner **MUST** issue an ordered Remove for every current device leaf of that DID;
 - If P4 keeps the DID `active`, removal is allowed only for the named device after it loses current P2 eligibility or group policy removes that leaf; sibling leaves and P4 membership remain unchanged;
+- The same-DID branch **MUST** remove exactly the named target leaf and **MUST NOT** be used for group-policy removal, member removal/leave, DID update orchestration, or another DID;
 - On a DID update path, `member_did` **MUST** equal `previous_subject_did` in the referenced P4 event, selected new-DID device Adds must already have succeeded, and the owner must remove every old-DID device leaf before resuming application messages.
 
 #### 9.4.4 Successful Response
@@ -1051,9 +1066,11 @@ A device whose leaf was previously removed from this group **MAY** rejoin it lat
 
 When a `member_did` becomes `removed` or `left` in P4, owner **MUST** trigger one ordered `group.e2ee.remove` for every current device leaf of that DID.
 
-When only one device loses current Manifest eligibility or is removed by group policy while its DID remains P4 `active`, owner **MUST** remove only that device leaf. This does not change the P4 member or its sibling leaves.
+When only one device loses current Manifest eligibility while its DID remains P4 `active`, the owner or a same-DID device-management-authorized sibling with current MLS state **MAY** immediately attempt to remove only that device leaf. Group-policy removal remains owner-controlled. Neither path changes the P4 member or its sibling leaves.
 
-Once the Host determines that a current leaf must be removed, it **MUST** pause new `group.e2ee.send` acceptance until the corresponding Remove Commit advances the group to an epoch without that leaf. Stopping future service delivery alone is not cryptographic removal.
+When the whole P4 member becomes `removed`/`left`, during a DID update, or when the Host detects an orphan/membership conflict, the Host **MUST** pause new `group.e2ee.send` acceptance until the required MLS change closes. By contrast, when only one device has been authoritatively revoked or loses P2 eligibility while its DID remains P4 `active`, the Host **MUST NOT** pause otherwise-valid `group.e2ee.send` solely because that device leaf remains pending removal. It **MUST** stop authenticating and delivering new service data to the revoked device, while continuing to validate messages against the current MLS head.
+
+This device-only non-blocking state is an explicit availability/security tradeoff. Until an exact Remove Commit succeeds, the revoked leaf may retain the current epoch secret and may decrypt ciphertext obtained outside the service delivery path. A failed immediate Remove attempt does not imply cryptographic revocation, and this Profile requires no claim-task, repair notification, durable client queue, or automatic retry for that attempt.
 
 Removing a device leaf is a **group-scoped** cryptographic action, and it is a different state machine from **identity-scoped** P2 device removal. Removing a leaf does not remove the device from its DID's `deviceManifest` and does not retire its `device_id`. A device that remains a current eligible Manifest entry keeps the same `device_id` after its leaf is removed, and **MAY** later rejoin this or any other group under that same `device_id` with a fresh KeyPackage, as described in Section 10.3. Conversely, a device removed from the P2 Manifest **MUST** re-enroll under a new device ID and new device keys and **MUST NOT** reuse the retired identifier. Implementations **MUST NOT** conflate the two: group leaf removal is per-group and reversible, while Manifest device removal is identity-scoped and permanent.
 
@@ -1611,7 +1628,7 @@ Because the Group Host need not hold MLS private state, the receiving MLS runtim
 Before the Group Host accepts an `group.e2ee.add` or `group.e2ee.remove`, **MUST** verify at least:
 
 1. `auth.origin_proof` is legal
-2. `meta.sender_did` is currently the group `owner`, and `meta.sender_device_id` is an eligible current owner leaf with the required state;
+2. The caller satisfies exactly one authorization branch: either `meta.sender_did` is the current group `owner` and `meta.sender_device_id` is an eligible current owner leaf with the required state, or this is a same-DID exact-device Remove satisfying every restriction below;
 3. `group_state_ref.group_did` is consistent with the outer target
 4. `crypto_group_id` is consistent with the current cryptographic binding of the group
 5. `(member_did, member_device_id)` is semantically consistent with the exact leaf affected by the request;
@@ -1621,6 +1638,7 @@ In addition:
 
 - An ordinary Add **MUST** target a current P4 `active` DID and an eligible Manifest device whose exact DID/device pair is not yet a leaf. A DID update Add **MUST** exactly reference a P4 `member-did-updated`, target its `subject_did`, and verify that the KeyPackage binds the named device of that DID;
 - An ordinary Remove **MUST** target an existing leaf whose DID is P4 `removed` or `left`, or whose named device has lost Manifest eligibility or is removed by group policy while the DID remains `active`. A DID update Remove **MUST** target an old-DID device leaf under the same event and `group_state_ref`, after all selected new-DID device Adds have succeeded;
+- A same-DID Remove **MUST** have `meta.sender_did == member_did`, target a different device of that DID, verify the sender as a current device-management-authorized and MLS-current leaf, verify the target as revoked or currently P2-ineligible, preserve the P4 member and all sibling leaves, and reject a Commit delta that removes anything other than that one target leaf;
 - The Group Host **MUST** reject a DID update Remove that precedes its corresponding Add and **MUST** reject use of the DID update exception to remove another `active` member;
 - During a DID update, the Group Host **MUST** serialize all selected Adds and all old-leaf Removes and reject or defer unrelated Add/Remove operations;
 - Add and Remove retries for the same P4 DID update event **MUST** have idempotent semantics.
@@ -1647,7 +1665,7 @@ Origin-proof freshness parameters such as `created`, `expires`, and `nonce` cons
 
 **Reconstruction input.** The proof signs the sender's original submission, not the delivery envelope, so the receiver must be able to reproduce the covered components. Under the global mapping of P1 Appendix A.4 these are logical values, not HTTP transport values: `"@method"` is the Signed Request Object's `method`, and `"@target-uri"` is `anp://{meta.target.kind}/{pct-encoded meta.target.did}`. Both are therefore fully derivable from the reconstruction below, and an implementation **MUST NOT** substitute the actual HTTP method or request URL for them. The only submission values the receiver cannot derive from the envelope are the submission's `meta.created_at`, which the envelope's own delivery timestamp overwrites, and any other original meta field this Profile does not require the envelope to preserve. The envelope's `auth` therefore **MUST** carry `origin_context` beside the preserved proof:
 
-```json
+```text
 "auth": {
   "scheme": "anp-rfc9421-origin-proof-v1",
   "origin_proof": { "...": "preserved unchanged" },
@@ -1668,7 +1686,7 @@ Origin-proof freshness parameters such as `created`, `expires`, and `nonce` cons
 **Verification.** A receiving device validating a delivered or redelivered `group.incoming` envelope **MUST** verify:
 
 1. that the RFC 8785 JCS `contentDigest` recomputed over the reconstructed Signed Request Object equals the digest covered by the proof;
-2. that the RFC 9421 signature verifies over the covered components, deriving `"@method"` from the reconstructed object's `method` (`group.e2ee.send`) and `"@target-uri"` as `anp://group/<pct-encoded body.group_did>` per P1 Appendix A.4, using the verification method referenced by the proof's `keyid`, as resolved from the sender's current root-protected DID Document;
+2. that the RFC 9421 signature verifies over the covered components, deriving `"@method"` from the reconstructed object's `method` (`group.e2ee.send`) and `"@target-uri"` as `anp://group/<pct-encoded body.group_did>` per P1 Appendix A.4, using the verification method referenced by the proof's `keyid`, as resolved from the sender's current method-validated DID Document;
 3. that the proof binds the same `(meta.sender_did, meta.sender_device_id)` pair carried by the envelope; and
 4. that the envelope's ordering fields, `group_receipt`, and `group_cipher_object` are mutually consistent and bound to the same `group_did`.
 
@@ -1867,19 +1885,20 @@ Only if sender:
 
 Group Host can only accept `group.e2ee.send`.
 
-### 16.5 owner as sole controller
+### 16.5 owner as general controller
 
 As long as v2 is not extended to the multi-controller model, then:
 
-- Only the P4 owner DID can authorize `group.e2ee.create/add/remove`
+- Only the P4 owner DID can authorize `group.e2ee.create/add` and general `group.e2ee.remove`
 - Any eligible device of that owner DID may submit the action only when it has the required current MLS state; device ID does not create a new P4 role
-- admin cannot call these methods directly
+- A current same-DID device-management-authorized leaf may directly call only the exact revoked-sibling `group.e2ee.remove` exception in Sections 9.4 and 13.4
+- admin cannot directly call create/add, remove a P4 member, remove another DID, or perform DID-update control through that exception
 - The business layer actions of admin only affect the P4 status, and are eventually implemented to MLS by owner
 
 ### 16.6 Future Secrecy and Historical Boundary After DID Update
 
 - After a device-leaf Remove Commit is accepted, that device leaf **MUST NOT** decrypt messages from the new epoch or later epochs;
-- P4 removal or leaving of a DID **MUST** converge by removing every leaf of that DID; loss of one device's eligibility removes that leaf without changing sibling leaves or P4 membership;
+- P4 removal or leaving of a DID **MUST** converge by removing every leaf of that DID; loss of one device's eligibility allows only that leaf to be removed without changing sibling leaves or P4 membership, and its pending removal does not pause otherwise-valid application sends;
 - Every intermediate epoch during multi-device DID update **MUST NOT** carry application messages;
 - Each selected new-DID device receives only the new epoch and later state through its own Welcome. This Profile **MUST NOT** redistribute lost historical epoch secrets;
 - Historical ciphertext, sender DIDs, MLS credentials, and receipts **MUST NOT** be rewritten because of a DID update;
@@ -1895,7 +1914,7 @@ On the premise of following the ANP Core public error model, this Profile recomm
 |---|---|---|
 | 5000 | `group.e2ee.key_package_not_found` | No available KeyPackage found |
 | 5001 | `group.e2ee.invalid_key_package` | KeyPackage is invalid |
-| 5002 | `group.e2ee.did_binding_invalid` | did:wba binding verification failed |
+| 5002 | `group.e2ee.did_binding_invalid` | DID/device-to-MLS binding verification failed |
 | 5003 | `group.e2ee.controller_required` | The current caller is not an MLS controller |
 | 5004 | `group.e2ee.state_not_ready` | The corresponding business state is not ready yet |
 | 5005 | `group.e2ee.epoch_conflict` | epoch conflict |
@@ -1930,7 +1949,7 @@ An implementation conforming to this Profile MUST support at least:
 10. Service-scoped target model of `group.e2ee.create`
 11. Group-addressed target model of `group.e2ee.add/remove/send`
 12. DID-and-device-addressed notification model of `group.e2ee.notice` and P6 `group.incoming`
-13. owner as sole MLS controller
+13. owner as the general MLS controller, plus only the closed same-DID revoked-device Remove exception defined by this Profile
 14. Drive `create/add/remove` through P4 business state
 15. Drive all selected `add(new DID, device)` operations followed by all `remove(old DID, device)` operations from P4 `member-did-updated`, with every step bound to the same `group_state_ref`
 16. Pause application messages from acceptance of the P4 DID update until the final Remove completes, and serialize member-change control actions throughout
@@ -1944,7 +1963,7 @@ An implementation conforming to this Profile MUST support at least:
 24. Keep P4 business membership, role, status, and member count at DID scope while allowing multiple independent MLS leaves for one DID
 25. Require `sender_device_id`, `member_device_id`, `owner_device_id`, and device-targeted `recipient_device_id` where this Profile declares them
 26. Maintain independent KeyPackages, Welcomes, private MLS state, and encrypted delivery for each device; private state is not shared between sibling devices
-27. Remove every leaf when a P4 DID is removed or leaves, and remove only the affected leaf when one device loses eligibility
+27. Remove every leaf when a P4 DID is removed or leaves; a single revoked/ineligible device allows only its affected leaf to be removed without pausing otherwise-valid application sends
 28. Encrypt one MLS `PrivateMessage` per application send and distribute it in one independent P6 envelope per current device leaf without Host re-encryption
 29. Emit one final `commit-delivery` envelope to the exact removed subject leaf in addition to every retained leaf, under a bounded retry and retention limit, and process that final envelope on the removed device without deriving new epoch secrets
 30. Reach the same terminal local state when the final `commit-delivery` never arrives, from the P4 `member-removed` or `member-left` event when observed, from a `group.not_member` rejection of a later request, from a `group.e2ee.leaf_not_current` rejection when only the device leaf was removed, or from the Section 11.9.2 stale-state rule, and never require that envelope as a precondition for rejoining
@@ -2429,7 +2448,7 @@ The removed device applies this Commit only to terminalize its own local binding
 Subsequent versions of this standard **SHOULD** establish the following registry:
 
 1. Group E2EE suite registration form;
-2. did:wba Binding certification type registry;
+2. DID Device Binding proof-type registry;
 3. `group.e2ee.notice.notice_type` registry;
 4. Group E2EE error code registry;
 5. A stable MLS `ExtensionType` assignment for `anp_did_wba_device_binding`, replacing the draft private-use value `0xF0A1` before v2 release.

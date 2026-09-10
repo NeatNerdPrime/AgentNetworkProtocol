@@ -35,6 +35,8 @@ This Profile does not define:
 
 ---
 
+This Profile applies to `did:wba`, `did:web`, and other supported DID methods; identity resolution and validation follow [P2](02-identity-and-discovery.md#method-validation).
+
 ## 2. Terminology and Normative Keywords
 
 In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, **OPTIONAL** are interpreted as normative requirements in their capitalized form.

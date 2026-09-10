@@ -44,6 +44,10 @@ Agent Discovery
 
 因此，新的 ANP-06 把元协议定位为“语义协商控制面”：它不承载业务数据，而是帮助双方在业务执行前确定应使用哪一种互操作路径。
 
+### 1.1 设计来源
+
+ANP 元协议的设计参考和借鉴了 [Agora Protocol（论文：*A Scalable Communication Protocol for Networks of Large Language Models*）](https://arxiv.org/html/2410.11905v1)，尤其是通过元协议协商智能体通信方式、结合自然语言的灵活性与结构化协议效率的思路。ANP 将这些思路与自身的智能体描述、发现、身份认证和 Core Binding 架构结合；具体协商接口和互操作要求由本规范定义。
+
 ## 2. 设计目标与非目标
 
 ### 2.1 设计目标
