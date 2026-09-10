@@ -28,7 +28,7 @@ Draft presence does not indicate SDK, service, or product implementation support
 | Profile | Identifier | Document | Messaging 1.2 responsibility |
 | --- | --- | --- | --- |
 | P1 | `anp.core.binding.v1` | [Core Binding](01-core-binding.md) | Common DID metadata plus conditional device selectors, signed binding, capability negotiation, idempotence, and shared errors |
-| P2 | `anp.identity.discovery.v1` | [Identity and Discovery](02-identity-and-discovery.md) | Root-protected `deviceManifest`, key references, eligibility, and discovery for device-addressed security Profiles |
+| P2 | `anp.identity.discovery.v1` | [Identity and Discovery](02-identity-and-discovery.md) | Method-protected `deviceManifest`, key references, eligibility, and discovery for device-addressed security Profiles |
 | P3 | `anp.direct.base.v1` | [Direct Messaging Base](03-direct-messaging-base-semantics.md) | One DID-to-DID ordinary delivery, DID-level acceptance, and message correlation |
 | P4 | `anp.group.base.v2` | [Group Messaging Base](04-group-messaging-base-semantics.md) | DID-only membership plus Host-coordinated member DID updates, governance, sends, and DID-addressed notifications |
 | P5 | `anp.direct.e2ee.v2` | [Direct E2EE](05-direct-end-to-end-encryption.md) | Device-bound PreKey, Session, Ratchet, AAD, replay state, and Mailbox |
@@ -90,11 +90,11 @@ Profile wire identifiers use major versions only, such as `.v1` and `.v2`. Minor
 All vNext Profiles use the following interpretation:
 
 1. The Agent DID is the wire identity and address for Base messaging. `device_id` is an optional, Profile-owned cryptographic endpoint selector; when present, it is opaque, unique in its owner DID's device namespace, and never a Device DID, business member, role, hardware identifier, or `target.kind`.
-2. `deviceManifest` is the complete current public device set for DIDs that advertise device-addressed security Profiles, embedded in the root-protected DID Document. It has no separate endpoint, proof, epoch, hash, or CAS protocol. Base-only discovery does not require it.
+2. `deviceManifest` is the complete current public device set for DIDs that advertise device-addressed security Profiles, embedded in the method-validated DID Document. It has no separate endpoint, proof, epoch, hash, or CAS protocol. Base-only discovery does not require it.
 3. A Manifest entry contains only `device_id`, `signing_key_id`, `e2ee_key_id`, and `profiles[]`. Product-local roles, tokens, registry state, recovery state, and private keys are prohibited.
 4. P3, P4, P7 ordinary flows, and P9 payload semantics use only business DIDs or Group DIDs and **MUST NOT** require or carry `sender_device_id`, `recipient_device_id`, or `requester_device_id`. P5/P6 own the device selectors required by E2EE, and the business target remains in `meta.target.did`.
 5. The existing `anp-rfc9421-origin-proof-v1` and Data Integrity proof schemes remain in use; the P5/P6 `.v2` Profile IDs do not create a new proof scheme. Base Profiles authenticate the sender DID. P5/P6 device fields **MUST** be covered by the authenticated context defined by the owning Overlay: when that operation uses `auth.origin_proof`, its proof key must match the selected Manifest entry; P5 MTI ciphertext sends instead bind the selectors through the device-pair Session and authenticated AAD.
-6. ANP does not expose deployment-private `document_version`, `document_hash`, or checkpoint fields. When eligibility may have changed, the caller re-resolves the current root-protected DID Document.
+6. ANP does not expose deployment-private `document_version`, `document_hash`, or checkpoint fields. When eligibility may have changed, the caller re-resolves the current method-validated DID Document.
 7. In device-addressed security Profiles, each device owns separate signing/E2EE private keys, PreKeys, Direct Ratchet state, MLS private state, and replay state. These are never copied between devices.
 8. A device removed from its DID's `deviceManifest` cannot be restored with its former `device_id` or device keys. Re-enrollment uses a new ID and new keys. This is identity-scoped and permanent. It **MUST NOT** be confused with an overlay-scoped endpoint change, such as P6 removing one device's MLS leaf from one group: a device that remains a current eligible Manifest entry keeps its `device_id` and may re-establish that overlay endpoint with fresh cryptographic material.
 9. P6 Draft uses provisional private-use MLS ExtensionType `0xF0A1` for the mandatory LeafNode device binding. This is not an IANA assignment; a stable registered code point is a release gate.
@@ -102,10 +102,11 @@ All vNext Profiles use the following interpretation:
 11. Messaging wire identities are complete DIDs. Human-readable names and name resolution are outside the Messaging wire protocol and do not define membership or authorization continuity.
 12. For method-specific DID transitions, callers and services begin from the previously trusted DID, verify the registered transition chain, and use the resulting assurance according to the owning business policy. `alsoKnownAs` or a matching path alone does not authorize continuity.
 13. P4 v2 stores only the current member DID and ordinary membership metadata. A verified or policy-accepted Agent DID transition updates the same internal membership record and emits `member-did-updated`; it does not rewrite historical messages, receipts, signatures, or DIDs.
+14. Common DID request authentication follows [ANP-02](../../vnext/02-anp-did-authentication-protocol-specification.md), message binding follows P1, and DID method validation follows P2. `did:wba` and `did:web` use the same message rules, fields, and signature/AAD formats.
 
 ## 6. Reading and review order
 
-Read P1 and P2 first, then P3/P5 for Direct, P4/P6 for Group, P7/P8/P9, and finally the independent Message Sync Profile. Reviewers should verify the English and Chinese files together and treat any field, dependency, error-name, or example mismatch as a draft defect.
+Read ANP-02 common identity/authentication first, followed by P1 and P2, then P3/P5 for Direct, P4/P6 for Group, P7/P8/P9, and finally the independent Message Sync Profile. Reviewers should verify the English and Chinese files together and treat any field, dependency, error-name, or example mismatch as a draft defect.
 
 Multi-device examples are collected in [examples/message-vnext](../../examples/message-vnext/README.md).
 

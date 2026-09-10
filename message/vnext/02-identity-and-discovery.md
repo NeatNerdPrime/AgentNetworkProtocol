@@ -157,6 +157,13 @@ DID documents **MUST NOT** be treated as:
 - High frequency key rotation log;
 - Agent internal replica list.
 
+<a id="method-validation"></a>
+#### 4.1.1 DID method validation
+
+This Profile resolves and validates DID Documents under [ANP-02 identity inputs](../../vnext/02-anp-did-authentication-protocol-specification.md#identity-input) and the applicable DID method binding. `did:wba`, `did:web`, and other supported methods use the same service-discovery, key-purpose, and device-eligibility rules in this Profile; method-specific Document validation is defined by the corresponding method specification.
+
+Discovery and object verification do not require the request-authentication procedure. `authentication`, `assertionMethod`, and `keyAgreement` remain subject to the operation requirements of this Profile and the owning message Profile.
+
 ### 4.2 Minimum requirements for DID documents
 
 For DID documents used by ANP:
@@ -672,15 +679,7 @@ This result is implementation-internal and **MUST NOT** add `stable_subject_id`,
 
 ### 12.2 `e1_` path-type did:wba transitions
 
-The first registered automatic-transition path in this draft is a path-type did:wba DID whose last segment uses the `e1_` fingerprint Profile. Starting from the previously trusted DID, the resolver **MUST**:
-
-1. obtain each DID Document and verify that its `id` equals the requested DID;
-2. verify the `e1_` binding fingerprint, the active document proof, and the applicable did:wba proof rules;
-3. when the document is deactivated, require `successorDid` and verify the old document's transition proof;
-4. require the old and successor DIDs to have the same stable subject path;
-5. obtain and verify the direct successor DID Document, including its binding fingerprint and document proof;
-6. continue hop by hop until reaching the final active DID;
-7. reject cycles, conflicting successors, and trusted-cache conflicts.
+The first registered automatic-transition path in this draft is a path-type did:wba DID whose last segment uses the `e1_` fingerprint Profile. Starting from the previously trusted DID, the resolver **MUST** validate every hop and the final active DID Document under the [ANP-03 method rules](../../vnext/03-did-wba-method-design-specification.md#wba-method-rules), and reject cycles, conflicting successors, and trusted-cache conflicts.
 
 The verifier **MUST NOT** begin from an untrusted new DID and infer continuity merely because its path resembles an existing identity.
 

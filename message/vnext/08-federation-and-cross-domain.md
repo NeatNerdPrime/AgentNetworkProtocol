@@ -314,6 +314,8 @@ All service-to-service invocation **MUST** run over a secure channel with mutual
 
 Each service-to-service invocation **MUST** can be identified by the recipient as the source service. For DID-based deployments, the origin service identity **MUST** be expressed through the `Signature-Input` / `keyid` parameters of the outer HTTP Message Signatures, and the DID to which this `keyid` belongs MUST** be consistent with the sender's `ANPMessageService.serviceDid`.
 
+HTTP Message Signatures authentication follows [ANP-02](../../vnext/02-anp-did-authentication-protocol-specification.md#http-binding).
+
 #### 6.2.1 Selection rules for federated service DIDs
 
 In a cross-origin service-to-service HTTP request:
@@ -322,7 +324,7 @@ In a cross-origin service-to-service HTTP request:
 2. If the sender domain uses `did:web`, then the `serviceDid` **SHOULD** use the bare-domain DID, such as `did:web:alice.com`;
 3. If the sender domain uses `did:wba`, then the `serviceDid` **SHOULD** use the bare-domain DID, such as `did:wba:alice.com`;
 4. `keyid` **MUST** in `Signature-Input` is a complete DID URL and points to a verification method authorized by the `authentication` relationship in the `serviceDid` document;
-5. The receiver **MUST** complete DID parsing, verification method existence check, `authentication` relationship check and HTTP Message Signatures verification according to the corresponding DID method specification.
+5. The receiver **MUST** complete Document validation, exact authentication-purpose checks, and actual HTTP request authentication under ANP-02 and the applicable method binding.
 
 For example, for `alice.com`, the following DID would be the domain-level federated service DID:
 
@@ -330,6 +332,8 @@ For example, for `alice.com`, the following DID would be the domain-level federa
 - `did:wba:alice.com`
 
 Among them, `did:wba:alice.com:agents:relay:e1_<fingerprint-a>` is a path-type DID; it can be a common Agent or sub-identity DID, but it SHOULD NOT be used as the domain-level federated service DID specified by this Profile by default.
+
+The caller-anchor DID and its declared `serviceDid` may use different supported DID methods; their association is verified under Section 6.2.2.
 
 #### 6.2.2 Verification process based on `serviceDid`
 
@@ -366,12 +370,12 @@ The caller anchor rules are as follows:
 Subsequently, the receiver **MUST** verify the identity of the sender's service in the following order:
 
 1. Determine the caller anchor according to the above rules;
-2. Parse the DID document of the caller anchor;
+2. Resolve and validate the current caller-anchor Document under P2 method rules;
 3. According to P2’s service selection rules, select the public `ANPMessageService` corresponding to the DID;
 4. Read the `serviceDid` declared in the selected service entry;
 5. Extract `keyid` from the outer HTTP `Signature-Input` and obtain the DID it belongs to;
 6. Verify that the DID to which `keyid` belongs is completely consistent with `serviceDid` in step 4;
-7. Parse the DID document corresponding to the `serviceDid`;
+7. Resolve and validate the current `serviceDid` Document under ANP-02 and its method binding;
 8. Verify the outer HTTP request signature using the public key authorized by the `authentication` relationship in the `serviceDid` document.
 
 If the `ANPMessageService` selected in step 3 does not declare `serviceDid`, or the comparison in step 6 is inconsistent, the receiver **MUST** treat the cross-domain service identity authentication as failed.
@@ -450,7 +454,7 @@ Either party in the cross-origin call link **MUST NOT** silently downgrade the o
 
 ### 6.7 DID-transition errors and rewrite prohibition
 
-When a deactivated DID is detected before JSON-RPC application processing, the did:wba HTTP layer may return its method-defined HTTP `409` response. When an ANP method has entered application processing and a DID in its routing, body, or stored state is superseded, the final business service returns P1 `anp.did_superseded`. One request **MUST NOT** return both layers of error.
+When a deactivated DID is detected before JSON-RPC application processing, the ANP-02 method binding may return its defined HTTP response (such as WBA HTTP `409`). When an ANP method has entered application processing and a DID in its routing, body, or stored state is superseded, the final business service returns P1 `anp.did_superseded`. One request **MUST NOT** return both layers of error.
 
 Federated services **MUST** preserve the final service's DID-transition error and must not treat `currentDid` or `current_did` as a trusted redirect. The original caller verifies the transition, rebuilds every affected request field and authenticated context, signs again, and retries.
 

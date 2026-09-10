@@ -17,7 +17,7 @@ This Profile defines the Group End-to-End Encryption control layer of ANP, stipu
 
 1. How to bind `group_did`, `group_state_version`, and `group_event_seq` to the group cryptography state machine;
 2. How to use MLS as the basic protocol for group key establishment, member changes, and application message protection;
-3. How to bind a `did:wba` Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
+3. How to bind a method-validated Agent DID and one eligible `device_id` to an MLS member credential, KeyPackage, and leaf signature key;
 4. How to define a set of independent `group.e2ee.*` JSON-RPC methods to specifically carry MLS cryptographic actions;
 5. How to work closely with `anp.group.base.v2` through **state coupling** instead of "embedding the MLS handshake object in the P4 method";
 6. How to deal with `epoch`, `Welcome`, `PrivateMessage`, `PublicMessage`, `epoch_authenticator`, fork detection and recovery.
@@ -59,7 +59,7 @@ In this article, **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
 - **PublicMessage**: MLS message that is only signed and not encrypted.
 - **Device Leaf**: One MLS client/leaf identified externally by `(agent_did, device_id)`. It is not an additional P4 business member.
 - **Eligible Device**: A device that is currently eligible for `anp.group.e2ee.v2` under P2 `deviceManifest`, referenced keys, service capabilities, and group policy.
-- **did:wba Binding**: Binds an MLS leaf signature key, member credential, or KeyPackage to a verifiable `(agent_did, device_id)` proof object.
+- **DID Device Binding** (retained wire name `did_wba_binding`): Binds an MLS leaf signature key, member credential, or KeyPackage to a verifiable `(agent_did, device_id)` proof object.
 - **MLS Controller**: The subject responsible for general MLS member-change control actions. The group `owner` remains the controller in v2. A narrowly authorized same-DID device-removal caller defined in Sections 9.4 and 13.4 is not a general controller.
 - **State Coupling**: P4 and P6 do not do method-by-method mapping, but a coupling method that triggers cryptographic state advancement through business state changes.
 - **E2EE Notice**: P6's self-defined independent encryption notification object, used to deliver cryptographic results such as `commit` and `welcome`.
@@ -358,19 +358,19 @@ Implementation **MAY** support more MLS suites, but:
 - All members within the same group **MUST** agree on the kit used;
 - If group policy restrictions allow package collection, MLS Controller **MUST** reject packages that do not satisfy the policy.
 
-### 5.4 Relationship with did:wba
+### 5.4 Relationship with DID identity
 
-The relationship between the main line of this Profile and did:wba is as follows:
+The relationship between the main line of this Profile and DID identity is as follows:
 
-- `authentication`/`assertionMethod` in the DID document is used for identity binding proof;
+- `assertionMethod` in the DID document is used for identity binding proof;
 - `keyAgreement` **SHOULD** in the DID document contains at least one X25519 entry, indicating that the Agent has E2EE capabilities;
 - P2 `deviceManifest` identifies the current device entry, its `signing_key_id`, `e2ee_key_id`, and `anp.group.e2ee.v2` eligibility;
-- The MLS group member's leaf signing key **SHOUNT** be directly equivalent to the DID long-term identity signing key;
-- The leaf signature key **SHOULD** be generated separately and bound to `(agent_did, device_id)` via `did:wba Binding`.
+- The MLS group member's leaf signing key **SHOULD NOT** be directly equivalent to the DID long-term identity signing key;
+- The leaf signature key **SHOULD** be generated separately and bound to `(agent_did, device_id)` via the Section 6 binding object.
 
 ---
 
-## 6. did:wba and MLS binding model
+## 6. Method-independent DID and MLS binding model
 
 ### 6.1 Binding target
 
@@ -391,7 +391,7 @@ Sibling leaves of the same DID therefore have the same `credential.identity` but
 
 ### 6.3 `did_wba_binding` object
 
-This Profile defines the `did_wba_binding` object used to bind the MLS leaf signature key to one eligible device under `agent_did`.
+This Profile defines the `did_wba_binding` object used to bind the MLS leaf signature key to one eligible device under `agent_did`. Neither the object name nor the `anp_did_wba_device_binding` extension name restricts the DID method of `agent_did`.
 
 The recommended structure is as follows:
 
@@ -435,7 +435,7 @@ A v2 implementation **MUST** reject a missing, duplicate, malformed, unsupported
 
 The recipient MUST complete the following verifications before accepting KeyPackage, LeafNode updates, or new members:
 
-1. `agent_did` can be parsed and the current DID document is valid;
+1. Resolve and validate the current `agent_did` DID Document under [P2 method validation](02-identity-and-discovery.md#method-validation);
 2. `device_id` occurs exactly once in the current P2 `deviceManifest` and declares `anp.group.e2ee.v2` with its dependencies;
 3. `verification_method` equals that entry's current `signing_key_id` and is authorized by `assertionMethod`;
 4. `proof` **MUST** exist and satisfy the shared Object Proof Profile of P1 Appendix B;
@@ -465,13 +465,13 @@ DID --> CID
 CID --> KP
 ```
 
-*Figure P6-2: did:wba and MLS binding chain (non-normative).*
+*Figure P6-2: DID/device and MLS binding chain (non-normative).*
 
 During verification, the recipient should not only check that the internal MLS signature is valid. It should also follow this chain to confirm that `credential.identity`, `device_id`, the leaf signature key, the current Manifest entry, and `agent_did` are fully bound.
 
-### 6.5 `e1_` is compatible with `k1_`
+### 6.5 DID methods and binding proofs
 
-- For the default `e1_` DID, `did_wba_binding.proof` **MUST** reuse the shared Object Proof Profile of P1 Appendix B;
+- For supported DID methods, `did_wba_binding.proof` **MUST** reuse the shared Object Proof Profile of P1 Appendix B;
 - For compatible `k1_` DID, `did_wba_binding.proof` **MAY** use the alternative Object Proof Profile defined by explicit extension negotiation; but when there is no explicit extension negotiation, v2 MTI **does not** bind `k1_` proof as the default interworking path;
 - MTI leaf signature keys for MLS groups still **MAY** use Ed25519 regardless of the DID's identity curve, as long as the proof of binding holds.
 
@@ -533,7 +533,7 @@ When reading the subsequent object structures and verification rules, treat thes
 
 This Profile definition group adds material packaging objects:
 
-```json
+```text
 {
   "key_package_id": "kp-001",
   "owner_did": "did:wba:example.com:agents:bob:e1_<fingerprint>",
@@ -636,7 +636,7 @@ P6 defines an independent cryptographic notification object used to deliver cryp
 
 The recommended structure is as follows:
 
-```json
+```text
 {
   "notice_id": "en-001",
   "notice_type": "commit-delivery | welcome-delivery",
@@ -1665,7 +1665,7 @@ Origin-proof freshness parameters such as `created`, `expires`, and `nonce` cons
 
 **Reconstruction input.** The proof signs the sender's original submission, not the delivery envelope, so the receiver must be able to reproduce the covered components. Under the global mapping of P1 Appendix A.4 these are logical values, not HTTP transport values: `"@method"` is the Signed Request Object's `method`, and `"@target-uri"` is `anp://{meta.target.kind}/{pct-encoded meta.target.did}`. Both are therefore fully derivable from the reconstruction below, and an implementation **MUST NOT** substitute the actual HTTP method or request URL for them. The only submission values the receiver cannot derive from the envelope are the submission's `meta.created_at`, which the envelope's own delivery timestamp overwrites, and any other original meta field this Profile does not require the envelope to preserve. The envelope's `auth` therefore **MUST** carry `origin_context` beside the preserved proof:
 
-```json
+```text
 "auth": {
   "scheme": "anp-rfc9421-origin-proof-v1",
   "origin_proof": { "...": "preserved unchanged" },
@@ -1686,7 +1686,7 @@ Origin-proof freshness parameters such as `created`, `expires`, and `nonce` cons
 **Verification.** A receiving device validating a delivered or redelivered `group.incoming` envelope **MUST** verify:
 
 1. that the RFC 8785 JCS `contentDigest` recomputed over the reconstructed Signed Request Object equals the digest covered by the proof;
-2. that the RFC 9421 signature verifies over the covered components, deriving `"@method"` from the reconstructed object's `method` (`group.e2ee.send`) and `"@target-uri"` as `anp://group/<pct-encoded body.group_did>` per P1 Appendix A.4, using the verification method referenced by the proof's `keyid`, as resolved from the sender's current root-protected DID Document;
+2. that the RFC 9421 signature verifies over the covered components, deriving `"@method"` from the reconstructed object's `method` (`group.e2ee.send`) and `"@target-uri"` as `anp://group/<pct-encoded body.group_did>` per P1 Appendix A.4, using the verification method referenced by the proof's `keyid`, as resolved from the sender's current method-validated DID Document;
 3. that the proof binds the same `(meta.sender_did, meta.sender_device_id)` pair carried by the envelope; and
 4. that the envelope's ordering fields, `group_receipt`, and `group_cipher_object` are mutually consistent and bound to the same `group_did`.
 
@@ -1914,7 +1914,7 @@ On the premise of following the ANP Core public error model, this Profile recomm
 |---|---|---|
 | 5000 | `group.e2ee.key_package_not_found` | No available KeyPackage found |
 | 5001 | `group.e2ee.invalid_key_package` | KeyPackage is invalid |
-| 5002 | `group.e2ee.did_binding_invalid` | did:wba binding verification failed |
+| 5002 | `group.e2ee.did_binding_invalid` | DID/device-to-MLS binding verification failed |
 | 5003 | `group.e2ee.controller_required` | The current caller is not an MLS controller |
 | 5004 | `group.e2ee.state_not_ready` | The corresponding business state is not ready yet |
 | 5005 | `group.e2ee.epoch_conflict` | epoch conflict |
@@ -2448,7 +2448,7 @@ The removed device applies this Commit only to terminalize its own local binding
 Subsequent versions of this standard **SHOULD** establish the following registry:
 
 1. Group E2EE suite registration form;
-2. did:wba Binding certification type registry;
+2. DID Device Binding proof-type registry;
 3. `group.e2ee.notice.notice_type` registry;
 4. Group E2EE error code registry;
 5. A stable MLS `ExtensionType` assignment for `anp_did_wba_device_binding`, replacing the draft private-use value `0xF0A1` before v2 release.
