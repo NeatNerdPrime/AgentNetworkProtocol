@@ -6,9 +6,9 @@
 
 # Agent Network Protocol (ANP)
 
-> ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
+ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
 
-**Note:** This project has not issued any digital currency on any platform or blockchain.
+> **Note:** This project has not issued any digital currency on any platform or blockchain.
 
 ## Vision and Positioning
 
