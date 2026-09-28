@@ -8,14 +8,6 @@
 
 > ANP aims to become the HTTP of the Agentic Web era: a protocol suite for agent identity, naming, discovery, negotiation, secure messaging, and application-level collaboration.
 
-**Current specification set: ANP 1.2.** Core specifications and all nine messaging documents have been integrated from vNext into their canonical release paths. ANP-02 provides DID-method-independent authentication for `did:wba` and native `did:web`; ANP-03 defines WBA method rules and identity continuity; ANP-04 defines WNS naming. Agent description and discovery documents are aligned with this release.
-
-**Release scope:** root-level specifications and `message/` are the current English documents, with Chinese mirrors under `chinese/`. ANP-06 remains a draft. P6 Group E2EE is included in the 1.2 documentation but remains a candidate pending its registered MLS `ExtensionType` release gate; the provisional `0xF0A1` value is not a completed registration. Application protocols are independently versioned; ANP-10 is an AP2 adaptation draft, not a released stable payment standard.
-
-**ANP Messaging 1.2:** the [Profile index](message/README.md) defines the mixed-version suite. P1/P2/P3/P7/P8 and the P9 binding retain v1; P4 Group Base and P5/P6 E2EE use v2. Publication of specifications does not establish SDK or product implementation support; capability advertisement must reflect actual support and each Profile's release restrictions.
-
-**Versioning note:** `Version: 1.2` identifies the specification/document release version, not a wire version. Profile identifiers, `protocolVersion`, interface versions, algorithms, and signature/AAD formats follow their owning specifications and are not globally renumbered. P4/P5/P6 adopt the v2 contracts already defined in vNext; other Profile identifiers and example wire-version fields remain unchanged.
-
 **Note:** This project has not issued any digital currency on any platform or blockchain.
 
 ## Vision and Positioning
@@ -194,6 +186,14 @@ We extend our sincere gratitude to all contributors for their outstanding work a
 <!-- contributors:end -->
 
 - [View the full contributors list](CONTRIBUTORS.md)
+
+**Current specification set: ANP 1.2.** Core specifications and all nine messaging documents have been integrated from vNext into their canonical release paths. ANP-02 provides DID-method-independent authentication for `did:wba` and native `did:web`; ANP-03 defines WBA method rules and identity continuity; ANP-04 defines WNS naming. Agent description and discovery documents are aligned with this release.
+
+**Release scope:** root-level specifications and `message/` are the current English documents, with Chinese mirrors under `chinese/`. ANP-06 remains a draft. P6 Group E2EE is included in the 1.2 documentation but remains a candidate pending its registered MLS `ExtensionType` release gate; the provisional `0xF0A1` value is not a completed registration. Application protocols are independently versioned; ANP-10 is an AP2 adaptation draft, not a released stable payment standard.
+
+**ANP Messaging 1.2:** the [Profile index](message/README.md) defines the mixed-version suite. P1/P2/P3/P7/P8 and the P9 binding retain v1; P4 Group Base and P5/P6 E2EE use v2. Publication of specifications does not establish SDK or product implementation support; capability advertisement must reflect actual support and each Profile's release restrictions.
+
+**Versioning note:** `Version: 1.2` identifies the specification/document release version, not a wire version. Profile identifiers, `protocolVersion`, interface versions, algorithms, and signature/AAD formats follow their owning specifications and are not globally renumbered. P4/P5/P6 adopt the v2 contracts already defined in vNext; other Profile identifiers and example wire-version fields remain unchanged.
 
 ## License
 

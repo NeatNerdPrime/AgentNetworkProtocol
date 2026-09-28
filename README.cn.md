@@ -8,14 +8,6 @@
 
 > ANP 致力于成为智能体互联网时代的 HTTP：为智能体提供身份、命名、发现、协商、安全消息和应用层协作协议。
 
-**当前规范集：ANP 1.2。** 核心规范与全部九份消息文档已从 vNext 合入正式文档路径。ANP-02 提供与 DID 方法无关的身份认证，支持 `did:wba` 与原生 `did:web`；ANP-03 定义 WBA 方法规则和身份连续性；ANP-04 定义 WNS 命名。智能体描述与发现文档同步对齐本次版本。
-
-**发布范围：** 根目录规范与 `message/` 为当前英文文档，中文镜像位于 `chinese/`。ANP-06 仍为草案。P6 群组 E2EE 全文纳入 1.2 文档，但在完成稳定 MLS `ExtensionType` 注册门槛前保留候选状态；临时值 `0xF0A1` 不代表注册已完成。应用协议独立版本化；ANP-10 是 AP2 支付适配草案，不是已正式发布的稳定支付标准。
-
-**ANP Messaging 1.2：** [Profile 索引](chinese/message/README.md)定义混合版本规范集。P1/P2/P3/P7/P8 及 P9 binding 保持 v1；P4 群基础语义、P5/P6 E2EE 使用 v2。规范发布不代表 SDK 或产品已经实现；公开能力宣告必须符合实际支持情况和各 Profile 的发布限制。
-
-**版本说明：** `版本：1.2` 表示规范/文档发布版本，不是 wire 版本。Profile 标识、`protocolVersion`、接口版本、算法和签名/AAD 格式由各自规范管理，不能统一改号。P4/P5/P6 沿用 vNext 已定义的 v2 合同；其他 Profile 标识及示例中的 wire 版本字段保持不变。
-
 **备注：** 本项目未在任何平台、任何区块链发布数字货币。
 
 ## 愿景定位
@@ -194,6 +186,14 @@ AWiki 是基于 ANP 的智能体身份与消息开源实现，包含以下项目
 <!-- contributors:end -->
 
 - [查看完整贡献者名单](CONTRIBUTORS.cn.md)
+
+**当前规范集：ANP 1.2。** 核心规范与全部九份消息文档已从 vNext 合入正式文档路径。ANP-02 提供与 DID 方法无关的身份认证，支持 `did:wba` 与原生 `did:web`；ANP-03 定义 WBA 方法规则和身份连续性；ANP-04 定义 WNS 命名。智能体描述与发现文档同步对齐本次版本。
+
+**发布范围：** 根目录规范与 `message/` 为当前英文文档，中文镜像位于 `chinese/`。ANP-06 仍为草案。P6 群组 E2EE 全文纳入 1.2 文档，但在完成稳定 MLS `ExtensionType` 注册门槛前保留候选状态；临时值 `0xF0A1` 不代表注册已完成。应用协议独立版本化；ANP-10 是 AP2 支付适配草案，不是已正式发布的稳定支付标准。
+
+**ANP Messaging 1.2：** [Profile 索引](chinese/message/README.md)定义混合版本规范集。P1/P2/P3/P7/P8 及 P9 binding 保持 v1；P4 群基础语义、P5/P6 E2EE 使用 v2。规范发布不代表 SDK 或产品已经实现；公开能力宣告必须符合实际支持情况和各 Profile 的发布限制。
+
+**版本说明：** `版本：1.2` 表示规范/文档发布版本，不是 wire 版本。Profile 标识、`protocolVersion`、接口版本、算法和签名/AAD 格式由各自规范管理，不能统一改号。P4/P5/P6 沿用 vNext 已定义的 v2 合同；其他 Profile 标识及示例中的 wire 版本字段保持不变。
 
 ## 许可证
 
