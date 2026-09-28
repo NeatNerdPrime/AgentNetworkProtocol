@@ -187,6 +187,8 @@ We extend our sincere gratitude to all contributors for their outstanding work a
 
 - [View the full contributors list](CONTRIBUTORS.md)
 
+## Release Status and Versioning
+
 **Current specification set: ANP 1.2.** Core specifications and all nine messaging documents have been integrated from vNext into their canonical release paths. ANP-02 provides DID-method-independent authentication for `did:wba` and native `did:web`; ANP-03 defines WBA method rules and identity continuity; ANP-04 defines WNS naming. Agent description and discovery documents are aligned with this release.
 
 **Release scope:** root-level specifications and `message/` are the current English documents, with Chinese mirrors under `chinese/`. ANP-06 remains a draft. P6 Group E2EE is included in the 1.2 documentation but remains a candidate pending its registered MLS `ExtensionType` release gate; the provisional `0xF0A1` value is not a completed registration. Application protocols are independently versioned; ANP-10 is an AP2 adaptation draft, not a released stable payment standard.
